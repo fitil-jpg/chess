@@ -4,6 +4,7 @@ from attacked_squares import calculate_attacked_squares
 def test_attacked_squares():
     # Set up a simple position
     board = chess.Board()
+    board.set_fen("8/8/8/8/8/8/8/R7 w - - 0 1")
     board.set_piece_at(chess.E1, chess.Piece(chess.ROOK, chess.WHITE))
 
     # Get the rook piece from the board
