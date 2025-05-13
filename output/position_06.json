@@ -1,0 +1,96 @@
+{
+  "position": 6,
+  "board": [
+    [
+      "black-rook",
+      null,
+      "black-bishop",
+      "black-queen",
+      "black-king",
+      null,
+      "black-knight",
+      "black-rook"
+    ],
+    [
+      "black-pawn",
+      "black-pawn",
+      "black-pawn",
+      "black-pawn",
+      null,
+      "black-pawn",
+      "black-pawn",
+      "black-pawn"
+    ],
+    [
+      null,
+      null,
+      "black-knight",
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      "black-pawn",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "black-bishop",
+      "white-bishop",
+      null,
+      "white-pawn",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      "white-knight",
+      null,
+      null,
+      "white-knight",
+      null,
+      null
+    ],
+    [
+      "white-pawn",
+      "white-pawn",
+      "white-pawn",
+      "white-pawn",
+      null,
+      "white-pawn",
+      "white-pawn",
+      "white-pawn"
+    ],
+    [
+      "white-rook",
+      null,
+      "white-bishop",
+      "white-queen",
+      "white-king",
+      null,
+      null,
+      "white-rook"
+    ]
+  ],
+  "metrics": {
+    "short_term": {
+      "attacked_squares": 0,
+      "defended_pieces": 0
+    },
+    "long_term": {
+      "center_control": 0,
+      "king_safety": 0,
+      "pawn_structure_stability": 0
+    }
+  }
+}
