@@ -1,10 +1,17 @@
-class AgentEvaluator:
-    def __init__(self, tuner):
-        self.tuner = tuner
+from metrics import MetricsManager
 
-    def evaluate(self, board, analyzer):
-        metrics = BoardMetrics()
-        metrics.update_from_board(board, analyzer)
-        phase = GamePhaseDetector.detect(board)
-        self.tuner.adjust_weights(phase)
-        return self.tuner.evaluate_position(metrics.get_metrics())
+# Тимчасовий test board — можна завантажити з FEN або вручну
+test_board = [
+    [None, None, None, None, 'black-king', None, None, None],
+    [None, None, 'white-knight', N  one, None, None, None, None],
+    [None]*8,
+    [None]*8,
+    [None]*8,
+    [None]*8,
+    [None, 'white-pawn', None, None, None, None, None, None],
+    ['white-rook', None, None, None, 'white-king', None, None, None],
+]
+
+metrics = MetricsManager(test_board)
+metrics.update_all_metrics()
+print(metrics.get_metrics())
