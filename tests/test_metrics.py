@@ -1,3 +1,9 @@
+from core.board import Board
+from core.piece import Pawn, Knight
+from core.board_analyzer import BoardAnalyzer
+from core.metrics import BoardMetrics
+
+
 ## 🧪 Простий тест для `BoardMetrics`
 
 def test_board_metrics():
