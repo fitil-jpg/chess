@@ -12,6 +12,19 @@ class DynamicBot:
         self.color = color
 
     def choose_move(self, board, debug=True):
+        # -1. Якщо позиція повторюється >=2 разів, шукаємо позитивний захват
+        if board.is_repetition(2):
+            rep_caps = []
+            for move in board.legal_moves:
+                if board.is_capture(move):
+                    score, _ = self.center.evaluate_move(board, move)
+                    if score > 0:
+                        rep_caps.append((move, score))
+            if rep_caps:
+                move, score = max(rep_caps, key=lambda x: x[1])
+                if debug:
+                    return move, "DynamicBot: REPETITION CAPTURE"
+                return move
         # 0. Якщо можна вигідно забрати фігуру — робимо це
         capture_moves = []
         for move in board.legal_moves:
