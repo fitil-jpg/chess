@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
 import random
 import chess
+from .threat_map import ThreatMap
 
 
 class FortifyBot:
@@ -26,6 +27,7 @@ class FortifyBot:
             "capture": 2.5,           # взяття
             "opp_doubled_delta": 4.0, # збільшення кількості здвоєних пішаків у опонента
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
+            "opp_thin_delta": 2.0,    # збільшення кількості «тонких» фігур опонента
         }
         if weights:
             self.W.update(weights)
@@ -43,13 +45,16 @@ class FortifyBot:
         opp = not self.color
         before_doubled_opp = self._count_doubled_pawns(board, opp)
         before_opp_shield = self._king_pawn_shield_count(board, opp)
+        before_threat_self = ThreatMap(self.color).summary(board)
+        before_threat_opp = ThreatMap(opp).summary(board)
+        before_thin_opp = len(before_threat_opp["thin_pieces"])
 
         best = None
         best_score = float("-inf")
         best_info: Dict[str, Any] = {}
 
         for m in moves:
-            score, info = self._score_move(board, m, before_doubled_opp, before_opp_shield)
+            score, info = self._score_move(board, m, before_doubled_opp, before_opp_shield, before_thin_opp)
             if score > best_score:
                 best, best_score, best_info = m, score, info
 
@@ -58,7 +63,7 @@ class FortifyBot:
                 f"FortifyBot: {board.san(best)} | "
                 f"dens={best_info['defense_density']} def={best_info['defenders']} att={best_info['attackers']} | "
                 f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} | "
-                f"doubledΔ={best_info['opp_doubled_delta']} shieldΔ={best_info['opp_shield_delta']} | "
+                f"doubledΔ={best_info['opp_doubled_delta']} shieldΔ={best_info['opp_shield_delta']} thinΔ={best_info['opp_thin_delta']} | "
                 f"score={round(best_score,2)}"
             )
             return best, reason
@@ -66,7 +71,7 @@ class FortifyBot:
 
     # -------------------- ОЦІНКА ХОДУ --------------------
     def _score_move(self, board: chess.Board, m: chess.Move,
-                    before_doubled_opp: int, before_opp_shield: int) -> Tuple[float, Dict[str, Any]]:
+                    before_doubled_opp: int, before_opp_shield: int, before_thin_opp: int) -> Tuple[float, Dict[str, Any]]:
         tmp = board.copy(stack=False)
         tmp.push(m)
 
@@ -75,11 +80,17 @@ class FortifyBot:
         attackers = len(tmp.attackers(not self.color, to_sq))
         defense_density = defenders - attackers
 
+        # Нові карти загроз після ходу
+        after_threat_self = ThreatMap(self.color).summary(tmp)
+        after_threat_opp = ThreatMap(not self.color).summary(tmp)
+        after_thin_opp = len(after_threat_opp["thin_pieces"])
+        opp_thin_delta = max(0, after_thin_opp - before_thin_opp)
+
         if self.safe_only and attackers > 0:
             return float("-1e9"), {
                 "defense_density": defense_density, "defenders": defenders, "attackers": attackers,
                 "develop": False, "is_capture": board.is_capture(m),
-                "opp_doubled_delta": 0, "opp_shield_delta": 0
+                "opp_doubled_delta": 0, "opp_shield_delta": 0, "opp_thin_delta": 0
             }
 
         # Develop евристика
@@ -102,7 +113,8 @@ class FortifyBot:
             self.W["develop"] * (1 if develops else 0) +
             self.W["capture"] * (1 if is_capture else 0) +
             self.W["opp_doubled_delta"] * opp_doubled_delta +
-            self.W["opp_shield_delta"] * opp_shield_delta
+            self.W["opp_shield_delta"] * opp_shield_delta +
+            self.W["opp_thin_delta"] * opp_thin_delta
         )
 
         info = {
@@ -112,7 +124,8 @@ class FortifyBot:
             "develop": develops,
             "is_capture": is_capture,
             "opp_doubled_delta": opp_doubled_delta,
-            "opp_shield_delta": opp_shield_delta
+            "opp_shield_delta": opp_shield_delta,
+            "opp_thin_delta": opp_thin_delta
         }
         return score, info
 
