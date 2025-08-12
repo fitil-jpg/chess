@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
-import random
 import chess
 
 from .utility_bot import piece_value
@@ -65,7 +64,7 @@ class FortifyBot:
             "capture": 2.5,           # взяття
             "opp_doubled_delta": 4.0, # збільшення кількості здвоєних пішаків у опонента
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
-            "opp_thin_delta": 4.0,    # збільшення кількості "тонких" фігур у опонента
+            "opp_thin_delta": 2.0,    # збільшення кількості "тонких" фігур у опонента
         }
         if weights:
             self.W.update(weights)
@@ -83,7 +82,8 @@ class FortifyBot:
         opp = not self.color
         before_doubled_opp = self._count_doubled_pawns(board, opp)
         before_opp_shield = self._king_pawn_shield_count(board, opp)
-        before_opp_thin = len(ThreatMap(opp).summary(board)["thin_pieces"])
+        before_threat_opp = ThreatMap(opp).summary(board)
+        before_thin_opp = len(before_threat_opp["thin_pieces"])
 
         best = None
         best_score = float("-inf")
@@ -91,7 +91,7 @@ class FortifyBot:
 
         for m in moves:
             score, info = self._score_move(
-                board, m, before_doubled_opp, before_opp_shield, before_opp_thin
+                board, m, before_doubled_opp, before_opp_shield, before_thin_opp
             )
             if score > best_score:
                 best, best_score, best_info = m, score, info
@@ -112,7 +112,7 @@ class FortifyBot:
     # -------------------- ОЦІНКА ХОДУ --------------------
     def _score_move(self, board: chess.Board, m: chess.Move,
                     before_doubled_opp: int, before_opp_shield: int,
-                    before_opp_thin: int) -> Tuple[float, Dict[str, Any]]:
+                    before_thin_opp: int) -> Tuple[float, Dict[str, Any]]:
         tmp = board.copy(stack=False)
         tmp.push(m)
 
@@ -154,8 +154,10 @@ class FortifyBot:
         opp_shield_delta = max(0, before_opp_shield - after_opp_shield)
 
         # Δ "тонких" фігур опонента
-        after_opp_thin = len(ThreatMap(not self.color).summary(tmp)["thin_pieces"])
-        opp_thin_delta = max(0, after_opp_thin - before_opp_thin)
+        _after_threat_self = ThreatMap(self.color).summary(tmp)
+        after_threat_opp = ThreatMap(not self.color).summary(tmp)
+        after_thin_opp = len(after_threat_opp["thin_pieces"])
+        opp_thin_delta = max(0, after_thin_opp - before_thin_opp)
 
         score = (
             self.W["defense_density"] * defense_density +
