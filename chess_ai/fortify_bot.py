@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
 import random
 import chess
+from .utility_bot import piece_value  # provides basic material values
 
 
 class FortifyBot:
@@ -85,6 +86,12 @@ class FortifyBot:
         # Develop евристика
         develops = self._develops(board, m)
 
+        captured = board.piece_at(m.to_square)
+        attacker = board.piece_at(m.from_square)
+        gain = (piece_value(captured) if captured else 0) - (
+            piece_value(attacker) if attacker else 0
+        )
+
         # Взяття
         is_capture = board.is_capture(m)
 
@@ -100,7 +107,7 @@ class FortifyBot:
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
             self.W["develop"] * (1 if develops else 0) +
-            self.W["capture"] * (1 if is_capture else 0) +
+            self.W["capture"] * gain +
             self.W["opp_doubled_delta"] * opp_doubled_delta +
             self.W["opp_shield_delta"] * opp_shield_delta
         )
