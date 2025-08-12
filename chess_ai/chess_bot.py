@@ -2,6 +2,14 @@ import chess
 import random
 
 CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
+PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 300,
+    chess.BISHOP: 300,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 0,
+}
 
 class ChessBot:
     def __init__(self, color):
@@ -63,16 +71,23 @@ class ChessBot:
                 reasons.append("attacks king's safe square under protection (+40)")
 
         # --- стандартна логіка:
-        # 5. Захоплення підвішеної фігури
+        # 5. Захоплення фігури
         if board.is_capture(move):
-            target_sq = move.to_square
-            defenders = board.attackers(not board.turn, target_sq)
-            if not defenders:
-                score += 100
-                reasons.append("capture hanging")
-            else:
-                score += 20
-                reasons.append("capture defended")
+            target_piece = board.piece_at(move.to_square)
+            from_piece = board.piece_at(move.from_square)
+            if target_piece and from_piece:
+                gain = PIECE_VALUES[target_piece.piece_type] - PIECE_VALUES[from_piece.piece_type]
+                score += gain
+                defenders = board.attackers(not board.turn, move.to_square)
+                if not defenders:
+                    score += 100
+                    reasons.append(
+                        f"capture hanging {target_piece.symbol().upper()} (+{100 + gain})"
+                    )
+                else:
+                    reasons.append(
+                        f"capture defended {target_piece.symbol().upper()} (+{gain})"
+                    )
         # 6. Центр
         if move.to_square in CENTER_SQUARES:
             score += 30

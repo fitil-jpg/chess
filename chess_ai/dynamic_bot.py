@@ -2,6 +2,7 @@ import random
 from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
 from .random_bot import RandomBot
+from .utility_bot import piece_value
 
 class DynamicBot:
     def __init__(self, color):
@@ -11,6 +12,22 @@ class DynamicBot:
         self.color = color
 
     def choose_move(self, board, debug=True):
+        # 0. Якщо можна вигідно забрати фігуру — робимо це
+        capture_moves = []
+        for move in board.legal_moves:
+            if board.is_capture(move):
+                src = board.piece_at(move.from_square)
+                tgt = board.piece_at(move.to_square)
+                if src and tgt:
+                    defenders = board.attackers(not self.color, move.to_square)
+                    if not defenders or piece_value(tgt) > piece_value(src):
+                        capture_moves.append((move, piece_value(tgt)))
+        if capture_moves:
+            move = max(capture_moves, key=lambda x: x[1])[0]
+            if debug:
+                return move, "DynamicBot: CAPTURE"
+            return move
+
         # 1. Якщо можна safe-check (шах з під захистом) — EndgameBot
         for move in board.legal_moves:
             temp = board.copy()
