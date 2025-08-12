@@ -27,6 +27,8 @@ class Scorer:
             "capture_defended":      40,
             "develop":               35,
             "threaten_hanging":      30,
+            "open_file_to_king":      75,
+            "active_piece":            5,
             "nothing":                1,
         }
 
@@ -50,6 +52,8 @@ class Scorer:
             base = self._score_attack_queen(pawn=True)
         elif f.get("attacks_queen"):
             base = self._score_attack_queen(pawn=False)
+        elif f.get("open_file_to_king"):
+            base = self.weights["open_file_to_king"]
         else:
             fork_s = self._score_knight_fork(f.get("knight_next_fork_pairs", []))
             if fork_s:
@@ -62,6 +66,8 @@ class Scorer:
                 base = self.weights["capture_defended"]
             elif f.get("develops_piece"):
                 base = self.weights["develop"]
+            elif f.get("active_piece"):
+                base = self.weights["active_piece"] * int(f.get("active_piece"))
             elif f.get("threaten_hanging"):
                 base = self.weights["threaten_hanging"]
             else:
