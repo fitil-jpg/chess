@@ -12,7 +12,7 @@ def test_attacked_squares():
     result = calculate_attacked_squares(rook, board)
 
     # Check the number of attacked squares
-    expected_number_of_squares = 14  # Rook in the center of an empty board
+    expected_number_of_squares = 14  # Rook on e1 with another rook on a1
     assert len(result) == expected_number_of_squares, \
         f"Expected {expected_number_of_squares}, but got {len(result)}."
 
