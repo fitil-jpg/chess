@@ -14,6 +14,7 @@ import random
 import chess
 
 from .utility_bot import piece_value
+from .threat_map import ThreatMap
 
 
 def static_exchange_eval(board: chess.Board, move: chess.Move) -> int:
@@ -64,6 +65,7 @@ class FortifyBot:
             "capture": 2.5,           # взяття
             "opp_doubled_delta": 4.0, # збільшення кількості здвоєних пішаків у опонента
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
+            "opp_thin_delta": 4.0,    # збільшення кількості "тонких" фігур у опонента
         }
         if weights:
             self.W.update(weights)
@@ -81,13 +83,16 @@ class FortifyBot:
         opp = not self.color
         before_doubled_opp = self._count_doubled_pawns(board, opp)
         before_opp_shield = self._king_pawn_shield_count(board, opp)
+        before_opp_thin = len(ThreatMap(opp).summary(board)["thin_pieces"])
 
         best = None
         best_score = float("-inf")
         best_info: Dict[str, Any] = {}
 
         for m in moves:
-            score, info = self._score_move(board, m, before_doubled_opp, before_opp_shield)
+            score, info = self._score_move(
+                board, m, before_doubled_opp, before_opp_shield, before_opp_thin
+            )
             if score > best_score:
                 best, best_score, best_info = m, score, info
 
@@ -96,7 +101,8 @@ class FortifyBot:
                 f"FortifyBot: {board.san(best)} | "
                 f"dens={best_info['defense_density']} def={best_info['defenders']} att={best_info['attackers']} | "
                 f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} "
-                f"gain={best_info['capture_gain']} see={best_info['see_gain']} | "
+                f"gain={best_info['capture_gain']} see={best_info['see_gain']} "
+                f"thinΔ={best_info['opp_thin_delta']} | "
                 f"doubledΔ={best_info['opp_doubled_delta']} shieldΔ={best_info['opp_shield_delta']} | "
                 f"score={round(best_score,2)}"
             )
@@ -105,7 +111,8 @@ class FortifyBot:
 
     # -------------------- ОЦІНКА ХОДУ --------------------
     def _score_move(self, board: chess.Board, m: chess.Move,
-                    before_doubled_opp: int, before_opp_shield: int) -> Tuple[float, Dict[str, Any]]:
+                    before_doubled_opp: int, before_opp_shield: int,
+                    before_opp_thin: int) -> Tuple[float, Dict[str, Any]]:
         tmp = board.copy(stack=False)
         tmp.push(m)
 
@@ -116,10 +123,16 @@ class FortifyBot:
 
         if self.safe_only and attackers > 0:
             return float("-1e9"), {
-                "defense_density": defense_density, "defenders": defenders, "attackers": attackers,
-                "develop": False, "is_capture": board.is_capture(m),
-                "capture_gain": 0, "see_gain": 0,
-                "opp_doubled_delta": 0, "opp_shield_delta": 0
+                "defense_density": defense_density,
+                "defenders": defenders,
+                "attackers": attackers,
+                "develop": False,
+                "is_capture": board.is_capture(m),
+                "capture_gain": 0,
+                "see_gain": 0,
+                "opp_doubled_delta": 0,
+                "opp_shield_delta": 0,
+                "opp_thin_delta": 0,
             }
 
         # Develop евристика
@@ -140,6 +153,10 @@ class FortifyBot:
         after_opp_shield = self._king_pawn_shield_count(tmp, not self.color)
         opp_shield_delta = max(0, before_opp_shield - after_opp_shield)
 
+        # Δ "тонких" фігур опонента
+        after_opp_thin = len(ThreatMap(not self.color).summary(tmp)["thin_pieces"])
+        opp_thin_delta = max(0, after_opp_thin - before_opp_thin)
+
         score = (
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
@@ -147,6 +164,7 @@ class FortifyBot:
             self.W["capture"] * gain +
             self.W["opp_doubled_delta"] * opp_doubled_delta +
             self.W["opp_shield_delta"] * opp_shield_delta +
+            self.W["opp_thin_delta"] * opp_thin_delta +
             see_gain
         )
 
@@ -159,7 +177,8 @@ class FortifyBot:
             "capture_gain": gain,
             "see_gain": see_gain,
             "opp_doubled_delta": opp_doubled_delta,
-            "opp_shield_delta": opp_shield_delta
+            "opp_shield_delta": opp_shield_delta,
+            "opp_thin_delta": opp_thin_delta,
         }
         return score, info
 
