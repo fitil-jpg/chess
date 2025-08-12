@@ -1,0 +1,42 @@
+import random
+from .chess_bot import ChessBot
+from .endgame_bot import EndgameBot
+from .random_bot import RandomBot
+
+class DynamicBot:
+    def __init__(self, color):
+        self.center = ChessBot(color)
+        self.endgame = EndgameBot(color)
+        self.random = RandomBot(color)
+        self.color = color
+
+    def choose_move(self, board, debug=True):
+        # 1. Якщо можна safe-check (шах з під захистом) — EndgameBot
+        for move in board.legal_moves:
+            temp = board.copy()
+            temp.push(move)
+            if temp.is_check():
+                defenders = temp.attackers(self.color, move.to_square)
+                if defenders:
+                    if debug:
+                        move_, reason = self.endgame.choose_move(board, debug=True)
+                        return move_, f"DynamicBot: SAFE CHECK: {reason}"
+                    return self.endgame.choose_move(board)
+        # 2. Якщо ≤ 7 своїх фігур — ендшпіль
+        if sum(1 for p in board.piece_map().values() if p.color == self.color) <= 7:
+            if debug:
+                move_, reason = self.endgame.choose_move(board, debug=True)
+                return move_, f"DynamicBot: ENDGAME: {reason}"
+            return self.endgame.choose_move(board)
+        # 3. Якщо мобільність менше 8 — RandomBot (шукати нестандартний хід)
+        mobility = len([m for m in board.legal_moves])
+        if mobility < 8:
+            if debug:
+                move_, reason = self.random.choose_move(board, debug=True)
+                return move_, f"DynamicBot: LOW MOBILITY: {reason}"
+            return self.random.choose_move(board)
+        # 4. Інакше CenterBot
+        if debug:
+            move_, reason = self.center.choose_move(board, debug=True)
+            return move_, f"DynamicBot: CENTER: {reason}"
+        return self.center.choose_move(board)
