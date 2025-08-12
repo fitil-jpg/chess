@@ -1,17 +1,101 @@
-"""
-risk_analyzer.py — модуль для пошуку пасток, перевірки ризиків та передбачення небезпечних ходів.
+"""Utility for shallow tactical risk checks.
 
-Мінімальна заглушка: поки повертає False (ризик не знайдено).
-Пізніше легко розширити для справжнього аналізу глибини.
+This module contains :class:`RiskAnalyzer` which performs a very small
+look‑ahead (1–2 plies) after a tentative move.  The goal is not to play
+perfect chess but merely to detect obviously hanging moves – situations
+where a piece is lost immediately or after a single forced reply.
+
+The implementation uses a tiny negamax style search limited to material
+counting.  If the worst result after the opponent's best reply leaves the
+moving side with less material than before, the move is considered risky.
 """
 
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict
+
+import chess
+
+
+@dataclass
 class RiskAnalyzer:
-    def __init__(self):
-        pass
+    """Detects moves that hang a piece or lose material.
 
-    def is_risky(self, board, move):
+    The class performs a shallow search (up to two plies after the analysed
+    move) using a very small material evaluation.  If every sequence of moves
+    results in the moving side having less material than before the move, the
+    move is flagged as risky.
+    """
+
+    values: Dict[chess.PieceType, int] | None = None
+
+    def __post_init__(self) -> None:  # pragma: no cover - trivial
+        if self.values is None:
+            self.values = {
+                chess.PAWN: 100,
+                chess.KNIGHT: 300,
+                chess.BISHOP: 300,
+                chess.ROOK: 500,
+                chess.QUEEN: 900,
+                chess.KING: 0,
+            }
+
+    # ------------------------------------------------------------------
+    def _material(self, board: chess.Board, color: chess.Color) -> int:
+        """Return material balance from ``color`` point of view."""
+
+        score = 0
+        for piece, val in self.values.items():
+            score += len(board.pieces(piece, color)) * val
+            score -= len(board.pieces(piece, not color)) * val
+        return score
+
+    def _search(self, board: chess.Board, depth: int, maximizing: bool,
+                color: chess.Color) -> int:
+        """Tiny negamax search evaluating only material."""
+
+        if depth == 0 or board.is_game_over():
+            return self._material(board, color)
+
+        best = -float("inf") if maximizing else float("inf")
+        for mv in board.legal_moves:
+            board.push(mv)
+            score = self._search(board, depth - 1, not maximizing, color)
+            board.pop()
+            if maximizing:
+                if score > best:
+                    best = score
+            else:
+                if score < best:
+                    best = score
+
+        if best == float("inf") or best == -float("inf"):
+            return self._material(board, color)
+        return best
+
+    # ------------------------------------------------------------------
+    def is_risky(self, board: chess.Board, move: chess.Move, depth: int = 2) -> bool:
+        """Return ``True`` if the move likely loses material.
+
+        Parameters
+        ----------
+        board:
+            Current board state.  The board is restored to its original state
+            after analysis.
+        move:
+            Move to be checked.
+        depth:
+            Additional plies to analyse after the move.  Default two plies
+            (opponent reply and our best recapture).
         """
-        Перевіряє, чи призводить хід до пастки або втрати фігури.
-        (Поки повертає False — ризиків немає.)
-        """
-        return False
+
+        color = board.turn
+        before = self._material(board, color)
+
+        board.push(move)
+        worst = self._search(board, depth - 1, maximizing=False, color=color)
+        board.pop()
+
+        return worst < before
+
