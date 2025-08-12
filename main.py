@@ -260,6 +260,7 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                 if hang:
                     sq = hang[0]
                     pc = board.piece_at(sq)
+                    # use uppercase for consistent logging
                     sym = pc.symbol().upper() if pc else "?"
                     logger.info(
                         f"HANGING ATTACK: opponent {sym} is hanging at {chess.square_name(sq)}\n" +
