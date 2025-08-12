@@ -260,9 +260,9 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                 if hang:
                     sq = hang[0]
                     pc = board.piece_at(sq)
-                    sym = pc.symbol() if pc else "?"
+                    sym = pc.symbol().upper() if pc else "?"
                     logger.info(
-                        f"HANGING ATTACK: {sym} at {chess.square_name(sq)}\n" +
+                        f"HANGING ATTACK: opponent {sym} is hanging at {chess.square_name(sq)}\n" +
                         board_diagram(board, unicode=DIAGRAM_UNICODE)
                     )
 
