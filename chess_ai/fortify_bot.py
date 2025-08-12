@@ -13,6 +13,44 @@ from typing import Optional, Tuple, Dict, Any
 import random
 import chess
 
+from .utility_bot import piece_value
+
+
+def static_exchange_eval(board: chess.Board, move: chess.Move) -> int:
+    """Rudimentary static exchange evaluation (SEE).
+
+    Simulates the sequence of captures on the target square by always
+    capturing back with the least valuable attacker.  Returns the net
+    material gain for the side to move."""
+    tmp = board.copy(stack=False)
+    if not tmp.is_capture(move):
+        return 0
+
+    to_sq = move.to_square
+    captured = tmp.piece_at(to_sq)
+    if captured is None:
+        return 0
+
+    gain = [piece_value(captured)]
+    side = board.turn
+    tmp.push(move)
+    side = not side
+
+    while True:
+        attackers = tmp.attackers(side, to_sq)
+        if not attackers:
+            break
+        least_sq = min(attackers, key=lambda sq: piece_value(tmp.piece_at(sq)))
+        least_piece = tmp.piece_at(least_sq)
+        gain.append(piece_value(least_piece) - gain[-1])
+        tmp.push(chess.Move(least_sq, to_sq))
+        side = not side
+
+    for i in range(len(gain) - 2, -1, -1):
+        gain[i] = max(-gain[i + 1], gain[i])
+
+    return gain[0]
+
 
 class FortifyBot:
     def __init__(self, color: bool, *, safe_only: bool = False, weights: Optional[Dict[str, float]] = None):
@@ -57,7 +95,8 @@ class FortifyBot:
             reason = (
                 f"FortifyBot: {board.san(best)} | "
                 f"dens={best_info['defense_density']} def={best_info['defenders']} att={best_info['attackers']} | "
-                f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} | "
+                f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} "
+                f"gain={best_info['capture_gain']} see={best_info['see_gain']} | "
                 f"doubledΔ={best_info['opp_doubled_delta']} shieldΔ={best_info['opp_shield_delta']} | "
                 f"score={round(best_score,2)}"
             )
@@ -79,6 +118,7 @@ class FortifyBot:
             return float("-1e9"), {
                 "defense_density": defense_density, "defenders": defenders, "attackers": attackers,
                 "develop": False, "is_capture": board.is_capture(m),
+                "capture_gain": 0, "see_gain": 0,
                 "opp_doubled_delta": 0, "opp_shield_delta": 0
             }
 
@@ -87,6 +127,10 @@ class FortifyBot:
 
         # Взяття
         is_capture = board.is_capture(m)
+        captured = board.piece_at(m.to_square)
+        attacker = board.piece_at(m.from_square)
+        gain = piece_value(captured) - piece_value(attacker) if captured else 0
+        see_gain = static_exchange_eval(board, m) if is_capture else 0
 
         # Δ здвоєних пішаків у опонента
         after_doubled_opp = self._count_doubled_pawns(tmp, not self.color)
@@ -100,9 +144,10 @@ class FortifyBot:
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
             self.W["develop"] * (1 if develops else 0) +
-            self.W["capture"] * (1 if is_capture else 0) +
+            self.W["capture"] * gain +
             self.W["opp_doubled_delta"] * opp_doubled_delta +
-            self.W["opp_shield_delta"] * opp_shield_delta
+            self.W["opp_shield_delta"] * opp_shield_delta +
+            see_gain
         )
 
         info = {
@@ -111,6 +156,8 @@ class FortifyBot:
             "attackers": attackers,
             "develop": develops,
             "is_capture": is_capture,
+            "capture_gain": gain,
+            "see_gain": see_gain,
             "opp_doubled_delta": opp_doubled_delta,
             "opp_shield_delta": opp_shield_delta
         }
