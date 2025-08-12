@@ -36,6 +36,7 @@ class ChessBot:
         reasons = []
         opp_color = not self.color
         opp_king_sq = board.king(opp_color)
+        repetition = board.is_repetition(2)
 
         # 1. Кількість safe square у суперника ДО ходу
         before_safe = []
@@ -87,6 +88,11 @@ class ChessBot:
                 else:
                     reasons.append(
                         f"capture defended {target_piece.symbol().upper()} (+{gain})"
+                    )
+                if repetition and gain > 0:
+                    score += 150
+                    reasons.append(
+                        "avoid repetition: capture bonus (+150)"
                     )
         # 6. Центр
         if move.to_square in CENTER_SQUARES:
