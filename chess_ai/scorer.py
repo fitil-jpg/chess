@@ -31,6 +31,10 @@ class Scorer:
             "active_piece":            5,
             "nothing":                1,
         }
+        self.last_check_signature = None
+        self.last_check_eval = None
+        self.check_repeat_count = 0
+        self.repeat_penalty = 20
 
     def _score_attack_queen(self, pawn: bool) -> int:
         base = PIECE_PRIORITY[chess.QUEEN]
@@ -72,6 +76,26 @@ class Scorer:
                 base = self.weights["threaten_hanging"]
             else:
                 base = self.weights["nothing"]
+
+        if f.get("gives_check"):
+            sig = f.get("check_signature")
+            eval_score = f.get("eval_score")
+            if (
+                sig is not None
+                and sig == self.last_check_signature
+                and eval_score is not None
+                and self.last_check_eval is not None
+                and eval_score <= self.last_check_eval
+            ):
+                self.check_repeat_count += 1
+            else:
+                self.check_repeat_count = 1
+            self.last_check_signature = sig
+            self.last_check_eval = eval_score
+            if self.check_repeat_count >= 3:
+                base -= self.repeat_penalty
+        else:
+            self.check_repeat_count = 0
 
         # 2) м’який безпековий множник за захищеність клітини після ходу
         dens = int(f.get("safety_balance", 0))
