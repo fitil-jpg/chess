@@ -121,15 +121,22 @@ class FortifyBot:
         attackers = len(tmp.attackers(not self.color, to_sq))
         defense_density = defenders - attackers
 
-        if self.safe_only and attackers > 0:
+        # Взяття та матеріальні оцінки
+        is_capture = board.is_capture(m)
+        captured = board.piece_at(m.to_square)
+        attacker = board.piece_at(m.from_square)
+        gain = piece_value(captured) - piece_value(attacker) if captured else 0
+        see_gain = static_exchange_eval(board, m) if is_capture else 0
+
+        if self.safe_only and (attackers > 0 or see_gain < 0):
             return float("-1e9"), {
                 "defense_density": defense_density,
                 "defenders": defenders,
                 "attackers": attackers,
                 "develop": False,
-                "is_capture": board.is_capture(m),
-                "capture_gain": 0,
-                "see_gain": 0,
+                "is_capture": is_capture,
+                "capture_gain": gain,
+                "see_gain": see_gain,
                 "opp_doubled_delta": 0,
                 "opp_shield_delta": 0,
                 "opp_thin_delta": 0,
@@ -137,13 +144,6 @@ class FortifyBot:
 
         # Develop евристика
         develops = self._develops(board, m)
-
-        # Взяття
-        is_capture = board.is_capture(m)
-        captured = board.piece_at(m.to_square)
-        attacker = board.piece_at(m.from_square)
-        gain = piece_value(captured) - piece_value(attacker) if captured else 0
-        see_gain = static_exchange_eval(board, m) if is_capture else 0
 
         # Δ здвоєних пішаків у опонента
         after_doubled_opp = self._count_doubled_pawns(tmp, not self.color)
