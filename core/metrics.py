@@ -32,3 +32,23 @@ class MetricsManager:
 
     def get_metrics(self):
         return self.metrics
+
+
+class BoardMetrics:
+    """Minimal metrics helper used in tests.
+
+    Only a single metric – ``material_balance`` – is tracked.  The method
+    :meth:`update_from_board` relies on :meth:`Board.get_pieces` to avoid direct
+    access to the board's internal ``pieces`` list.
+    """
+
+    def __init__(self):
+        self._metrics = {}
+
+    def update_from_board(self, board, analyzer):  # pragma: no cover - trivial
+        white = len(board.get_pieces('white'))
+        black = len(board.get_pieces('black'))
+        self._metrics['material_balance'] = white - black
+
+    def get_metrics(self):  # pragma: no cover - trivial
+        return self._metrics

@@ -1,4 +1,7 @@
-import chess
+try:  # Optional dependency used only for advanced piece logic
+    import chess  # type: ignore
+except Exception:  # pragma: no cover - chess may be absent in tests
+    chess = None
 
 class Piece:
     def __init__(self, color, position):
@@ -20,6 +23,16 @@ class Piece:
         self.hanging_targets = set()
         self.pin_moves = set()
         self.check_squares = set()
+
+    def get_attacked_squares(self, board):
+        """Return squares this piece attacks.
+
+        The project currently does not model real chess movement, so this
+        placeholder simply returns an empty set.  It allows other modules –
+        notably :class:`BoardAnalyzer` – to query attack information without
+        raising ``AttributeError``.
+        """
+        return set()
 
 class Pawn(Piece):
     def __init__(self, color, position):
