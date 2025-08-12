@@ -1,6 +1,8 @@
 import chess
 import random
 
+from .risk_analyzer import RiskAnalyzer
+
 CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
 PIECE_VALUES = {
     chess.PAWN: 100,
@@ -14,6 +16,7 @@ PIECE_VALUES = {
 class ChessBot:
     def __init__(self, color):
         self.color = color
+        self.risk_analyzer = RiskAnalyzer()
 
     def choose_move(self, board, debug=False):
         best_score = float('-inf')
@@ -32,6 +35,9 @@ class ChessBot:
         return move
 
     def evaluate_move(self, board, move):
+        if self.risk_analyzer.is_risky(board, move):
+            return float('-inf'), "risky move"
+
         score = 0
         reasons = []
         opp_color = not self.color
