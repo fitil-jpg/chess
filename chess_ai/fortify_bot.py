@@ -85,6 +85,9 @@ class FortifyBot:
         # Develop евристика
         develops = self._develops(board, m)
 
+        # Початковий рахунок перед додатковими модифікаторами
+        score = 0
+
         # Взяття
         is_capture = board.is_capture(m)
 
@@ -96,7 +99,7 @@ class FortifyBot:
         after_opp_shield = self._king_pawn_shield_count(tmp, not self.color)
         opp_shield_delta = max(0, before_opp_shield - after_opp_shield)
 
-        score = (
+        score += (
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
             self.W["develop"] * (1 if develops else 0) +
@@ -104,6 +107,15 @@ class FortifyBot:
             self.W["opp_doubled_delta"] * opp_doubled_delta +
             self.W["opp_shield_delta"] * opp_shield_delta
         )
+
+        # Штраф за негативний SEE після базового рахунку
+        if is_capture:
+            try:
+                see = board.see(m)  # type: ignore[attr-defined]
+            except AttributeError:
+                see = board._see(m)  # type: ignore[attr-defined]
+            if see < 0:
+                score += see / 100.0
 
         info = {
             "defense_density": defense_density,
