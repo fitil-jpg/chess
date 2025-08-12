@@ -5,11 +5,13 @@ decision_engine.py — вибирає найкращий хід на основ�
 import random
 import chess
 
+from .risk_analyzer import RiskAnalyzer
+
 
 class DecisionEngine:
     def __init__(self):
         # Зберігаємо порожній ініціалізатор для сумісності
-        pass
+        self.risk_analyzer = RiskAnalyzer()
 
     def _evaluate(self, board: chess.Board) -> int:
         """Проста матеріальна оцінка позиції з точки зору гравця, який ходить."""
@@ -46,9 +48,13 @@ class DecisionEngine:
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return None
+
+        safe_moves = [m for m in legal_moves if not self.risk_analyzer.is_risky(board, m)]
+        moves_to_consider = safe_moves if safe_moves else legal_moves
+
         best_score = float("-inf")
         best_moves = []
-        for move in legal_moves:
+        for move in moves_to_consider:
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             board.push(move)
             score = -self.search(board, extension)
@@ -58,4 +64,4 @@ class DecisionEngine:
                 best_moves = [move]
             elif score == best_score:
                 best_moves.append(move)
-        return random.choice(best_moves) if best_moves else random.choice(legal_moves)
+        return random.choice(best_moves) if best_moves else random.choice(moves_to_consider)
