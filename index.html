@@ -3,21 +3,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chess Viewer (GitHub Pages Ready) 1.1</title>
+  <title>Chess Viewer - Strategy Mode</title>
   <style>
     body {
       font-family: monospace;
-      background: #f0f0f0;
+      background: #f9f9f9;
+      margin: 0;
+      display: flex;
+    }
+    .sidebar {
+      width: 250px;
+      padding: 20px;
+      background: #ffffff;
+      border-right: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    .content {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
+      padding: 20px;
     }
     .board {
       display: grid;
       grid-template-columns: repeat(8, 60px);
       grid-template-rows: repeat(8, 60px);
       border: 2px solid #444;
-      margin-top: 20px;
     }
     .cell {
       width: 60px;
@@ -26,29 +38,82 @@
       justify-content: center;
       align-items: center;
       font-size: 36px;
+      transition: background 0.3s;
     }
     .white { background-color: #eee; }
     .black { background-color: #999; }
-    .metrics {
-      margin-top: 20px;
-      display: flex;
-      gap: 80px;
+    .cell.highlight { background-color: #ffcc00 !important; }
+    .metrics-section {
+      margin-bottom: 20px;
     }
-    .metrics div {
-      background: #fff;
-      padding: 10px;
-      border: 1px solid #ccc;
+    .metrics-section h3 {
+      margin: 10px 0 5px;
+      font-size: 14px;
+    }
+    .bar {
+      height: 10px;
+      background: #0a0;
+      margin-top: 2px;
+    }
+    .rightbar {
+      width: 250px;
+      padding: 20px;
+      background: #ffffff;
+      border-left: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    .btn-row {
+      margin-top: 20px;
+    }
+    button {
+      padding: 6px 12px;
+      margin-right: 10px;
     }
   </style>
 </head>
 <body>
 
-<h2>Chess Viewer 1.1</h2>
-<div class="board" id="board"></div>
+<div class="sidebar">
+  <div class="metrics-section">
+    <h3>♟ White Piece Stats</h3>
+    <div>Pawn: moves 3 / range 7</div>
+    <div>Rook: moves 1 / range 4</div>
+    <div>Knight: moves 2 / range 6</div>
+    <div>Currently attacking: 8</div>
+    <div>Attacked total: 27</div>
+  </div>
+  <div class="metrics-section">
+    <h3>🧠 White Strategy Balance</h3>
+    <div>Center Control</div><div class="bar" style="width:80%"></div>
+    <div>King Safety</div><div class="bar" style="width:65%"></div>
+    <div>Mobility</div><div class="bar" style="width:45%"></div>
+  </div>
+</div>
 
-<div class="metrics">
-  <div id="white_metrics"><h3>White Metrics</h3></div>
-  <div id="black_metrics"><h3>Black Metrics</h3></div>
+<div class="content">
+  <h2>Chess Viewer – Static Mode</h2>
+  <div class="board" id="board"></div>
+  <div class="btn-row">
+    <button disabled>⬅ Prev</button>
+    <button disabled>Next ➡</button>
+  </div>
+</div>
+
+<div class="rightbar">
+  <div class="metrics-section">
+    <h3>♟ Black Piece Stats</h3>
+    <div>Pawn: moves 4 / range 5</div>
+    <div>Rook: moves 0 / range 3</div>
+    <div>Knight: moves 1 / range 5</div>
+    <div>Currently attacking: 6</div>
+    <div>Attacked total: 20</div>
+  </div>
+  <div class="metrics-section">
+    <h3>🧠 Black Strategy Balance</h3>
+    <div>Center Control</div><div class="bar" style="width:60%;background:#a00;"></div>
+    <div>King Safety</div><div class="bar" style="width:50%;background:#a00;"></div>
+    <div>Mobility</div><div class="bar" style="width:30%;background:#a00;"></div>
+  </div>
 </div>
 
 <script src="data_loader.js"></script>

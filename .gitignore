@@ -1,0 +1,41 @@
+# venv
+.venv/
+venv/
+
+# Python build/cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+
+# Env/config
+.env
+.env.*
+*.local
+
+# Qt/PySide (збірки)
+*.qrc.dep
+*.qm
