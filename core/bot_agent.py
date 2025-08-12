@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any, List
 import random
 import chess
+from .evaluator import Evaluator
+from .constants import MATERIAL_DIFF_THRESHOLD, KING_SAFETY_THRESHOLD
 
 __all__ = [
     "BotAgent",
@@ -269,79 +271,43 @@ class FortifyBot:
 
 # --- DynamicBot: комбінатор стратегій ---
 class DynamicBot:
-    """
-    Порядок стратегій:
-      1) SAFE CHECK → EndgameBot
-      2) FORTIFY → якщо є develop або захищена клітина (dens≥1)
-      3) AGGRESSIVE → якщо є високобальний тактичний шанс
-      4) ENDGAME → коли фігур ≤ 7
-      5) LOW MOBILITY → RandomBot
-      6) CENTER → ChessBot
-    """
-    def __init__(self, color: bool):
+    """Bot that switches strategy based on simple board metrics."""
+
+    def __init__(
+        self,
+        color: bool,
+        *,
+        material_diff_threshold: int = MATERIAL_DIFF_THRESHOLD,
+        king_safety_threshold: int = KING_SAFETY_THRESHOLD,
+    ):
         self.center = ChessBot(color)
         self.endgame = EndgameBot(color)
         self.random = RandomBot(color)
         self.aggressive = AggressiveBot(color)
-        self.fortify  = FortifyBot(color)
+        self.fortify = FortifyBot(color)
         self.color = color
+        self.material_diff_threshold = material_diff_threshold
+        self.king_safety_threshold = king_safety_threshold
+
+    def _select_agent(self, board: chess.Board):
+        evaluator = Evaluator(board)
+        material = evaluator.material_diff(self.color)
+        safety = evaluator.king_safety(self.color)
+
+        choices: List[Tuple[int, Any]] = []
+        if material > self.material_diff_threshold:
+            choices.append((material - self.material_diff_threshold, self.aggressive))
+        if safety < self.king_safety_threshold:
+            choices.append((self.king_safety_threshold - safety, self.fortify))
+
+        if choices:
+            choices.sort(key=lambda x: x[0], reverse=True)
+            return choices[0][1]
+        return self.center
 
     def choose_move(self, board: chess.Board, debug: bool = True):
-        # 1) SAFE CHECK → EndgameBot
-        for move in board.legal_moves:
-            temp = board.copy(stack=False); temp.push(move)
-            if temp.is_check():
-                defenders = temp.attackers(self.color, move.to_square)
-                if defenders:
-                    if debug:
-                        mv, rs = self.endgame.choose_move(board, debug=True)
-                        return mv, f"DynamicBot: SAFE CHECK → Endgame | {rs}"
-                    return self.endgame.choose_move(board)
-
-        # 2) FORTIFY
-        f_move, f_info = self.fortify._best(board)
-        if f_move is not None:
-            dens = f_info.get("defense_density", 0)
-            develops = bool(f_info.get("develop", False))
-            if develops or dens >= 1:
-                if debug:
-                    _, rs = self.fortify.choose_move(board, debug=True)
-                    return f_move, f"DynamicBot: FORTIFY | {rs}"
-                return f_move, "DynamicBot: FORTIFY"
-
-        # 3) AGGRESSIVE
-        fx = _FeatureExtractor(); sc = Scorer()
-        best_aggr = 0
-        for m in board.legal_moves:
-            feats = fx.extract(board, m, self.color)
-            best_aggr = max(best_aggr, sc.score(feats))
-        if best_aggr >= 70:
-            if debug:
-                mv, rs = self.aggressive.choose_move(board, debug=True)
-                return mv, f"DynamicBot: AGGRESSIVE(best={best_aggr}) | {rs}"
-            return self.aggressive.choose_move(board)
-
-        # 4) ENDGAME
-        own_pieces = sum(1 for p in board.piece_map().values() if p.color == self.color)
-        if own_pieces <= 7:
-            if debug:
-                mv, rs = self.endgame.choose_move(board, debug=True)
-                return mv, f"DynamicBot: ENDGAME({own_pieces}) | {rs}"
-            return self.endgame.choose_move(board)
-
-        # 5) LOW MOBILITY
-        mobility = sum(1 for _ in board.legal_moves)
-        if mobility < 8:
-            if debug:
-                mv, rs = self.random.choose_move(board, debug=True)
-                return mv, f"DynamicBot: LOW MOBILITY({mobility}) | {rs}"
-            return self.random.choose_move(board)
-
-        # 6) CENTER
-        if debug:
-            mv, rs = self.center.choose_move(board, debug=True)
-            return mv, f"DynamicBot: CENTER | {rs}"
-        return self.center.choose_move(board)
+        agent = self._select_agent(board)
+        return agent.choose_move(board, debug=debug)
 
 
 # --- ФАСАД: BotAgent ---
@@ -360,7 +326,11 @@ class BotAgent:
 
     def _make_impl(self, color: bool, mode: str, **kwargs):
         if mode == "dynamic":
-            return DynamicBot(color)
+            return DynamicBot(
+                color,
+                material_diff_threshold=kwargs.get("material_diff_threshold", MATERIAL_DIFF_THRESHOLD),
+                king_safety_threshold=kwargs.get("king_safety_threshold", KING_SAFETY_THRESHOLD),
+            )
         if mode == "fortify":
             return FortifyBot(color, **{k: v for k, v in kwargs.items() if k in ("safe_only", "weights")})
         if mode == "aggressive":

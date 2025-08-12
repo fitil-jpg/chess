@@ -100,6 +100,21 @@ class Evaluator:
                 score += values.get(p.piece_type, 0)
         return score
 
+    # --- Lightweight helpers used by DynamicBot ---
+    def material_diff(self, color: bool) -> int:
+        """Return material difference from ``color``'s point of view."""
+        return self.material_count(color) - self.material_count(not color)
+
+    def king_safety(self, color: bool) -> int:
+        """Simple king safety metric: defenders minus attackers."""
+        board = self.board
+        king_sq = board.king(color)
+        if king_sq is None:
+            return 0
+        attackers = len(board.attackers(not color, king_sq))
+        defenders = len(board.attackers(color, king_sq))
+        return defenders - attackers
+
 def game_incident_tags(board):
     tags = []
     material = get_material(board)
