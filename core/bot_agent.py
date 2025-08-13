@@ -12,6 +12,7 @@ import random
 import chess
 from .evaluator import Evaluator
 from .constants import MATERIAL_DIFF_THRESHOLD, KING_SAFETY_THRESHOLD
+from .utils import GameContext
 
 __all__ = [
     "BotAgent",
@@ -29,7 +30,7 @@ try:
 except Exception:
     class ChessBot:
         def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "ChessBot(STUB): random"
@@ -39,7 +40,7 @@ try:
 except Exception:
     class EndgameBot:
         def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "EndgameBot(STUB): random"
@@ -49,7 +50,7 @@ try:
 except Exception:
     class RandomBot:
         def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "RandomBot(STUB): random"
@@ -130,7 +131,7 @@ class AggressiveBot:
         self.color = color
         self.scorer = Scorer()
         self.fx = _FeatureExtractor()
-    def choose_move(self, board: chess.Board, debug: bool = True):
+    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
         best_s = -10**9
         best: List[Tuple[chess.Move, Dict[str, Any]]] = []
         for m in board.legal_moves:
@@ -174,7 +175,7 @@ class FortifyBot:
         }
         if weights: self.W.update(weights)
 
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
+    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
         m, info = self._best(board)
         if debug and m is not None:
             reason = (
@@ -289,25 +290,34 @@ class DynamicBot:
         self.material_diff_threshold = material_diff_threshold
         self.king_safety_threshold = king_safety_threshold
 
-    def _select_agent(self, board: chess.Board):
-        evaluator = Evaluator(board)
-        material = evaluator.material_diff(self.color)
-        king_safety_score = Evaluator.king_safety(board, self.color)
-
+    def _select_agent(self, context: GameContext):
         choices: List[Tuple[int, Any]] = []
-        if material > self.material_diff_threshold:
-            choices.append((material - self.material_diff_threshold, self.aggressive))
-        if king_safety_score < self.king_safety_threshold:
-            choices.append((self.king_safety_threshold - king_safety_score, self.fortify))
+        if context.material_diff > self.material_diff_threshold:
+            choices.append((context.material_diff - self.material_diff_threshold, self.aggressive))
+        if context.king_safety < self.king_safety_threshold:
+            choices.append((self.king_safety_threshold - context.king_safety, self.fortify))
 
         if choices:
             choices.sort(key=lambda x: x[0], reverse=True)
             return choices[0][1]
         return self.center
 
-    def choose_move(self, board: chess.Board, debug: bool = True):
-        agent = self._select_agent(board)
-        return agent.choose_move(board, debug=debug)
+    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
+        if context is None:
+            evaluator = Evaluator(board)
+            material = evaluator.material_diff(self.color)
+            white_moves, black_moves = evaluator.mobility(board)
+            mobility_score = white_moves - black_moves
+            if not self.color:
+                mobility_score = -mobility_score
+            king_safety_score = Evaluator.king_safety(board, self.color)
+            context = GameContext(
+                material_diff=material,
+                mobility=mobility_score,
+                king_safety=king_safety_score,
+            )
+        agent = self._select_agent(context)
+        return agent.choose_move(board, context=context, debug=debug)
 
 
 # --- ФАСАД: BotAgent ---
@@ -345,4 +355,16 @@ class BotAgent:
         return DynamicBot(color)
 
     def choose_move(self, board: chess.Board, debug: bool = True):
-        return self.impl.choose_move(board, debug=debug)
+        evaluator = Evaluator(board)
+        material = evaluator.material_diff(self.color)
+        white_moves, black_moves = evaluator.mobility(board)
+        mobility_score = white_moves - black_moves
+        if not self.color:
+            mobility_score = -mobility_score
+        king_safety_score = Evaluator.king_safety(board, self.color)
+        context = GameContext(
+            material_diff=material,
+            mobility=mobility_score,
+            king_safety=king_safety_score,
+        )
+        return self.impl.choose_move(board, context=context, debug=debug)
