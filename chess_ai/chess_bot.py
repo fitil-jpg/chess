@@ -1,6 +1,7 @@
 import chess
 import random
 
+from core.utils import GameContext
 from .risk_analyzer import RiskAnalyzer
 
 CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
@@ -18,7 +19,7 @@ class ChessBot:
         self.color = color
         self.risk_analyzer = RiskAnalyzer()
 
-    def choose_move(self, board: chess.Board, debug: bool = False):
+    def choose_move(self, board: chess.Board, ctx: GameContext, debug: bool = False):
         """Return the move with the highest evaluation score.
 
         The score itself serves as the confidence value.

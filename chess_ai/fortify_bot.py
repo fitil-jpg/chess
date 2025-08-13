@@ -12,6 +12,9 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
 import chess
 
+from core.utils import GameContext
+from core.constants import KING_SAFETY_THRESHOLD
+
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
@@ -36,13 +39,16 @@ class FortifyBot:
             self.W.update(weights)
 
     # -------------------- ПУБЛІЧНИЙ ІНТЕРФЕЙС --------------------
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
+    def choose_move(self, board: chess.Board, ctx: GameContext, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
         """Return the move with the highest defensive score.
 
         ``confidence`` corresponds to the internal fortification score based on
         defense density and other heuristics.  When there are no legal moves or
         it's not our turn, ``confidence`` is ``0.0`` and ``move`` is ``None``.
         """
+
+        if ctx.king_safety >= KING_SAFETY_THRESHOLD:
+            return None, 0.0
 
         if board.turn != self.color:
             return None, 0.0

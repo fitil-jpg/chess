@@ -1,11 +1,14 @@
 import chess
 import random
 
+from core.utils import GameContext
+
+
 class EndgameBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board: chess.Board, debug: bool = False):
+    def choose_move(self, board: chess.Board, ctx: GameContext, debug: bool = False):
         """Choose move based on endgame heuristics.
 
         Confidence corresponds to the heuristic score of the selected move.

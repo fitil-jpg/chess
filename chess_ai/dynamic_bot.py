@@ -1,3 +1,5 @@
+from core.utils import GameContext
+
 from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
 from .random_bot import RandomBot
@@ -22,10 +24,10 @@ class DynamicBot:
             ChessBot(color),
         ]
 
-    def choose_move(self, board, debug: bool = False):
+    def choose_move(self, board, ctx: GameContext, debug: bool = False):
         proposals = []
         for agent in self.agents:
-            move, conf = agent.choose_move(board)
+            move, conf = agent.choose_move(board, ctx, debug)
             if move is not None:
                 proposals.append((conf, move))
 
