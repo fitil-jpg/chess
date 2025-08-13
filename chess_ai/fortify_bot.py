@@ -30,6 +30,7 @@ class FortifyBot:
             "opp_doubled_delta": 4.0, # збільшення кількості здвоєних пішаків у опонента
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
             "opp_thin_delta": 2.0,    # збільшення кількості "тонких" фігур у опонента
+            "self_thin_delta": -2.0,  # штраф за появу нових "тонких" наших фігур
         }
         if weights:
             self.W.update(weights)
@@ -54,7 +55,9 @@ class FortifyBot:
         opp = not self.color
         before_doubled_opp = self._count_doubled_pawns(board, opp)
         before_opp_shield = self._king_pawn_shield_count(board, opp)
+        before_threat_self = ThreatMap(self.color).summary(board)
         before_threat_opp = ThreatMap(opp).summary(board)
+        before_thin_self = len(before_threat_self["thin_pieces"])
         before_thin_opp = len(before_threat_opp["thin_pieces"])
 
         best = None
@@ -63,7 +66,12 @@ class FortifyBot:
 
         for m in moves:
             score, info = self._score_move(
-                board, m, before_doubled_opp, before_opp_shield, before_thin_opp
+                board,
+                m,
+                before_doubled_opp,
+                before_opp_shield,
+                before_thin_opp,
+                before_thin_self,
             )
             if score > best_score:
                 best, best_score, best_info = m, score, info
@@ -74,7 +82,8 @@ class FortifyBot:
                 f"dens={best_info['defense_density']} def={best_info['defenders']} att={best_info['attackers']} | "
                 f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} "
                 f"gain={best_info['capture_gain']} see={best_info['see_gain']} "
-                f"thinΔ={best_info['opp_thin_delta']} doubledΔ={best_info['opp_doubled_delta']} "
+                f"thinΔ={best_info['opp_thin_delta']} selfThinΔ={best_info['self_thin_delta']} "
+                f"doubledΔ={best_info['opp_doubled_delta']} "
                 f"shieldΔ={best_info['opp_shield_delta']} score={round(best_score,2)}"
             )
             # Debug branch still returns numerical confidence as second value
@@ -84,9 +93,15 @@ class FortifyBot:
         return best, float(best_score if best is not None else 0.0)
 
     # -------------------- ОЦІНКА ХОДУ --------------------
-    def _score_move(self, board: chess.Board, m: chess.Move,
-                    before_doubled_opp: int, before_opp_shield: int,
-                    before_thin_opp: int) -> Tuple[float, Dict[str, Any]]:
+    def _score_move(
+        self,
+        board: chess.Board,
+        m: chess.Move,
+        before_doubled_opp: int,
+        before_opp_shield: int,
+        before_thin_opp: int,
+        before_thin_self: int,
+    ) -> Tuple[float, Dict[str, Any]]:
         tmp = board.copy(stack=False)
         tmp.push(m)
 
@@ -117,6 +132,7 @@ class FortifyBot:
                 "opp_doubled_delta": 0,
                 "opp_shield_delta": 0,
                 "opp_thin_delta": 0,
+                "self_thin_delta": 0,
             }
 
         # Develop евристика
@@ -130,11 +146,13 @@ class FortifyBot:
         after_opp_shield = self._king_pawn_shield_count(tmp, not self.color)
         opp_shield_delta = max(0, before_opp_shield - after_opp_shield)
 
-        # Δ "тонких" фігур опонента
-        _after_threat_self = ThreatMap(self.color).summary(tmp)
+        # Δ "тонких" фігур опонента і наших власних
+        after_threat_self = ThreatMap(self.color).summary(tmp)
         after_threat_opp = ThreatMap(not self.color).summary(tmp)
+        after_thin_self = len(after_threat_self["thin_pieces"])
         after_thin_opp = len(after_threat_opp["thin_pieces"])
         opp_thin_delta = max(0, after_thin_opp - before_thin_opp)
+        self_thin_delta = max(0, after_thin_self - before_thin_self)
 
         score = (
             self.W["defense_density"] * defense_density +
@@ -144,6 +162,7 @@ class FortifyBot:
             self.W["opp_doubled_delta"] * opp_doubled_delta +
             self.W["opp_shield_delta"] * opp_shield_delta +
             self.W["opp_thin_delta"] * opp_thin_delta +
+            self.W["self_thin_delta"] * self_thin_delta +
             see_gain
         )
 
@@ -158,6 +177,7 @@ class FortifyBot:
             "opp_doubled_delta": opp_doubled_delta,
             "opp_shield_delta": opp_shield_delta,
             "opp_thin_delta": opp_thin_delta,
+            "self_thin_delta": self_thin_delta,
         }
         return score, info
 
