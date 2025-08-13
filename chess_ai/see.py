@@ -5,18 +5,20 @@ from .utility_bot import piece_value
 
 
 def static_exchange_eval(board: chess.Board, move: chess.Move) -> int:
-    """Perform a static exchange evaluation for ``move`` on ``board``.
+    """Perform a simple Static Exchange Evaluation (SEE).
 
-    The function simulates the capture sequence on the destination square by
-    alternating the least valuable attackers from each side.  The return value
-    is the net material gain for the side to move.  A negative result indicates
-    the capture sequence loses material."""
-    if not board.is_capture(move):
+    The board is copied, ``move`` is applied and then a sequence of
+    alternate captures on the destination square is simulated. Each side
+    always recaptures with its least valuable attacker. The function
+    returns the net material gain for the side to move. Positive values
+    indicate the capture sequence is favorable, negative that it is
+    unfavorable and zero that it is roughly balanced."""
+    tmp = board.copy(stack=False)
+    if not tmp.is_capture(move):
         return 0
 
-    tmp = board.copy(stack=False)
     to_sq = move.to_square
-    captured = board.piece_at(to_sq)
+    captured = tmp.piece_at(to_sq)
     if captured is None:
         return 0
 
