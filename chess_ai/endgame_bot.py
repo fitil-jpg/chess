@@ -2,25 +2,27 @@ import chess
 import random
 
 class EndgameBot:
-    def __init__(self, color):
+    def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board, debug=False):
-        best_score = float('-inf')
+    def choose_move(self, board: chess.Board, debug: bool = False):
+        """Choose move based on endgame heuristics.
+
+        Confidence corresponds to the heuristic score of the selected move.
+        """
+
+        best_score = float("-inf")
         best_moves = []
-        best_reason = ""
         enemy_king_sq = board.king(not self.color)
         for move in board.legal_moves:
-            score, reason = self.evaluate_move(board, move, enemy_king_sq)
+            score, _ = self.evaluate_move(board, move, enemy_king_sq)
             if score > best_score:
                 best_score = score
-                best_moves = [(move, reason)]
+                best_moves = [move]
             elif score == best_score:
-                best_moves.append((move, reason))
-        if best_moves:
-            move, reason = random.choice(best_moves)
-            return (move, reason) if debug else move
-        return (None, "no moves") if debug else None
+                best_moves.append(move)
+        move = random.choice(best_moves) if best_moves else None
+        return move, float(best_score if best_moves else 0.0)
 
     def evaluate_move(self, board, move, enemy_king_sq):
         score = 0
