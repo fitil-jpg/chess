@@ -8,11 +8,12 @@ def static_exchange_eval(board: chess.Board, move: chess.Move) -> int:
     """Perform a simple Static Exchange Evaluation (SEE).
 
     The board is copied, ``move`` is applied and then a sequence of
-    alternate captures on the destination square is simulated. Each side
-    always recaptures with its least valuable attacker. The function
-    returns the net material gain for the side to move. Positive values
-    indicate the capture sequence is favorable, negative that it is
-    unfavorable and zero that it is roughly balanced."""
+    alternate captures on the destination square is simulated.  Each side
+    always recaptures with its least valuable attacker.  The function
+    returns the net material gain for the side to move.  Positive values
+    indicate that the capture sequence is favorable, negative that it is
+    unfavorable and zero that it is roughly balanced.
+    """
     tmp = board.copy(stack=False)
     if not tmp.is_capture(move):
         return 0
