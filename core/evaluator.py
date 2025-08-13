@@ -8,8 +8,26 @@ def piece_value(piece):
     return values.get(piece.piece_type, 0)
 
 class Evaluator:
-    def __init__(self, board):
+    def __init__(
+        self,
+        board: chess.Board,
+        isolated_penalty: int = -10,
+        doubled_penalty: int = -5,
+        passed_bonus: int = 20,
+    ):
+        """Create a new :class:`Evaluator` for ``board``.
+
+        Parameters are optional tuning knobs for pawn-structure evaluation.
+        ``isolated_penalty`` and ``doubled_penalty`` are applied per pawn while
+        ``passed_bonus`` rewards passed pawns.  The defaults mirror the
+        previously hardcoded constants so existing callers need not change.
+        """
+
         self.board = board
+        self.isolated_penalty = isolated_penalty
+        self.doubled_penalty = doubled_penalty
+        self.passed_bonus = passed_bonus
+
         # last recorded mobility stats: {'white': int, 'black': int, 'score': int}
         self.mobility_stats = {"white": 0, "black": 0, "score": 0}
 
@@ -144,6 +162,63 @@ class Evaluator:
                 score -= val
         return score
 
+    # --- Pawn structure evaluation -----------------------------------------
+    def _is_passed_pawn(self, sq: int, color: bool, enemy_pawns: list[int]) -> bool:
+        """Return ``True`` if the pawn on ``sq`` is passed for ``color``."""
+
+        file = chess.square_file(sq)
+        rank = chess.square_rank(sq)
+        for ep in enemy_pawns:
+            ef = chess.square_file(ep)
+            er = chess.square_rank(ep)
+            if abs(ef - file) <= 1:
+                if color == chess.WHITE and er > rank:
+                    return False
+                if color == chess.BLACK and er < rank:
+                    return False
+        return True
+
+    def pawn_structure_score(self) -> int:
+        """Return pawn-structure score from White's perspective."""
+
+        board = self.board
+        pawns_by_color: dict[bool, list[int]] = {chess.WHITE: [], chess.BLACK: []}
+        for sq, piece in board.piece_map().items():
+            if piece.piece_type == chess.PAWN:
+                pawns_by_color[piece.color].append(sq)
+
+        score = 0
+        for color in (chess.WHITE, chess.BLACK):
+            ours = pawns_by_color[color]
+            files: dict[int, list[int]] = {}
+            for sq in ours:
+                files.setdefault(chess.square_file(sq), []).append(sq)
+
+            # doubled pawns
+            for fsqs in files.values():
+                if len(fsqs) > 1:
+                    penalty = self.doubled_penalty * (len(fsqs) - 1)
+                    score += penalty if color == chess.WHITE else -penalty
+
+            # isolated / passed
+            enemy = pawns_by_color[not color]
+            for sq in ours:
+                file = chess.square_file(sq)
+                has_adjacent = False
+                for adj in (file - 1, file + 1):
+                    if 0 <= adj < 8 and adj in files and files[adj]:
+                        has_adjacent = True
+                        break
+                if not has_adjacent:
+                    penalty = self.isolated_penalty
+                    score += penalty if color == chess.WHITE else -penalty
+
+                if self._is_passed_pawn(sq, color, enemy):
+                    bonus = self.passed_bonus
+                    score += bonus if color == chess.WHITE else -bonus
+
+        return score
+
     def position_score(self, board: chess.Board | None = None, color: bool | None = None) -> int:
         """Return a lightweight evaluation of ``board`` from ``color``'s perspective.
 
@@ -162,11 +237,12 @@ class Evaluator:
 
         material = self.material_diff(color)
         psq = self.piece_square_score()
+        pawn = self.pawn_structure_score()
 
         # Restore original board state.
         self.board = orig
 
-        return material + psq if color == chess.WHITE else material - psq
+        return material + psq + pawn if color == chess.WHITE else material - psq - pawn
 
     # --- Lightweight helpers used by DynamicBot ---
     def material_diff(self, color: bool) -> int:
