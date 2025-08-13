@@ -14,25 +14,27 @@ PIECE_VALUES = {
 }
 
 class ChessBot:
-    def __init__(self, color):
+    def __init__(self, color: bool):
         self.color = color
         self.risk_analyzer = RiskAnalyzer()
 
-    def choose_move(self, board, debug=False):
-        best_score = float('-inf')
+    def choose_move(self, board: chess.Board, debug: bool = False):
+        """Return the move with the highest evaluation score.
+
+        The score itself serves as the confidence value.
+        """
+
+        best_score = float("-inf")
         best_moves = []
-        best_reason = ""
         for move in board.legal_moves:
-            score, reason = self.evaluate_move(board, move)
+            score, _ = self.evaluate_move(board, move)
             if score > best_score:
                 best_score = score
-                best_moves = [(move, reason)]
+                best_moves = [move]
             elif score == best_score:
-                best_moves.append((move, reason))
-        move, reason = random.choice(best_moves) if best_moves else (None, "")
-        if debug:
-            return move, reason
-        return move
+                best_moves.append(move)
+        move = random.choice(best_moves) if best_moves else None
+        return move, float(best_score if best_moves else 0.0)
 
     def evaluate_move(self, board, move):
         if self.risk_analyzer.is_risky(board, move):

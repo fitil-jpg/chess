@@ -6,7 +6,7 @@
 #   • послаблення «щитка» пішаків перед королем суперника (delta > 0)
 #
 # Інтеграція: from .fortify_bot import FortifyBot
-# Виклик: m, reason = FortifyBot(color).choose_move(board, debug=True)
+# Виклик: move, confidence = FortifyBot(color).choose_move(board)
 
 from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
@@ -70,13 +70,20 @@ class FortifyBot:
             self.W.update(weights)
 
     # -------------------- ПУБЛІЧНИЙ ІНТЕРФЕЙС --------------------
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
+    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
+        """Return the move with the highest defensive score.
+
+        ``confidence`` corresponds to the internal fortification score based on
+        defense density and other heuristics.  When there are no legal moves or
+        it's not our turn, ``confidence`` is ``0.0`` and ``move`` is ``None``.
+        """
+
         if board.turn != self.color:
-            return None, "FortifyBot: not my turn"
+            return None, 0.0
 
         moves = list(board.legal_moves)
         if not moves:
-            return None, "FortifyBot: no legal moves"
+            return None, 0.0
 
         # Базові показники до ходу (для delta-метрик)
         opp = not self.color
@@ -97,17 +104,19 @@ class FortifyBot:
                 best, best_score, best_info = m, score, info
 
         if debug and best is not None:
-            reason = (
-                f"FortifyBot: {board.san(best)} | "
+            # Retain a verbose string for potential manual debugging.
+            details = (
                 f"dens={best_info['defense_density']} def={best_info['defenders']} att={best_info['attackers']} | "
                 f"dev={int(best_info['develop'])} cap={int(best_info['is_capture'])} "
                 f"gain={best_info['capture_gain']} see={best_info['see_gain']} "
-                f"thinΔ={best_info['opp_thin_delta']} | "
-                f"doubledΔ={best_info['opp_doubled_delta']} shieldΔ={best_info['opp_shield_delta']} | "
-                f"score={round(best_score,2)}"
+                f"thinΔ={best_info['opp_thin_delta']} doubledΔ={best_info['opp_doubled_delta']} "
+                f"shieldΔ={best_info['opp_shield_delta']} score={round(best_score,2)}"
             )
-            return best, reason
-        return best, "FortifyBot"
+            # Debug branch still returns numerical confidence as second value
+            # but prints details for easier tracing.
+            print(f"FortifyBot: {details}")
+
+        return best, float(best_score if best is not None else 0.0)
 
     # -------------------- ОЦІНКА ХОДУ --------------------
     def _score_move(self, board: chess.Board, m: chess.Move,
