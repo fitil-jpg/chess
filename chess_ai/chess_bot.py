@@ -38,6 +38,9 @@ class ChessBot:
         best_moves = []
         for move in board.legal_moves:
             score, _ = self.evaluate_move(board, move)
+            # When behind in material, be more eager to grab material
+            if ctx.material_diff < 0 and board.is_capture(move):
+                score += 20
             tmp = board.copy(stack=False)
             tmp.push(move)
             score += evaluator.position_score(tmp, self.color)
