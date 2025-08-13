@@ -25,5 +25,5 @@ class RandomBot:
         move = random.choice(moves)
         tmp = board.copy(stack=False)
         tmp.push(move)
-        conf = evaluator.position_score(tmp, self.color)
+        conf = evaluator.position_score(tmp, self.color) + 0.01 * ctx.mobility
         return move, float(conf)
