@@ -149,15 +149,56 @@ class Evaluator:
         """Return material difference from ``color``'s point of view."""
         return self.material_count(color) - self.material_count(not color)
 
-    def king_safety(self, color: bool) -> int:
-        """Simple king safety metric: defenders minus attackers."""
-        board = self.board
+    @staticmethod
+    def king_safety(board: chess.Board, color: bool) -> int:
+        """Return a simple king safety score for ``color``.
+
+        The score penalizes missing pawn shield squares directly in front of
+        the king as well as nearby enemy attackers.  A smaller (possibly
+        negative) score indicates a more vulnerable king.
+        """
         king_sq = board.king(color)
         if king_sq is None:
             return 0
-        attackers = len(board.attackers(not color, king_sq))
-        defenders = len(board.attackers(color, king_sq))
-        return defenders - attackers
+
+        file = chess.square_file(king_sq)
+        rank = chess.square_rank(king_sq)
+
+        # --- Pawn shield check -------------------------------------------------
+        shield_rank = rank + (1 if color == chess.WHITE else -1)
+        missing_pawns = 0
+        if 0 <= shield_rank < 8:
+            for df in (-1, 0, 1):
+                f = file + df
+                if 0 <= f < 8:
+                    sq = chess.square(f, shield_rank)
+                    piece = board.piece_at(sq)
+                    if not (piece and piece.piece_type == chess.PAWN and piece.color == color):
+                        missing_pawns += 1
+
+        # --- Enemy attackers near the king ------------------------------------
+        attackers: set[int] = set()
+        for df in range(-2, 3):
+            for dr in range(-2, 3):
+                f = file + df
+                r = rank + dr
+                if 0 <= f < 8 and 0 <= r < 8:
+                    sq = chess.square(f, r)
+                    attackers.update(board.attackers(not color, sq))
+        for df in range(-3, 4):
+            for dr in range(-3, 4):
+                if max(abs(df), abs(dr)) == 3:
+                    f = file + df
+                    r = rank + dr
+                    if 0 <= f < 8 and 0 <= r < 8:
+                        sq = chess.square(f, r)
+                        attackers.update(board.attackers(not color, sq))
+
+        attackers_count = len(attackers)
+
+        # Less pawns and more attackers reduce the score.
+        king_safety_score = 0 - missing_pawns - attackers_count
+        return king_safety_score
 
 def game_incident_tags(board):
     tags = []

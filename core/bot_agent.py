@@ -292,13 +292,13 @@ class DynamicBot:
     def _select_agent(self, board: chess.Board):
         evaluator = Evaluator(board)
         material = evaluator.material_diff(self.color)
-        safety = evaluator.king_safety(self.color)
+        king_safety_score = Evaluator.king_safety(board, self.color)
 
         choices: List[Tuple[int, Any]] = []
         if material > self.material_diff_threshold:
             choices.append((material - self.material_diff_threshold, self.aggressive))
-        if safety < self.king_safety_threshold:
-            choices.append((self.king_safety_threshold - safety, self.fortify))
+        if king_safety_score < self.king_safety_threshold:
+            choices.append((self.king_safety_threshold - king_safety_score, self.fortify))
 
         if choices:
             choices.sort(key=lambda x: x[0], reverse=True)
