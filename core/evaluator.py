@@ -8,6 +8,25 @@ def piece_value(piece):
 class Evaluator:
     def __init__(self, board):
         self.board = board
+        # last recorded mobility stats: {'white': int, 'black': int, 'score': int}
+        self.mobility_stats = {"white": 0, "black": 0, "score": 0}
+
+    def mobility(self, board=None):
+        """Return a tuple with number of legal moves for white and black.
+
+        The board's ``turn`` attribute is temporarily flipped to count the
+        opponent's moves.  Results are stored in ``self.mobility_stats`` for
+        telemetry purposes.
+        """
+        board = board or self.board
+        orig_turn = board.turn
+        white_moves = len(board.legal_moves)
+        board.turn = not board.turn
+        black_moves = len(board.legal_moves)
+        board.turn = orig_turn
+        score = white_moves - black_moves
+        self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
+        return white_moves, black_moves
 
     def compute_features(self, color):
         board = self.board
@@ -84,6 +103,11 @@ class Evaluator:
                 result[f'{label}_enemy_pieces_defended'] = None
                 result[f'{label}_material'] = None
                 result[f'{label}_hanging_pieces'] = None
+        # Mobility metrics
+        white_mob, black_mob = self.mobility(board)
+        result['white_mobility'] = white_mob
+        result['black_mobility'] = black_mob
+        result['mobility_score'] = white_mob - black_mob
         result['is_checkmate'] = board.is_checkmate()
         result['winner'] = "white" if board.result() == "1-0" else "black" if board.result() == "0-1" else "draw"
         result['moves'] = [m.uci() for m in board.move_stack]
