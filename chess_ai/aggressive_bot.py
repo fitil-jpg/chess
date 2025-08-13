@@ -50,6 +50,8 @@ class AggressiveBot:
                 attacker = board.piece_at(move.from_square)
                 if captured and attacker:
                     gain = piece_value(captured) - piece_value(attacker)
+                    if ctx.material_diff < 0:
+                        gain *= 1.1
 
             tmp = board.copy(stack=False)
             tmp.push(move)
