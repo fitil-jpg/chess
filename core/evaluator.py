@@ -1,4 +1,6 @@
 import chess
+from .pst_trainer import PST
+from .phase import GamePhaseDetector
 
 def piece_value(piece):
     values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
@@ -122,6 +124,24 @@ class Evaluator:
             p = self.board.piece_at(sq)
             if p and p.color == color:
                 score += values.get(p.piece_type, 0)
+        return score
+
+    def piece_square_score(self) -> int:
+        """Return piece-square table score from White's perspective."""
+        phase = GamePhaseDetector.detect(self.board)
+        phase_pst = PST["phases"].get(phase, {})
+        score = 0
+        for sq, piece in self.board.piece_map().items():
+            sym = piece.symbol().upper()
+            table = phase_pst.get(sym)
+            if table is None:
+                continue
+            idx = sq if piece.color == chess.WHITE else chess.square_mirror(sq)
+            val = table[idx]
+            if piece.color == chess.WHITE:
+                score += val
+            else:
+                score -= val
         return score
 
     # --- Lightweight helpers used by DynamicBot ---
