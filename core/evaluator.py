@@ -128,6 +128,7 @@ class Evaluator:
         result['white_mobility'] = white_mob
         result['black_mobility'] = black_mob
         result['mobility_score'] = white_mob - black_mob
+        result['position_score'] = self.position_score()
         result['is_checkmate'] = board.is_checkmate()
         result['winner'] = "white" if board.result() == "1-0" else "black" if board.result() == "0-1" else "draw"
         result['moves'] = [m.uci() for m in board.move_stack]
