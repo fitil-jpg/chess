@@ -1,16 +1,20 @@
 import chess
 
+from core.evaluator import Evaluator
+
 class UtilityBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board, debug: bool = True):
+    def choose_move(self, board, evaluator: Evaluator | None = None, debug: bool = True):
         """Select a move based on simple utility heuristics.
 
         Returns a tuple of ``(move, confidence)`` where confidence is the
         heuristic score.  This bot is primarily used for feature extraction and
         testing, hence a single best move is sufficient.
         """
+
+        evaluator = evaluator or Evaluator(board)
 
         moves = list(board.legal_moves)
         best_moves = []
@@ -48,6 +52,13 @@ class UtilityBot:
                 else:
                     score = 50 + tgt_val
             # Просто хід → score = 0
+
+            if score > top_score:
+                best_moves = [move]
+                top_score = score
+            tmp = board.copy(stack=False)
+            tmp.push(move)
+            score += evaluator.position_score(tmp, self.color)
 
             if score > top_score:
                 best_moves = [move]
