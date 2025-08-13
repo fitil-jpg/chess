@@ -16,12 +16,12 @@ def _repetition_board():
 def test_chess_bot_takes_rook_over_check():
     board = _repetition_board()
     bot = ChessBot(chess.WHITE)
-    move = bot.choose_move(board)
+    move, conf = bot.choose_move(board)
     assert move == chess.Move.from_uci('f7h8')
 
 
 def test_dynamic_bot_takes_rook_over_check():
     board = _repetition_board()
     bot = DynamicBot(chess.WHITE)
-    move = bot.choose_move(board, debug=False)
+    move, conf = bot.choose_move(board, debug=False)
     assert move == chess.Move.from_uci('f7h8')
