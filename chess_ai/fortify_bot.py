@@ -14,42 +14,7 @@ import chess
 
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
-
-
-def static_exchange_eval(board: chess.Board, move: chess.Move) -> int:
-    """Rudimentary static exchange evaluation (SEE).
-
-    Simulates the sequence of captures on the target square by always
-    capturing back with the least valuable attacker.  Returns the net
-    material gain for the side to move."""
-    tmp = board.copy(stack=False)
-    if not tmp.is_capture(move):
-        return 0
-
-    to_sq = move.to_square
-    captured = tmp.piece_at(to_sq)
-    if captured is None:
-        return 0
-
-    gain = [piece_value(captured)]
-    side = board.turn
-    tmp.push(move)
-    side = not side
-
-    while True:
-        attackers = tmp.attackers(side, to_sq)
-        if not attackers:
-            break
-        least_sq = min(attackers, key=lambda sq: piece_value(tmp.piece_at(sq)))
-        least_piece = tmp.piece_at(least_sq)
-        gain.append(piece_value(least_piece) - gain[-1])
-        tmp.push(chess.Move(least_sq, to_sq))
-        side = not side
-
-    for i in range(len(gain) - 2, -1, -1):
-        gain[i] = max(-gain[i + 1], gain[i])
-
-    return gain[0]
+from .see import static_exchange_eval
 
 
 class FortifyBot:
@@ -140,7 +105,21 @@ class FortifyBot:
         is_capture = board.is_capture(m)
         see_gain = static_exchange_eval(board, m) if is_capture else 0
 
-        if self.safe_only and (attackers > 0 or see_gain < 0):
+        if is_capture and see_gain < 0:
+            return float("-1e9"), {
+                "defense_density": defense_density,
+                "defenders": defenders,
+                "attackers": attackers,
+                "develop": False,
+                "is_capture": is_capture,
+                "capture_gain": gain,
+                "see_gain": see_gain,
+                "opp_doubled_delta": 0,
+                "opp_shield_delta": 0,
+                "opp_thin_delta": 0,
+            }
+
+        if self.safe_only and attackers > 0:
             return float("-1e9"), {
                 "defense_density": defense_density,
                 "defenders": defenders,
