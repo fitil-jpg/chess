@@ -5,6 +5,7 @@ decision_engine.py — вибирає найкращий хід на основ�
 import random
 import chess
 
+from core.quiescence import quiescence
 from .risk_analyzer import RiskAnalyzer
 
 
@@ -29,20 +30,33 @@ class DecisionEngine:
             score -= len(board.pieces(piece, not board.turn)) * val
         return score
 
-    def search(self, board: chess.Board, depth: int) -> int:
-        """Negamax-пошук з розширеннями по шаху та взяттю."""
+    def search(self, board: chess.Board, depth: int,
+               alpha: int = -float("inf"), beta: int = float("inf")) -> int:
+        """Alpha-beta negamax search with simple selective extensions.
+
+        Once the nominal depth is exhausted or the position is terminal,
+        the function transitions into a quiescence search to avoid the
+        horizon effect.
+        """
         if depth == 0 or board.is_game_over() or board.is_repetition(3):
-            return self._evaluate(board)
+            return quiescence(board, alpha, beta)
 
         best = float("-inf")
         for move in board.legal_moves:
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             board.push(move)
-            score = -self.search(board, depth - 1 + extension)
+            score = -self.search(board, depth - 1 + extension, -beta, -alpha)
             board.pop()
+
             if score > best:
                 best = score
-        return best if best != float("-inf") else self._evaluate(board)
+            if score > alpha:
+                alpha = score
+            if alpha >= beta:
+                break
+        if best == float("-inf"):
+            return quiescence(board, alpha, beta)
+        return best
 
     def choose_best_move(self, board: chess.Board):
         legal_moves = list(board.legal_moves)
