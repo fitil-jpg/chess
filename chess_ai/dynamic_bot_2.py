@@ -18,21 +18,21 @@ class DynamicBot2:
         self.random_bot = RandomBot(color)
         # Можна додавати ще агентів тут
 
-    def choose_move(self, board, debug=True):
-        evaluator = Evaluator(board)
+    def choose_move(self, board, evaluator: Evaluator | None = None, debug=True):
+        evaluator = evaluator or Evaluator(board)
         features = evaluator.compute_features(self.color)
 
         if features["has_hanging_enemy"]:
-            move, reason = self.utility_bot.choose_move(board, debug=True)
+            move, reason = self.utility_bot.choose_move(board, evaluator, debug=True)
             bot_name = "UtilityBot"
         elif features["can_give_check"]:
-            move, reason = self.chess_bot.choose_move(board, debug=True)
+            move, reason = self.chess_bot.choose_move(board, evaluator, debug=True)
             bot_name = "ChessBot"
         elif self.is_endgame(board):
-            move, reason = self.endgame_bot.choose_move(board, debug=True)
+            move, reason = self.endgame_bot.choose_move(board, evaluator, debug=True)
             bot_name = "EndgameBot"
         else:
-            move, reason = self.random_bot.choose_move(board, debug=True)
+            move, reason = self.random_bot.choose_move(board, evaluator, debug=True)
             bot_name = "RandomBot"
 
         debug_info = {

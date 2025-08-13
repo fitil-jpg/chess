@@ -15,6 +15,7 @@ import chess
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
+from core.evaluator import Evaluator
 
 
 class FortifyBot:
@@ -36,13 +37,16 @@ class FortifyBot:
             self.W.update(weights)
 
     # -------------------- ПУБЛІЧНИЙ ІНТЕРФЕЙС --------------------
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
+    def choose_move(self, board: chess.Board, evaluator: Evaluator | None = None, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
         """Return the move with the highest defensive score.
 
         ``confidence`` corresponds to the internal fortification score based on
         defense density and other heuristics.  When there are no legal moves or
         it's not our turn, ``confidence`` is ``0.0`` and ``move`` is ``None``.
         """
+
+        if evaluator is None:
+            evaluator = Evaluator(board)
 
         if board.turn != self.color:
             return None, 0.0
@@ -72,6 +76,7 @@ class FortifyBot:
                 before_opp_shield,
                 before_thin_opp,
                 before_thin_self,
+                evaluator,
             )
             if score > best_score:
                 best, best_score, best_info = m, score, info
@@ -101,6 +106,7 @@ class FortifyBot:
         before_opp_shield: int,
         before_thin_opp: int,
         before_thin_self: int,
+        evaluator: Evaluator,
     ) -> Tuple[float, Dict[str, Any]]:
         tmp = board.copy(stack=False)
         tmp.push(m)
@@ -165,6 +171,8 @@ class FortifyBot:
             self.W["self_thin_delta"] * self_thin_delta +
             see_gain
         )
+
+        score += evaluator.position_score(tmp, self.color)
 
         info = {
             "defense_density": defense_density,
