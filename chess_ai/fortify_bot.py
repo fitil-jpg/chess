@@ -122,10 +122,13 @@ class FortifyBot:
         defense_density = defenders - attackers
 
         # Взяття та матеріальні оцінки
-        is_capture = board.is_capture(m)
         captured = board.piece_at(m.to_square)
         attacker = board.piece_at(m.from_square)
-        gain = piece_value(captured) - piece_value(attacker) if captured else 0
+        gain = (piece_value(captured) if captured else 0) - (
+            piece_value(attacker) if attacker else 0
+        )
+
+        is_capture = board.is_capture(m)
         see_gain = static_exchange_eval(board, m) if is_capture else 0
 
         if self.safe_only and (attackers > 0 or see_gain < 0):
