@@ -1,4 +1,5 @@
 from core.utils import GameContext
+from core.evaluator import Evaluator
 
 from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
@@ -24,10 +25,17 @@ class DynamicBot:
             ChessBot(color),
         ]
 
-    def choose_move(self, board, ctx: GameContext, debug: bool = False):
+    def choose_move(
+        self,
+        board,
+        ctx: GameContext,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
+        evaluator = evaluator or Evaluator(board)
         proposals = []
         for agent in self.agents:
-            move, conf = agent.choose_move(board, ctx, debug)
+            move, conf = agent.choose_move(board, ctx, evaluator)
             if move is not None:
                 proposals.append((conf, move))
 

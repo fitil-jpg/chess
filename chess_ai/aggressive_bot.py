@@ -9,10 +9,10 @@ zero confidence.
 
 from __future__ import annotations
 
-import random
 import chess
 
 from core.utils import GameContext
+from core.evaluator import Evaluator
 
 from .utility_bot import piece_value
 
@@ -21,7 +21,13 @@ class AggressiveBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board: chess.Board, ctx: GameContext, debug: bool = False):
+    def choose_move(
+        self,
+        board: chess.Board,
+        ctx: GameContext,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
         """Return the move that maximises material gain.
 
         The second element of the tuple represents the material gain (our
@@ -29,25 +35,29 @@ class AggressiveBot:
         legal move is returned with confidence ``0.0``.
         """
 
+        evaluator = evaluator or Evaluator(board)
+
+        moves = list(board.legal_moves)
+        if not moves:
+            return None, 0.0
+
         best_move = None
-        best_gain = float("-inf")
-        for move in board.legal_moves:
+        best_score = float("-inf")
+        for move in moves:
             gain = 0.0
             if board.is_capture(move):
                 captured = board.piece_at(move.to_square)
                 attacker = board.piece_at(move.from_square)
                 if captured and attacker:
                     gain = piece_value(captured) - piece_value(attacker)
-            if gain > best_gain:
-                best_gain = gain
+
+            tmp = board.copy(stack=False)
+            tmp.push(move)
+            score = gain + evaluator.position_score(tmp, self.color)
+
+            if score > best_score:
+                best_score = score
                 best_move = move
 
-        if best_move is None:
-            moves = list(board.legal_moves)
-            if not moves:
-                return None, 0.0
-            best_move = random.choice(moves)
-            best_gain = 0.0
-
-        return best_move, float(best_gain)
+        return best_move, float(best_score)
 
