@@ -144,6 +144,30 @@ class Evaluator:
                 score -= val
         return score
 
+    def position_score(self, board: chess.Board | None = None, color: bool | None = None) -> int:
+        """Return a lightweight evaluation of ``board`` from ``color``'s perspective.
+
+        The score combines material difference and piece-square table value.  A
+        positive score favours ``color``.  If ``board`` is omitted, the
+        evaluator's own board is used.  This helper intentionally remains
+        simple—sophisticated evaluation is beyond the scope of these tests.
+        """
+
+        board = board or self.board
+        color = board.turn if color is None else color
+
+        # Temporarily switch the internal board to reuse existing helpers.
+        orig = self.board
+        self.board = board
+
+        material = self.material_diff(color)
+        psq = self.piece_square_score()
+
+        # Restore original board state.
+        self.board = orig
+
+        return material + psq if color == chess.WHITE else material - psq
+
     # --- Lightweight helpers used by DynamicBot ---
     def material_diff(self, color: bool) -> int:
         """Return material difference from ``color``'s point of view."""
