@@ -1,5 +1,15 @@
 # core/utils.py
+from dataclasses import dataclass
 from core.piece import Piece, Pawn, Rook, Knight, Bishop, Queen, King
+
+
+@dataclass
+class GameContext:
+    """Shared positional metrics available to all agents."""
+
+    material_diff: int
+    mobility: int
+    king_safety: int
 
 def piece_class_factory(piece, pos):
     t = piece.symbol().lower()
