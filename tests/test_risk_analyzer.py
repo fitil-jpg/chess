@@ -1,7 +1,5 @@
 import chess
 
-import chess
-
 from chess_ai.risk_analyzer import RiskAnalyzer
 from chess_ai.decision_engine import DecisionEngine
 from chess_ai.chess_bot import ChessBot
@@ -43,7 +41,8 @@ def test_chess_bot_avoids_risky_trap(monkeypatch):
     monkeypatch.setattr(RiskAnalyzer, "is_risky", fake_is_risky)
     bot = ChessBot(chess.WHITE)
     ctx = _build_ctx(board, chess.WHITE)
-    move, conf = bot.choose_move(board, ctx)
+    evaluator = Evaluator(board)
+    move, conf = bot.choose_move(board, ctx, evaluator)
     assert move == safe
 
 
@@ -56,4 +55,3 @@ def _build_ctx(board: chess.Board, color: bool) -> GameContext:
         mobility=mobility,
         king_safety=Evaluator.king_safety(board, color),
     )
-
