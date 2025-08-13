@@ -19,6 +19,7 @@ from typing import Dict, Tuple, List, Optional
 import chess
 
 from chess_ai.bot_agent import make_agent, get_agent_names
+from core.pst_trainer import update_from_board, update_from_history
 
 # ---------- Налаштування ----------
 THREADS = 4
@@ -282,9 +283,18 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
         full_moves = board.fullmove_number
         plys = len(board.move_stack)
 
-        if res == "1-0": wins += 1
-        elif res == "0-1": losses += 1
-        else: draws += 1
+        if res == "1-0":
+            wins += 1
+        elif res == "0-1":
+            losses += 1
+        else:
+            draws += 1
+
+        # PST training: update tables after a decisive game
+        if res in ("1-0", "0-1"):
+            winner = chess.WHITE if res == "1-0" else chess.BLACK
+            update_from_board(board, winner)
+            update_from_history(list(board.move_stack), winner, steps=[15, 21, 35])
 
         # Лог: фініш гри
         logger.info(
