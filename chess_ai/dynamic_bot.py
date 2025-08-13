@@ -3,6 +3,7 @@ from .endgame_bot import EndgameBot
 from .random_bot import RandomBot
 from .aggressive_bot import AggressiveBot
 from .fortify_bot import FortifyBot
+from core.evaluator import Evaluator
 
 
 class DynamicBot:
@@ -22,10 +23,11 @@ class DynamicBot:
             ChessBot(color),
         ]
 
-    def choose_move(self, board, debug: bool = False):
+    def choose_move(self, board, evaluator: Evaluator | None = None, debug: bool = False):
+        evaluator = evaluator or Evaluator(board)
         proposals = []
         for agent in self.agents:
-            move, conf = agent.choose_move(board)
+            move, conf = agent.choose_move(board, evaluator)
             if move is not None:
                 proposals.append((conf, move))
 
