@@ -10,3 +10,11 @@ def test_capture_beats_perpetual_check():
     best = engine.choose_best_move(board)
     assert best == chess.Move.from_uci("d5a8"), "Engine should capture the rook"
 
+
+def test_quiescence_avoids_hanging_capture():
+    """Quiescence search should prevent obviously losing captures."""
+    board = chess.Board("r5k1/8/8/p7/Q7/8/8/6K1 w - - 0 1")
+    engine = DecisionEngine()
+    best = engine.choose_best_move(board)
+    assert best != chess.Move.from_uci("a4a5"), "Engine should avoid losing the queen"
+
