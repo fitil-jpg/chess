@@ -12,6 +12,8 @@ from __future__ import annotations
 import random
 import chess
 
+from core.utils import GameContext
+
 from .utility_bot import piece_value
 
 
@@ -19,7 +21,7 @@ class AggressiveBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board: chess.Board, debug: bool = False):
+    def choose_move(self, board: chess.Board, ctx: GameContext, debug: bool = False):
         """Return the move that maximises material gain.
 
         The second element of the tuple represents the material gain (our

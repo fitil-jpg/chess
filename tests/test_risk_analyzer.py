@@ -1,8 +1,12 @@
 import chess
 
+import chess
+
 from chess_ai.risk_analyzer import RiskAnalyzer
 from chess_ai.decision_engine import DecisionEngine
 from chess_ai.chess_bot import ChessBot
+from core.evaluator import Evaluator
+from core.utils import GameContext
 
 
 def test_risk_analyzer_detects_hanging_piece():
@@ -38,6 +42,18 @@ def test_chess_bot_avoids_risky_trap(monkeypatch):
 
     monkeypatch.setattr(RiskAnalyzer, "is_risky", fake_is_risky)
     bot = ChessBot(chess.WHITE)
-    move, conf = bot.choose_move(board)
+    ctx = _build_ctx(board, chess.WHITE)
+    move, conf = bot.choose_move(board, ctx)
     assert move == safe
+
+
+def _build_ctx(board: chess.Board, color: bool) -> GameContext:
+    ev = Evaluator(board)
+    w, b = ev.mobility()
+    mobility = w - b if color == chess.WHITE else b - w
+    return GameContext(
+        material_diff=ev.material_diff(color),
+        mobility=mobility,
+        king_safety=Evaluator.king_safety(board, color),
+    )
 

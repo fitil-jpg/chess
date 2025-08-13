@@ -1,5 +1,26 @@
 # core/utils.py
+from dataclasses import dataclass
+
 from core.piece import Piece, Pawn, Rook, Knight, Bishop, Queen, King
+
+
+@dataclass
+class GameContext:
+    """Lightweight bundle of high-level game features.
+
+    Attributes
+    ----------
+    material_diff: int
+        Material difference from the perspective of the player to move.
+    mobility: int
+        Mobility score (own legal moves minus opponent's).
+    king_safety: int
+        Heuristic king safety score; lower values mean a more vulnerable king.
+    """
+
+    material_diff: int
+    mobility: int
+    king_safety: int
 
 def piece_class_factory(piece, pos):
     t = piece.symbol().lower()
