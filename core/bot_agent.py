@@ -12,7 +12,7 @@ import random
 import chess
 from .evaluator import Evaluator
 from .constants import MATERIAL_DIFF_THRESHOLD, KING_SAFETY_THRESHOLD
-from utils import GameContext
+from core.utils import GameContext
 
 __all__ = [
     "BotAgent",
