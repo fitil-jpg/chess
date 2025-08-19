@@ -31,8 +31,16 @@ try:
     from .chess_bot import ChessBot  # «Center»
 except Exception:
     class ChessBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "ChessBot(STUB): random"
@@ -41,8 +49,16 @@ try:
     from .endgame_bot import EndgameBot
 except Exception:
     class EndgameBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "EndgameBot(STUB): random"
@@ -51,8 +67,16 @@ try:
     from .random_bot import RandomBot
 except Exception:
     class RandomBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "RandomBot(STUB): random"
@@ -133,17 +157,27 @@ class AggressiveBot:
         self.color = color
         self.scorer = Scorer()
         self.fx = _FeatureExtractor()
-    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ):
         best_s = -10**9
         best: List[Tuple[chess.Move, Dict[str, Any]]] = []
         for m in board.legal_moves:
             p = board.piece_at(m.from_square)
-            if not p or p.color != self.color: continue
+            if not p or p.color != self.color:
+                continue
             feats = self.fx.extract(board, m, self.color)
             s = self.scorer.score(feats)
-            if s > best_s: best_s, best = s, [(m, feats)]
-            elif s == best_s: best.append((m, feats))
-        if not best: return None, "AggressiveBot: no legal moves"
+            if s > best_s:
+                best_s, best = s, [(m, feats)]
+            elif s == best_s:
+                best.append((m, feats))
+        if not best:
+            return None, "AggressiveBot: no legal moves"
         move, feats = random.choice(best)
         return move, f"AggressiveBot: score={best_s} feats={ {k:v for k,v in feats.items() if v} }"
 
@@ -177,7 +211,13 @@ class FortifyBot:
         }
         if weights: self.W.update(weights)
 
-    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ) -> Tuple[Optional[chess.Move], str]:
         m, info = self._best(board)
         if debug and m is not None:
             reason = (
