@@ -304,9 +304,16 @@ class DynamicBot:
             return choices[0][1]
         return self.center
 
-    def choose_move(self, board: chess.Board, context: GameContext | None = None, debug: bool = True):
-        if context is None:
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
+        if evaluator is None:
             evaluator = Evaluator(board)
+        if context is None:
             material = evaluator.material_diff(self.color)
             white_moves, black_moves = evaluator.mobility(board)
             mobility_score = white_moves - black_moves
@@ -319,7 +326,9 @@ class DynamicBot:
                 king_safety=king_safety_score,
             )
         agent = self._select_agent(context)
-        return agent.choose_move(board, context=context, debug=debug)
+        return agent.choose_move(
+            board, context=context, evaluator=evaluator, debug=debug
+        )
 
 
 # --- ФАСАД: BotAgent ---
@@ -398,4 +407,6 @@ class BotAgent:
             mobility=mobility_score,
             king_safety=king_safety_score,
         )
-        return self.impl.choose_move(board, context=context, debug=debug)
+        return self.impl.choose_move(
+            board, context=context, evaluator=evaluator, debug=debug
+        )
