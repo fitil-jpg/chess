@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import chess
-from .evaluation import evaluate_board
+from .evaluation import evaluate_position
 
 
 INF = 10 ** 9
@@ -12,7 +12,7 @@ INF = 10 ** 9
 
 def quiescence(board: chess.Board, alpha: float, beta: float) -> float:
     """Capture-only search to resolve tactical instability."""
-    stand = evaluate_board(board)
+    stand = evaluate_position(board)
     if stand >= beta:
         return beta
     if alpha < stand:
