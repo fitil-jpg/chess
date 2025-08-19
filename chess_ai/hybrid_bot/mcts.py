@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 import chess
-from .evaluation import evaluate_position
+from .evaluation import evaluate_positions
 
 
 def _dirichlet(alpha: float, size: int) -> list[float]:
@@ -47,10 +47,12 @@ class BatchMCTS:
     ) -> tuple[chess.Move | None, Node]:
         """Run MCTS and return a move and the search tree.
 
-        The search collects up to ``batch_size`` leaf nodes before evaluating
-        them, allowing the evaluation function to process many positions at
-        once (for example, via a neural network).  Setting ``batch_size`` to
-        ``1`` reproduces standard, non-batched MCTS behaviour.
+        The search collects up to ``batch_size`` leaf nodes before evaluation.
+        All gathered boards are then evaluated in a single call to the
+        evaluation routine, allowing, for example, a neural network's
+        ``predict_many`` implementation to process them efficiently.  Setting
+        ``batch_size`` to ``1`` reproduces standard, non-batched MCTS
+        behaviour.
         """
         root = Node(board.copy())
         legal = list(board.legal_moves)
@@ -88,8 +90,8 @@ class BatchMCTS:
                 batch_nodes.append(node)
                 batch_boards.append(b)
 
-            # Evaluate all boards in one call
-            values = [evaluate_position(b) for b in batch_boards]
+            # Evaluate all boards in a single call
+            values = evaluate_positions(batch_boards)
 
             # Backup each result along its path
             for node, value in zip(batch_nodes, values):
