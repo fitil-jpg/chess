@@ -326,27 +326,54 @@ class DynamicBot:
 class BotAgent:
     """
     Єдиний вхід для в’ювера/зовнішнього коду.
+
     Використання:
+        # rule-based fallback
         agent = BotAgent(color=True, mode="dynamic")
+
+        # meta‑агент із вагами підботів
+        agent = BotAgent(color=True, mode="meta", weights={"aggressive": 1.5, "fortify": 0.5})
+
         move, reason = agent.choose_move(board, debug=True)
-    Доступні режими: "dynamic" (дефолт), "meta", "fortify", "aggressive", "center", "endgame", "random".
+
+    Доступні режими: "dynamic" (дефолт), "meta", "fortify", "aggressive",
+    "center", "endgame", "random". Параметр ``weights`` застосовується лише до
+    режиму ``meta``.
     """
-    def __init__(self, color: bool, *, mode: str = "dynamic", **kwargs):
+
+    def __init__(
+        self,
+        color: bool,
+        *,
+        mode: str = "dynamic",
+        weights: Dict[str, float] | None = None,
+        **kwargs,
+    ):
         self.color = color
         self.mode = mode.lower()
-        self.impl = self._make_impl(color, self.mode, **kwargs)
+        self.impl = self._make_impl(color, self.mode, weights=weights, **kwargs)
 
-    def _make_impl(self, color: bool, mode: str, **kwargs):
+    def _make_impl(
+        self,
+        color: bool,
+        mode: str,
+        weights: Dict[str, float] | None = None,
+        **kwargs,
+    ):
+        if mode == "meta":
+            return MetaBot(color, weights=weights)
         if mode == "dynamic":
             return DynamicBot(
                 color,
                 material_diff_threshold=kwargs.get("material_diff_threshold", MATERIAL_DIFF_THRESHOLD),
                 king_safety_threshold=kwargs.get("king_safety_threshold", KING_SAFETY_THRESHOLD),
             )
-        if mode == "meta":
-            return MetaBot(color, weights=kwargs.get("weights"))
         if mode == "fortify":
-            return FortifyBot(color, **{k: v for k, v in kwargs.items() if k in ("safe_only", "weights")})
+            return FortifyBot(
+                color,
+                weights=weights,
+                **{k: v for k, v in kwargs.items() if k == "safe_only"},
+            )
         if mode == "aggressive":
             return AggressiveBot(color)
         if mode == "center":
