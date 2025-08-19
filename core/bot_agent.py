@@ -10,12 +10,14 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any, List
 import random
 import chess
+from chess_ai.dynamic_bot import DynamicBot as MetaBot
 from .evaluator import Evaluator
 from .constants import MATERIAL_DIFF_THRESHOLD, KING_SAFETY_THRESHOLD
 from core.utils import GameContext
 
 __all__ = [
     "BotAgent",
+    "MetaBot",
     "DynamicBot",
     "FortifyBot",
     "AggressiveBot",
@@ -327,7 +329,7 @@ class BotAgent:
     Використання:
         agent = BotAgent(color=True, mode="dynamic")
         move, reason = agent.choose_move(board, debug=True)
-    Доступні режими: "dynamic" (дефолт), "fortify", "aggressive", "center", "endgame", "random".
+    Доступні режими: "dynamic" (дефолт), "meta", "fortify", "aggressive", "center", "endgame", "random".
     """
     def __init__(self, color: bool, *, mode: str = "dynamic", **kwargs):
         self.color = color
@@ -341,6 +343,8 @@ class BotAgent:
                 material_diff_threshold=kwargs.get("material_diff_threshold", MATERIAL_DIFF_THRESHOLD),
                 king_safety_threshold=kwargs.get("king_safety_threshold", KING_SAFETY_THRESHOLD),
             )
+        if mode == "meta":
+            return MetaBot(color, weights=kwargs.get("weights"))
         if mode == "fortify":
             return FortifyBot(color, **{k: v for k, v in kwargs.items() if k in ("safe_only", "weights")})
         if mode == "aggressive":
