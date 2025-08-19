@@ -12,22 +12,47 @@ from __future__ import annotations
 import chess
 
 from core.evaluator import Evaluator
+from utils import GameContext
 from .utility_bot import piece_value
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 
 class AggressiveBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board: chess.Board, evaluator: Evaluator | None = None, debug: bool = False):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
         """Return the move that maximises material gain.
 
-        The second element of the tuple represents the material gain (our
-        confidence in the move).  If no capture improves material, a random
-        legal move is returned with confidence ``0.0``.
+        Parameters
+        ----------
+        board: chess.Board
+            Current board state.
+        context: GameContext | None, optional
+            Shared game context (currently unused).
+        evaluator: Evaluator | None, optional
+            Reusable evaluator.  If ``None``, a shared instance is created.
+        debug: bool, optional
+            Unused flag for API compatibility.
+
+        Returns
+        -------
+        tuple[chess.Move | None, float]
+            Selected move and the estimated material gain.
         """
 
-        evaluator = evaluator or Evaluator(board)
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
         moves = list(board.legal_moves)
         if not moves:

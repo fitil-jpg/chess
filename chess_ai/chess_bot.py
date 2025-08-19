@@ -2,7 +2,11 @@ import chess
 import random
 
 from core.evaluator import Evaluator
+from utils import GameContext
 from .risk_analyzer import RiskAnalyzer
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
 PIECE_VALUES = {
@@ -19,13 +23,36 @@ class ChessBot:
         self.color = color
         self.risk_analyzer = RiskAnalyzer()
 
-    def choose_move(self, board: chess.Board, evaluator: Evaluator | None = None, debug: bool = False):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
         """Return the move with the highest evaluation score.
 
-        The score itself serves as the confidence value.
+        Parameters
+        ----------
+        board: chess.Board
+            Position to analyse.
+        context: GameContext | None, optional
+            Shared positional context, currently unused.
+        evaluator: Evaluator | None, optional
+            Reusable evaluator instance.  A shared one is created if ``None``.
+        debug: bool, optional
+            Unused flag retained for compatibility.
+
+        Returns
+        -------
+        tuple[chess.Move | None, float]
+            Chosen move and its evaluation score.
         """
 
-        evaluator = evaluator or Evaluator(board)
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
         best_score = float("-inf")
         best_moves = []
