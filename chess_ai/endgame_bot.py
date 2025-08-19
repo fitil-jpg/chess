@@ -2,18 +2,45 @@ import chess
 import random
 
 from core.evaluator import Evaluator
+from utils import GameContext
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 class EndgameBot:
     def __init__(self, color: bool):
         self.color = color
 
-    def choose_move(self, board: chess.Board, evaluator: Evaluator | None = None, debug: bool = False):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
         """Choose move based on endgame heuristics.
 
-        Confidence corresponds to the heuristic score of the selected move.
+        Parameters
+        ----------
+        board: chess.Board
+            Position to analyse.
+        context: GameContext | None, optional
+            Shared game context (unused in this bot).
+        evaluator: Evaluator | None, optional
+            Reusable evaluator instance.  A shared one is created if ``None``.
+        debug: bool, optional
+            Unused compatibility flag.
+
+        Returns
+        -------
+        tuple[chess.Move | None, float]
+            Selected move and its heuristic score.
         """
 
-        evaluator = evaluator or Evaluator(board)
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
         best_score = float("-inf")
         best_moves = []
