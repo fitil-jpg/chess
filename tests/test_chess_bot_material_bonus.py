@@ -10,10 +10,10 @@ def test_chess_bot_material_deficit_capture_bonus():
     move = chess.Move.from_uci("d4d5")
 
     score_even, _ = bot.evaluate_move(
-        board, move, GameContext(material_diff=0, mobility=0, king_safety=0)
+        board, move, GameContext()
     )
     score_behind, _ = bot.evaluate_move(
-        board, move, GameContext(material_diff=-2, mobility=0, king_safety=0)
+        board, move, GameContext(material_diff=-2)
     )
 
     assert score_behind - score_even == 2 * MATERIAL_DEFICIT_BONUS
