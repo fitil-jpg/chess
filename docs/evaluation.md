@@ -22,6 +22,9 @@ Some evaluation helpers rely on an optional R bridge and PyTorch‑based models.
    ```
 
 After installing these packages the engine can call the R function `eval_position_complex` for advanced evaluation.
+This function accepts an optional ``enemy_material`` argument, a mapping with
+``"white"`` and ``"black"`` keys that scales king-attack penalties when the
+opponent has lost major pieces such as the queen.
 
 ## Pawn structure helpers
 

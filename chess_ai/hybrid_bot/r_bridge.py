@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Mapping
 
 import chess
 import warnings
@@ -41,8 +42,19 @@ def _ensure_loaded() -> None:
     _loaded = True
 
 
-def eval_board(board: chess.Board) -> float:
+def eval_board(
+    board: chess.Board, enemy_material: Mapping[str, float] | None = None
+) -> float:
     """Return evaluation score for ``board`` using R's ``eval_position_complex``.
+
+    Parameters
+    ----------
+    board:
+        Board to evaluate.
+    enemy_material:
+        Optional mapping with keys ``"white"`` and ``"black"`` to modulate king
+        safety based on remaining attacking material of each side. ``1``
+        corresponds to full material; lower values reduce the impact of attacks.
 
     The function sources the accompanying R script and calls the R function,
     returning its numeric result.  ``RuntimeError`` is raised if :mod:`rpy2` or
@@ -50,11 +62,16 @@ def eval_board(board: chess.Board) -> float:
     """
     _ensure_loaded()
     r_func = robjects.globalenv[_FUNC_NAME]
-    return float(r_func(board.fen())[0])
+    if enemy_material is None:
+        res = r_func(board.fen())
+    else:
+        r_list = robjects.ListVector(enemy_material)
+        res = r_func(board.fen(), r_list)
+    return float(res[0])
 
 
-def r_evaluate(fen: str) -> float:
+def r_evaluate(fen: str, enemy_material: Mapping[str, float] | None = None) -> float:
     """Backward compatible FEN-based wrapper around :func:`eval_board`."""
     board = chess.Board(fen)
-    return eval_board(board)
+    return eval_board(board, enemy_material)
 
