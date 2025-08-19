@@ -45,6 +45,13 @@ class BatchMCTS:
         epsilon: float = 0.25,
         batch_size: int = 1,
     ) -> tuple[chess.Move | None, Node]:
+        """Run MCTS and return a move and the search tree.
+
+        The search collects up to ``batch_size`` leaf nodes before evaluating
+        them, allowing the evaluation function to process many positions at
+        once (for example, via a neural network).  Setting ``batch_size`` to
+        ``1`` reproduces standard, non-batched MCTS behaviour.
+        """
         root = Node(board.copy())
         legal = list(board.legal_moves)
         if not legal:
@@ -57,29 +64,43 @@ class BatchMCTS:
             b.push(m)
             root.children[m] = Node(b, root, p)
 
-        for _ in range(n_simulations):
-            node = root
-            b = board.copy()
-            # Selection
-            while node.children:
-                move, node = max(node.children.items(), key=lambda kv: kv[1].u(self.c_puct))
-                b.push(move)
-            # Expansion
-            if not b.is_game_over():
-                moves = list(b.legal_moves)
-                pri = [1 / len(moves)] * len(moves)
-                for m, p in zip(moves, pri):
-                    nb = b.copy()
-                    nb.push(m)
-                    node.children[m] = Node(nb, node, p)
-            # Evaluation
-            value = evaluate_position(b)
-            # Backup
-            while node is not None:
-                node.n += 1
-                node.w += value
-                value = -value
-                node = node.parent
+        sims_done = 0
+        while sims_done < n_simulations:
+            batch_nodes: list[Node] = []
+            batch_boards: list[chess.Board] = []
+            for _ in range(min(batch_size, n_simulations - sims_done)):
+                node = root
+                b = board.copy()
+                # Selection
+                while node.children:
+                    move, node = max(
+                        node.children.items(), key=lambda kv: kv[1].u(self.c_puct)
+                    )
+                    b.push(move)
+                # Expansion
+                if not b.is_game_over():
+                    moves = list(b.legal_moves)
+                    pri = [1 / len(moves)] * len(moves)
+                    for m, p in zip(moves, pri):
+                        nb = b.copy()
+                        nb.push(m)
+                        node.children[m] = Node(nb, node, p)
+                batch_nodes.append(node)
+                batch_boards.append(b)
+
+            # Evaluate all boards in one call
+            values = [evaluate_position(b) for b in batch_boards]
+
+            # Backup each result along its path
+            for node, value in zip(batch_nodes, values):
+                cur = node
+                v = value
+                while cur is not None:
+                    cur.n += 1
+                    cur.w += v
+                    v = -v
+                    cur = cur.parent
+            sims_done += len(batch_nodes)
 
         # Choose move from root
         if temperature <= 1e-3:
