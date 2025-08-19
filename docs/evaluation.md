@@ -3,6 +3,26 @@
 This project exposes a handful of helper functions that analyze pawn structure and overall position quality.
 These metrics feed into the engine's evaluation and are available through `core.evaluator.Evaluator`.
 
+## Setup
+
+Some evaluation helpers rely on an optional R bridge and PyTorch‑based models. To enable these features install the following dependencies:
+
+1. **R runtime**
+   ```bash
+   sudo apt-get update && sudo apt-get install -y r-base
+   ```
+2. **rpy2 Python package**
+   ```bash
+   pip install rpy2
+   ```
+3. **PyTorch and related packages**
+   Visit <https://pytorch.org/get-started/locally/> for platform-specific commands or use the CPU wheels:
+   ```bash
+   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+   ```
+
+After installing these packages the engine can call the R function `eval_position_complex` for advanced evaluation.
+
 ## Pawn structure helpers
 
 - `is_isolated(board, square, files)` – checks whether a pawn has friendly pawns on adjacent files. An isolated pawn triggers `isolated_penalty` in [`pawn_structure_score`](../core/evaluator.py).
