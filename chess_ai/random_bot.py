@@ -5,6 +5,7 @@ from utils import GameContext
 
 
 _SHARED_EVALUATOR: Evaluator | None = None
+MOBILITY_FACTOR = 0.01
 
 
 class RandomBot:
@@ -44,4 +45,6 @@ class RandomBot:
         tmp = board.copy(stack=False)
         tmp.push(move)
         conf = evaluator.position_score(tmp, self.color)
+        if context is not None:
+            conf += MOBILITY_FACTOR * context.mobility
         return move, float(conf)
