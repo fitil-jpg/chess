@@ -8,12 +8,13 @@ move index and colour side.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import Qt, Signal, QRect
 from PySide6.QtGui import QPainter, QPen, QFont, QColor, QMouseEvent
 from PySide6.QtWidgets import QWidget
-from PySide6.QtCore import QRect
 
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
+
+__all__ = ["UsageTimeline"]
 
 
 class UsageTimeline(QWidget):
