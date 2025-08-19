@@ -1,7 +1,6 @@
 import chess
 from chess_ai.chess_bot import ChessBot
 from chess_ai.dynamic_bot import DynamicBot
-from core.evaluator import Evaluator
 
 
 def _repetition_board():
@@ -14,17 +13,17 @@ def _repetition_board():
     return board
 
 
-def test_chess_bot_takes_rook_over_check():
+def test_chess_bot_takes_rook_over_check(context, evaluator):
     board = _repetition_board()
+    evaluator.board = board
     bot = ChessBot(chess.WHITE)
-    evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator=evaluator)
+    move, conf = bot.choose_move(board, context=context, evaluator=evaluator)
     assert move == chess.Move.from_uci('f7h8')
 
 
-def test_dynamic_bot_takes_rook_over_check():
+def test_dynamic_bot_takes_rook_over_check(context, evaluator):
     board = _repetition_board()
+    evaluator.board = board
     bot = DynamicBot(chess.WHITE)
-    evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator=evaluator, debug=False)
+    move, conf = bot.choose_move(board, context=context, evaluator=evaluator, debug=False)
     assert move == chess.Move.from_uci('f7h8')
