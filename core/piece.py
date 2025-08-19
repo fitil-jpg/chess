@@ -3,10 +3,27 @@ try:  # Optional dependency used only for advanced piece logic
 except Exception:  # pragma: no cover - chess may be absent in tests
     chess = None
 
+
+def _parse_position(pos):
+    """Return the python-chess square index for ``pos``.
+
+    ``pos`` may be either an ``(rank, file)`` tuple (0-indexed) or the
+    traditional string notation like ``"e2"`` used throughout the tests.
+    """
+    if chess is None:
+        return None
+    if isinstance(pos, str):
+        return chess.parse_square(pos)
+    if isinstance(pos, tuple) and len(pos) == 2:
+        rank, file = pos
+        return chess.square(file, rank)
+    return None
+
+
 class Piece:
     def __init__(self, color, position):
         self.color = color
-        self.position = position  # (rank, file)
+        self.position = position  # typically 'e2' or (rank, file)
         self.moves_made = 0
         self.squares_crossed = 0
         self.targets_attacked = 0
@@ -24,15 +41,67 @@ class Piece:
         self.pin_moves = set()
         self.check_squares = set()
 
+    # --- helpers ---------------------------------------------------------
+    def _square(self):
+        return _parse_position(self.position)
+
+    def _color(self):
+        if chess is None:
+            return None
+        return chess.WHITE if self.color == 'white' else chess.BLACK
+
+    @staticmethod
+    def _build_board(board):
+        """Create a python-chess board mirroring ``board``.
+
+        The project uses lightweight piece objects without move generation.
+        For attack/defense calculations we temporarily translate them into a
+        :class:`chess.Board` instance.
+        """
+        if chess is None:
+            return None
+
+        cb = chess.Board.empty()
+        for p in board.get_pieces():
+            sq = _parse_position(p.position)
+            piece_type = PIECE_TYPE_MAP.get(type(p))
+            if sq is not None and piece_type is not None:
+                cb.set_piece_at(sq, chess.Piece(piece_type, chess.WHITE if p.color == 'white' else chess.BLACK))
+        return cb
+
+    # --- public API ------------------------------------------------------
     def get_attacked_squares(self, board):
         """Return squares this piece attacks.
 
-        The project currently does not model real chess movement, so this
-        placeholder simply returns an empty set.  It allows other modules –
-        notably :class:`BoardAnalyzer` – to query attack information without
-        raising ``AttributeError``.
+        The original project only needed a placeholder.  For this kata we
+        leverage :mod:`python-chess` to compute the real attack set whenever
+        the dependency is available.  Results are returned as python-chess
+        square indices (0..63).
         """
-        return set()
+        if chess is None:
+            return set()
+        cb = self._build_board(board)
+        sq = self._square()
+        if cb is None or sq is None:
+            return set()
+        return set(cb.attacks(sq))
+
+    def get_defended_squares(self, board):
+        """Return squares occupied by friendly pieces that this piece protects."""
+        if chess is None:
+            return set()
+        cb = self._build_board(board)
+        sq = self._square()
+        color = self._color()
+        if cb is None or sq is None or color is None:
+            return set()
+
+        defended = set()
+        for target in cb.attacks(sq):
+            piece = cb.piece_at(target)
+            if piece and piece.color == color:
+                defended.add(target)
+        return defended
 
 class Pawn(Piece):
     def __init__(self, color, position):
@@ -112,6 +181,18 @@ class King(Piece):
                 else:
                     self.safe_moves.add(move.to_square)
 
+if chess:
+    PIECE_TYPE_MAP = {
+        Pawn: chess.PAWN,
+        Rook: chess.ROOK,
+        Knight: chess.KNIGHT,
+        Bishop: chess.BISHOP,
+        Queen: chess.QUEEN,
+        King: chess.KING,
+    }
+else:  # pragma: no cover - chess not available
+    PIECE_TYPE_MAP = {}
+
 def piece_class_factory(piece, pos):
     t = piece.symbol().lower()
     if t == 'p':
@@ -127,3 +208,4 @@ def piece_class_factory(piece, pos):
     elif t == 'k':
         return King(piece.color, pos)
     return Piece(piece.color, pos)
+
