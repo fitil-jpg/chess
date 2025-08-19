@@ -217,7 +217,7 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
         while not board.is_game_over():
             # Перф-метрики: L та L^2 до ходу (у цій позиції)
             if PERF_METRICS:
-                L = sum(1 for _ in board.legal_moves)
+                L = board.legal_moves.count()
                 l_sum += L
                 l2_sum += L * L
                 pos_count += 1
