@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 import chess
-from .evaluation import evaluate_board
+from .evaluation import evaluate_position
 
 
 def _dirichlet(alpha: float, size: int) -> list[float]:
@@ -73,7 +73,7 @@ class BatchMCTS:
                     nb.push(m)
                     node.children[m] = Node(nb, node, p)
             # Evaluation
-            value = evaluate_board(b)
+            value = evaluate_position(b)
             # Backup
             while node is not None:
                 node.n += 1

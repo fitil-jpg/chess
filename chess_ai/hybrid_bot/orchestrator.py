@@ -7,7 +7,7 @@ import chess
 
 from .alpha_beta import search as ab_search
 from .mcts import BatchMCTS
-from .evaluation import evaluate_board
+from .evaluation import evaluate_position
 
 try:  # optional R evaluation
     from .r_bridge import r_evaluate
@@ -39,7 +39,7 @@ class HybridOrchestrator:
                 return r_evaluate(board.fen())
             except Exception:
                 pass
-        return evaluate_board(board)
+        return evaluate_position(board)
 
     def choose_move(self, board: chess.Board) -> tuple[chess.Move | None, str]:
         if board.turn != self.color:
