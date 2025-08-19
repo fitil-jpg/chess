@@ -15,13 +15,23 @@ class DummyEval:
         return 0
 
 
-def test_skips_when_king_safe(capfd, context, evaluator):
+def test_skips_when_king_safe(capfd, context, evaluator, monkeypatch):
     board = chess.Board()
     evaluator.board = board
     bot = FortifyBot(chess.WHITE)
     context.king_safety = KING_SAFETY_THRESHOLD
+
+    called = {"n": 0}
+
+    def fake_score(*args, **kwargs):
+        called["n"] += 1
+        return 0
+
+    monkeypatch.setattr(evaluator, "position_score", fake_score)
+
     move, score = bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
     assert move is None and score == 0.0
+    assert called["n"] == 0
     out = capfd.readouterr().out
     assert "king safety" in out
 
