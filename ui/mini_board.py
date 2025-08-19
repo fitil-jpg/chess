@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import chess
 from PySide6.QtWidgets import QWidget, QFrame, QGridLayout
+from PySide6.QtCore import Qt
 
 from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
@@ -42,6 +43,9 @@ class MiniBoard(QWidget):
         for row in range(8):
             for col in range(8):
                 cell = Cell(row, col, self.drawer_manager, scale=scale)
+                # Ensure the miniature board remains passive by ignoring
+                # mouse events on each cell.
+                cell.setAttribute(Qt.WA_TransparentForMouseEvents)
                 self.grid.addWidget(cell, row, col)
                 self.cell_grid[row][col] = cell
 
