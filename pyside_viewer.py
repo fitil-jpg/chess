@@ -19,6 +19,8 @@ from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
 from chess_ai.bot_agent import make_agent
 from chess_ai.threat_map import ThreatMap
+from utils.load_runs import load_runs
+from utils.module_usage import aggregate_module_usage
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
@@ -129,6 +131,43 @@ class UsageTimeline(QWidget):
             if x_leg > w - pad*2:
                 break
 
+
+class OverallUsageChart(QWidget):
+    """Simple bar chart summarising module usage across multiple runs."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.counts = {}
+        self.setMinimumSize(280, 150)
+
+    def set_data(self, counts):
+        self.counts = dict(counts)
+        self.update()
+
+    def paintEvent(self, ev):  # pragma: no cover - GUI drawing
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(250, 250, 250))
+        if not self.counts:
+            return
+
+        w = self.width()
+        pad = 8
+        bar_h = 14
+        y = pad
+        max_count = max(self.counts.values())
+        items = sorted(self.counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+        for name, count in items:
+            bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
+            color = _COLOR.get(name, _COLOR["OTHER"])
+            painter.fillRect(QRect(pad, y, bar_w, bar_h), color)
+            painter.setPen(QPen(QColor(60, 60, 60)))
+            painter.drawRect(QRect(pad, y, bar_w, bar_h))
+            painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
+            y += bar_h + pad
+            if y + bar_h > self.height():
+                break
+
 class ChessViewer(QWidget):
     def __init__(self):
         super().__init__()
@@ -210,6 +249,13 @@ class ChessViewer(QWidget):
         right_col.addWidget(QLabel("Usage timeline:"))
         self.timeline = UsageTimeline()
         right_col.addWidget(self.timeline)
+
+        # Загальна діаграма використання модулів (нижня панель)
+        right_col.addWidget(QLabel("Overall module usage:"))
+        self.overall_chart = OverallUsageChart()
+        runs = load_runs("runs")
+        self.overall_chart.set_data(aggregate_module_usage(runs))
+        right_col.addWidget(self.overall_chart)
 
         right_col.addStretch(1)  # все тримаємо вгорі
 
