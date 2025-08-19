@@ -5,6 +5,9 @@ from utils import GameContext
 
 
 _SHARED_EVALUATOR: Evaluator | None = None
+# Small tweak applied when mobility differs between the sides.
+# The bot slightly prefers positions where it has more mobility and
+# de-emphasises ones with less, based only on the sign of the mobility.
 MOBILITY_FACTOR = 0.01
 
 
@@ -45,6 +48,6 @@ class RandomBot:
         tmp = board.copy(stack=False)
         tmp.push(move)
         conf = evaluator.position_score(tmp, self.color)
-        if context is not None:
-            conf += MOBILITY_FACTOR * context.mobility
+        if context is not None and context.mobility != 0:
+            conf += MOBILITY_FACTOR if context.mobility > 0 else -MOBILITY_FACTOR
         return move, float(conf)

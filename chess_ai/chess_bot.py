@@ -18,6 +18,10 @@ PIECE_VALUES = {
     chess.KING: 0,
 }
 
+# Additional score applied for each point of material deficit when
+# considering capturing moves.  Encourages material recovery when behind.
+MATERIAL_DEFICIT_BONUS = 10
+
 class ChessBot:
     def __init__(self, color: bool):
         self.color = color
@@ -122,7 +126,7 @@ class ChessBot:
                 gain = PIECE_VALUES[target_piece.piece_type] - PIECE_VALUES[from_piece.piece_type]
                 score += gain
                 if context and context.material_diff < 0:
-                    bonus = abs(context.material_diff) * 10
+                    bonus = abs(context.material_diff) * MATERIAL_DEFICIT_BONUS
                     score += bonus
                     reasons.append(f"material deficit capture bonus (+{bonus})")
                 defenders = board.attackers(not board.turn, move.to_square)
