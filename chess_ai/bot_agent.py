@@ -13,6 +13,9 @@ from typing import Optional, Tuple, Dict, Any, List, Callable, Set
 import random
 import chess
 
+from core.evaluator import Evaluator
+from utils import GameContext
+
 __all__ = [
     "BotAgent",
     "BotAgentLegacy",
@@ -27,13 +30,24 @@ __all__ = [
     "RandomBot",
 ]
 
+# Shared evaluator instance used by DynamicBot to avoid re-initialisation
+_SHARED_EVALUATOR: Evaluator | None = None
+
 # ---------- Fallback-и на випадок відсутності реальних модулів ----------
 try:
     from .chess_bot import ChessBot  # type: ignore
 except Exception:
     class ChessBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "CENTER | ChessBot(STUB): random"
@@ -42,8 +56,16 @@ try:
     from .endgame_bot import EndgameBot  # type: ignore
 except Exception:
     class EndgameBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "ENDGAME | EndgameBot(STUB): random"
@@ -52,8 +74,16 @@ try:
     from .random_bot import RandomBot  # type: ignore
 except Exception:
     class RandomBot:
-        def __init__(self, color: bool): self.color = color
-        def choose_move(self, board: chess.Board, debug: bool = True):
+        def __init__(self, color: bool):
+            self.color = color
+
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "LOW | RandomBot(STUB): random"
@@ -90,7 +120,13 @@ class CowOpeningPlanner:
             }
             self.bishop_targets = {chess.E7, chess.D7, chess.C5, chess.F5}
 
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ) -> Tuple[Optional[chess.Move], str]:
         if board.turn != self.color:
             return None, f"{self.COW_TAG} | not my turn"
 
@@ -291,7 +327,13 @@ class AggressiveBot:
         self.color = color
         self.scorer = Scorer()
         self.fx = _FeatureExtractor()
-    def choose_move(self, board: chess.Board, debug: bool = True):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ):
         best_s = -10**9
         best: List[Tuple[chess.Move, Dict[str, Any]]] = []
         for m in board.legal_moves:
@@ -331,7 +373,13 @@ class FortifyBot:
         }
         if weights: self.W.update(weights)
 
-    def choose_move(self, board: chess.Board, debug: bool = True) -> Tuple[Optional[chess.Move], str]:
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ) -> Tuple[Optional[chess.Move], str]:
         m, info = self._best(board)
         if debug and m is not None:
             reason = (
@@ -615,31 +663,73 @@ class DynamicBot:
         self.scout    = ThreatScout(color)
         self.color = color
 
-    def choose_move(self, board: chess.Board, debug: bool = True):
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
+
+        if context is None:
+            material = evaluator.material_diff(self.color)
+            white_moves, black_moves = evaluator.mobility(board)
+            mobility_score = white_moves - black_moves
+            if not self.color:
+                mobility_score = -mobility_score
+            king_safety_score = Evaluator.king_safety(board, self.color)
+            context = GameContext(
+                material_diff=material,
+                mobility=mobility_score,
+                king_safety=king_safety_score,
+            )
+
         if board.turn != self.color:
-            mv, rs = self.center.choose_move(board, debug=True)
+            mv, rs = self.center.choose_move(
+                board, context=context, evaluator=evaluator, debug=True
+            )
             return (mv, f"CENTER | wait-turn → {rs}") if debug else (mv, "")
 
         # 1) SAFE CHECK → EndgameBot
         for move in board.legal_moves:
-            temp = board.copy(stack=False); temp.push(move)
+            temp = board.copy(stack=False)
+            temp.push(move)
             if temp.is_check():
                 defenders = temp.attackers(self.color, move.to_square)
                 if defenders:
-                    mv, rs = self.endgame.choose_move(board, debug=True)
-                    return (mv, f"SAFE_CHECK | delegated to Endgame | {rs}") if debug else (mv, "")
+                    mv, rs = self.endgame.choose_move(
+                        board, context=context, evaluator=evaluator, debug=True
+                    )
+                    return (
+                        (mv, f"SAFE_CHECK | delegated to Endgame | {rs}")
+                        if debug
+                        else (mv, "")
+                    )
 
         # 2) Негайна тактика?
         tactic_available = False
         for m in board.legal_moves:
-            if board.is_capture(m): tactic_available = True; break
-            tmp = board.copy(stack=False); tmp.push(m)
-            if tmp.is_check(): tactic_available = True; break
-            if creates_hanging_threat(board, m, self.color): tactic_available = True; break
+            if board.is_capture(m):
+                tactic_available = True
+                break
+            tmp = board.copy(stack=False)
+            tmp.push(m)
+            if tmp.is_check():
+                tactic_available = True
+                break
+            if creates_hanging_threat(board, m, self.color):
+                tactic_available = True
+                break
 
         # 2a) Якщо тактики нема і COW не завершено — COW
         if not tactic_available and not self.cow.is_complete(board):
-            cmv, creason = self.cow.choose_move(board, debug=True)
+            cmv, creason = self.cow.choose_move(
+                board, context=context, evaluator=evaluator, debug=True
+            )
             if cmv is not None:
                 return (cmv, f"COW | {creason}") if debug else (cmv, "")
 
@@ -647,7 +737,10 @@ class DynamicBot:
         m1, info = self.scout.probe_depth2(board)
         if m1 is not None:
             if debug:
-                note = f"DEPTH2 | minScore={info.get('min_score_after_reply')} line={info.get('line')}"
+                note = (
+                    f"DEPTH2 | minScore={info.get('min_score_after_reply')} "
+                    f"line={info.get('line')}"
+                )
                 return m1, note
             return m1, ""
 
@@ -657,17 +750,22 @@ class DynamicBot:
             dens = f_info.get("defense_density", 0)
             develops = bool(f_info.get("develop", False))
             if develops or dens >= 1:
-                mv, rs = self.fortify.choose_move(board, debug=True)
+                mv, rs = self.fortify.choose_move(
+                    board, context=context, evaluator=evaluator, debug=True
+                )
                 return (f_move, f"FORTIFY | {rs}") if debug else (f_move, "")
 
         # 5) Aggressive
-        fx = _FeatureExtractor(); sc = Scorer()
+        fx = _FeatureExtractor()
+        sc = Scorer()
         best_aggr = 0
         for m in board.legal_moves:
             feats = fx.extract(board, m, self.color)
             best_aggr = max(best_aggr, sc.score(feats))
         if best_aggr >= 70:
-            mv, rs = self.aggressive.choose_move(board, debug=True)
+            mv, rs = self.aggressive.choose_move(
+                board, context=context, evaluator=evaluator, debug=True
+            )
             return (mv, f"AGGRESSIVE | best={best_aggr} | {rs}") if debug else (mv, "")
 
         # 6) Endgame з пріоритетами
@@ -682,17 +780,23 @@ class DynamicBot:
             m_pass = self._find_safe_passed_pawn_push(board)
             if m_pass:
                 return (m_pass, "ENDGAME | passed-pawn") if debug else (m_pass, "")
-            mv, rs = self.endgame.choose_move(board, debug=True)
+            mv, rs = self.endgame.choose_move(
+                board, context=context, evaluator=evaluator, debug=True
+            )
             return (mv, f"ENDGAME | {own_pieces} pcs | {rs}") if debug else (mv, "")
 
         # 7) Low mobility
         mobility = sum(1 for _ in board.legal_moves)
         if mobility < 8:
-            mv, rs = self.random.choose_move(board, debug=True)
+            mv, rs = self.random.choose_move(
+                board, context=context, evaluator=evaluator, debug=True
+            )
             return (mv, f"LOW | mobility={mobility} → {rs}") if debug else (mv, "")
 
         # 8) Center
-        mv, rs = self.center.choose_move(board, debug=True)
+        mv, rs = self.center.choose_move(
+            board, context=context, evaluator=evaluator, debug=True
+        )
         return (mv, f"CENTER | {rs}") if debug else (mv, "")
 
     # ---- пріоритети ендшпілю ----
