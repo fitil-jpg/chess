@@ -40,6 +40,9 @@ class Evaluator:
         """
         board = board or self.board
         orig_turn = board.turn
+        # Use ``count()`` instead of ``len()`` because ``legal_moves`` is a
+        # generator.  Counting directly avoids materializing the entire move
+        # list and ensures compatibility with custom generators used in tests.
         white_moves = board.legal_moves.count()
         board.turn = not board.turn
         black_moves = board.legal_moves.count()

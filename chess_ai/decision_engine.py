@@ -2,7 +2,6 @@
 decision_engine.py — вибирає найкращий хід на основі пошуку з селективними розширеннями.
 """
 
-import random
 import chess
 
 from core.quiescence import quiescence
@@ -66,16 +65,31 @@ class DecisionEngine:
         safe_moves = [m for m in legal_moves if not self.risk_analyzer.is_risky(board, m)]
         moves_to_consider = safe_moves if safe_moves else legal_moves
 
+        best_move: chess.Move | None = None
         best_score = float("-inf")
-        best_moves = []
+        best_capture = -1
         for move in moves_to_consider:
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
+            target = board.piece_at(move.to_square)
+            capture_val = 0 if not target else {
+                chess.PAWN: 100,
+                chess.KNIGHT: 300,
+                chess.BISHOP: 300,
+                chess.ROOK: 500,
+                chess.QUEEN: 900,
+            }.get(target.piece_type, 0)
             board.push(move)
-            score = -self.search(board, extension)
+            score = -self.search(board, extension) + capture_val
             board.pop()
-            if score > best_score:
+            if (
+                score > best_score
+                or (
+                    score == best_score
+                    and (capture_val > best_capture or (capture_val == best_capture and (best_move is None or move.to_square > best_move.to_square)))
+                )
+            ):
                 best_score = score
-                best_moves = [move]
-            elif score == best_score:
-                best_moves.append(move)
-        return random.choice(best_moves) if best_moves else random.choice(moves_to_consider)
+                best_capture = capture_val
+                best_move = move
+
+        return best_move if best_move else None
