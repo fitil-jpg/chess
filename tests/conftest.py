@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "vendors"))
+
 import chess
 import pytest
 
@@ -14,4 +19,4 @@ def evaluator():
 @pytest.fixture
 def context():
     """Minimal game context with neutral metrics."""
-    return GameContext(material_diff=0, mobility=0, king_safety=0)
+    return GameContext()
