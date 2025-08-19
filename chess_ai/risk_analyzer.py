@@ -51,28 +51,82 @@ class RiskAnalyzer:
             score -= len(board.pieces(piece, not color)) * val
         return score
 
-    def _search(self, board: chess.Board, depth: int, maximizing: bool,
-                color: chess.Color) -> int:
-        """Tiny negamax search evaluating only material."""
+    def _search(
+        self,
+        board: chess.Board,
+        depth: int,
+        maximizing: bool,
+        color: chess.Color,
+        alpha: float,
+        beta: float,
+    ) -> int:
+        """Tiny negamax search with alpha-beta pruning."""
 
         if depth == 0 or board.is_game_over():
-            return self._material(board, color)
+            stand_pat = self._material(board, color)
+            # Quiescence: search further only through captures
+            for mv in board.legal_moves:
+                if not board.is_capture(mv):
+                    continue
+                if beta <= alpha:
+                    break
+                board.push(mv)
+                score = self._search(board, 0, not maximizing, color, alpha, beta)
+                board.pop()
+                if maximizing:
+                    if score > stand_pat:
+                        stand_pat = score
+                    if stand_pat > alpha:
+                        alpha = stand_pat
+                else:
+                    if score < stand_pat:
+                        stand_pat = score
+                    if stand_pat < beta:
+                        beta = stand_pat
+            return stand_pat
 
-        best = -float("inf") if maximizing else float("inf")
-        for mv in board.legal_moves:
-            board.push(mv)
-            score = self._search(board, depth - 1, not maximizing, color)
-            board.pop()
-            if maximizing:
+        if maximizing:
+            best = -float("inf")
+            for mv in board.legal_moves:
+                if beta <= alpha:
+                    break
+                board.push(mv)
+                to_sq = mv.to_square
+                attackers = len(board.attackers(not color, to_sq))
+                defenders = len(board.attackers(color, to_sq))
+                if attackers > defenders:
+                    score = -float("inf")
+                else:
+                    score = self._search(board, depth - 1, False, color, alpha, beta)
+                board.pop()
                 if score > best:
                     best = score
-            else:
+                if best > alpha:
+                    alpha = best
+            if best == -float("inf"):
+                return self._material(board, color)
+            return best
+        else:
+            best = float("inf")
+            for mv in board.legal_moves:
+                if beta <= alpha:
+                    break
+                board.push(mv)
+                to_sq = mv.to_square
+                attackers = len(board.attackers(color, to_sq))
+                defenders = len(board.attackers(not color, to_sq))
+                if attackers > defenders:
+                    score = float("inf")
+                else:
+                    score = self._search(board, depth - 1, True, color, alpha, beta)
+                board.pop()
                 if score < best:
                     best = score
-
-        if best == float("inf") or best == -float("inf"):
-            return self._material(board, color)
-        return best
+                if best < beta:
+                    beta = best
+            if best == float("inf"):
+                return self._material(board, color)
+            return best
 
     # ------------------------------------------------------------------
     def is_risky(self, board: chess.Board, move: chess.Move, depth: int = 2) -> bool:
@@ -94,7 +148,21 @@ class RiskAnalyzer:
         before = self._material(board, color)
 
         board.push(move)
-        worst = self._search(board, depth - 1, maximizing=False, color=color)
+        sq = move.to_square
+        attackers = len(board.attackers(not color, sq))
+        defenders = len(board.attackers(color, sq))
+        if attackers > defenders:
+            board.pop()
+            return True
+
+        worst = self._search(
+            board,
+            depth - 1,
+            maximizing=False,
+            color=color,
+            alpha=-float("inf"),
+            beta=float("inf"),
+        )
         board.pop()
 
         return worst < before
