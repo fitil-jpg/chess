@@ -60,6 +60,19 @@ def evaluate_position(board: chess.Board) -> float:
     return score if board.turn == chess.WHITE else -score
 
 
+def evaluate_positions(boards: list[chess.Board]) -> list[float]:
+    """Evaluate a batch of ``boards`` in one call.
+
+    This helper simply applies :func:`evaluate_position` to each board in the
+    provided list.  It mirrors the interface of a neural network's
+    ``predict_many`` method which returns a list of values for a list of
+    positions.
+    """
+
+    return [evaluate_position(b) for b in boards]
+
+
 # Backwards compatibility
 evaluate_board = evaluate_position
+evaluate_boards = evaluate_positions
 
