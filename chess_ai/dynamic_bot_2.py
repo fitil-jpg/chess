@@ -3,7 +3,11 @@ from chess_ai.utility_bot import UtilityBot
 from chess_ai.chess_bot import ChessBot   # твій основний бот
 from chess_ai.endgame_bot import EndgameBot
 from chess_ai.random_bot import RandomBot
+from utils import GameContext
 import chess
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 class DynamicBot2:
     """
@@ -18,21 +22,29 @@ class DynamicBot2:
         self.random_bot = RandomBot(color)
         # Можна додавати ще агентів тут
 
-    def choose_move(self, board, evaluator: Evaluator | None = None, debug=True):
-        evaluator = evaluator or Evaluator(board)
+    def choose_move(
+        self,
+        board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ):
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
         features = evaluator.compute_features(self.color)
 
         if features["has_hanging_enemy"]:
-            move, reason = self.utility_bot.choose_move(board, evaluator, debug=True)
+            move, reason = self.utility_bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
             bot_name = "UtilityBot"
         elif features["can_give_check"]:
-            move, reason = self.chess_bot.choose_move(board, evaluator, debug=True)
+            move, reason = self.chess_bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
             bot_name = "ChessBot"
         elif self.is_endgame(board):
-            move, reason = self.endgame_bot.choose_move(board, evaluator, debug=True)
+            move, reason = self.endgame_bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
             bot_name = "EndgameBot"
         else:
-            move, reason = self.random_bot.choose_move(board, evaluator, debug=True)
+            move, reason = self.random_bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
             bot_name = "RandomBot"
 
         debug_info = {
