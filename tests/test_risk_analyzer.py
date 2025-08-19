@@ -1,9 +1,10 @@
 import chess
 
+import chess
+
 from chess_ai.risk_analyzer import RiskAnalyzer
 from chess_ai.decision_engine import DecisionEngine
 from chess_ai.chess_bot import ChessBot
-from core.evaluator import Evaluator
 
 
 def test_risk_analyzer_detects_hanging_piece():
@@ -62,7 +63,7 @@ def test_decision_engine_avoids_risky_trap(monkeypatch):
     assert best == safe
 
 
-def test_chess_bot_avoids_risky_trap(monkeypatch):
+def test_chess_bot_avoids_risky_trap(monkeypatch, context, evaluator):
     board = chess.Board("r2q2k1/8/8/3B2B1/8/8/8/4K3 w - - 0 1")
     trap = chess.Move.from_uci("g5d8")
     safe = chess.Move.from_uci("d5a8")
@@ -72,7 +73,7 @@ def test_chess_bot_avoids_risky_trap(monkeypatch):
 
     monkeypatch.setattr(RiskAnalyzer, "is_risky", fake_is_risky)
     bot = ChessBot(chess.WHITE)
-    evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator=evaluator)
+    evaluator.board = board
+    move, conf = bot.choose_move(board, context=context, evaluator=evaluator)
     assert move == safe
 
