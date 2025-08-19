@@ -75,11 +75,11 @@ class EndgameBot:
             defenders = temp.attackers(self.color, from_sq)
             bonus = 100 if defenders else 50
             if context:
-                # Reward checks more when ahead in material and slightly
-                # penalize if our own king is exposed.
-                if context.material_diff > 0:
-                    bonus += context.material_diff * 10
-                bonus += context.king_safety  # negative values lower the bonus
+                # Reward checks more when ahead in material and penalize when
+                # behind.  Also nudge the score based on our own king safety
+                # (negative safety reduces the bonus).
+                bonus += context.material_diff * 10
+                bonus += context.king_safety
             score += bonus
             reason = "check, protected" if defenders else "check"
         piece = board.piece_at(move.from_square)
