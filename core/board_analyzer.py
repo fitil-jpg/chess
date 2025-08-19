@@ -18,6 +18,6 @@ class BoardAnalyzer:
     def get_defense_map(self, color):
         defenses = set()
         for piece in self.board.get_pieces(color):
-            if hasattr(piece, 'get_defended_squares'):
-                defenses.update(piece.get_defended_squares(self.board))
+            defenses.update(piece.get_defended_squares(self.board))
         return defenses
+
