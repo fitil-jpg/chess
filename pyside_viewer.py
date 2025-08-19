@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy
 )
 from PySide6.QtCore import QTimer, QRect, Qt
-from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QFont
+from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
 
 from core.piece import piece_class_factory
 from ui.cell import Cell
@@ -21,6 +21,8 @@ from chess_ai.bot_agent import make_agent
 from chess_ai.threat_map import ThreatMap
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
+from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
+from ui.usage_timeline import UsageTimeline
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
@@ -34,103 +36,6 @@ _PIECE_NAME = {
     chess.QUEEN: "Queen",
     chess.KING:  "King",
 }
-
-# Порядок пріоритету для витягання «ключа» з reason:
-_REASON_PRIORITY = [
-    "AGGRESSIVE", "SAFE_CHECK", "FORTIFY", "COW",
-    "DEPTH3", "DEPTH2", "ENDGAME", "CENTER",
-    "UTILITY", "RANDOM", "LEGACY", "THREAT"
-]
-
-# Кольори для модулів (для графіка)
-_COLOR = {
-    "AGGRESSIVE": QColor(220, 53, 69),    # червоний
-    "SAFE_CHECK": QColor(255, 159, 64),   # помаранчевий
-    "FORTIFY":    QColor(13, 110, 253),   # синій
-    "COW":        QColor(40, 167, 69),    # зелений
-    "DEPTH3":     QColor(111, 66, 193),   # фіолет
-    "DEPTH2":     QColor(153, 102, 255),  # світло-фіолет
-    "ENDGAME":    QColor(102, 16, 242),   # індиго
-    "CENTER":     QColor(108, 117, 125),  # сірий
-    "UTILITY":    QColor(20, 184, 166),   # бірюза
-    "RANDOM":     QColor(255, 99, 132),   # рожево-червоний
-    "LEGACY":     QColor(73, 80, 87),     # темно-сірий
-    "THREAT":     QColor(255, 205, 86),   # жовтий
-    "OTHER":      QColor(201, 203, 207),  # світло-сірий
-}
-
-class UsageTimeline(QWidget):
-    """
-    Дуже простий таймлайн: два ряди плиток (W зверху, B знизу).
-    Кожна плитка — модуль (за color map). Масштабується по ширині.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.w_keys = []  # список ключів по ходу для білих
-        self.b_keys = []  # список ключів по ходу для чорних
-        self.setMinimumSize(280, 120)
-
-    def set_data(self, w_keys, b_keys):
-        self.w_keys = list(w_keys)
-        self.b_keys = list(b_keys)
-        self.update()
-
-    def paintEvent(self, ev):
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(250, 250, 250))
-
-        w = self.width()
-        h = self.height()
-        pad = 8
-        lane_h = (h - pad * 3) // 3  # дві смуги + ряд для легенди
-        y_w = pad
-        y_b = pad + lane_h + pad
-
-        # Рамки lane’ів
-        pen_grid = QPen(QColor(230, 230, 230))
-        pen_grid.setWidth(1)
-        painter.setPen(pen_grid)
-        painter.drawRect(pad, y_w, w - pad*2, lane_h)
-        painter.drawRect(pad, y_b, w - pad*2, lane_h)
-
-        # Малюємо плитки
-        max_len = max(len(self.w_keys), len(self.b_keys), 1)
-        if max_len <= 0:
-            return
-        seg_w = max(1, (w - pad*2) // max_len)
-
-        def draw_lane(keys, y):
-            x = pad
-            for key in keys:
-                color = _COLOR.get(key, _COLOR["OTHER"])
-                painter.fillRect(QRect(x, y, seg_w, lane_h), color)
-                x += seg_w
-
-        draw_lane(self.w_keys, y_w)
-        draw_lane(self.b_keys, y_b)
-
-        # Підписи
-        painter.setPen(QPen(QColor(60, 60, 60)))
-        font = QFont()
-        font.setPointSize(9)
-        painter.setFont(font)
-        painter.drawText(pad, y_w - 2, "W")
-        painter.drawText(pad, y_b - 2, "B")
-
-        # Легенда (в одну лінію, обрізаємо якщо не влазить)
-        y_leg = y_b + lane_h + pad
-        x_leg = pad
-        for key in _REASON_PRIORITY + ["OTHER"]:
-            label = key
-            rect = QRect(x_leg, y_leg, 10, 10)
-            painter.fillRect(rect, _COLOR[key] if key in _COLOR else _COLOR["OTHER"])
-            painter.setPen(QPen(QColor(80, 80, 80)))
-            painter.drawRect(rect)
-            painter.drawText(x_leg + 14, y_leg + 10, label)
-            x_leg += 14 + painter.fontMetrics().horizontalAdvance(label) + 10
-            if x_leg > w - pad*2:
-                break
-
 
 class OverallUsageChart(QWidget):
     """Simple bar chart summarising module usage across multiple runs."""
@@ -159,7 +64,7 @@ class OverallUsageChart(QWidget):
 
         for name, count in items:
             bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
-            color = _COLOR.get(name, _COLOR["OTHER"])
+            color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
             painter.fillRect(QRect(pad, y, bar_w, bar_h), color)
             painter.setPen(QPen(QColor(60, 60, 60)))
             painter.drawRect(QRect(pad, y, bar_w, bar_h))
@@ -505,7 +410,7 @@ class ChessViewer(QWidget):
     def _extract_reason_key(self, reason: str) -> str:
         """
         Витягуємо «ключ модуля/тега» із reason:
-        - спочатку шукаємо токени з whitelist (_REASON_PRIORITY) у заданому порядку;
+        - спочатку шукаємо токени з whitelist (REASON_PRIORITY) у заданому порядку;
         - інакше беремо перший UPPER_CASE токен з рядка;
         - інакше 'OTHER'.
         """
@@ -513,7 +418,7 @@ class ChessViewer(QWidget):
             return "OTHER"
         up = reason.upper()
 
-        for tok in _REASON_PRIORITY:
+        for tok in REASON_PRIORITY:
             if tok in up:
                 return tok
 
