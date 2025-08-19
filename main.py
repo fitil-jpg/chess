@@ -17,6 +17,9 @@ import logging
 from typing import Dict, Tuple, List, Optional
 
 import chess
+import os
+import json
+from datetime import datetime
 
 from chess_ai.bot_agent import make_agent, get_agent_names
 from core.pst_trainer import update_from_board, update_from_history
@@ -192,6 +195,11 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
         start_game = time.time()
         board = chess.Board()
 
+        moves_log: List[str] = []
+        fens_log: List[str] = []
+        modules_w: List[str] = []
+        modules_b: List[str] = []
+
         # usage-лічильники — з нуля
         agent_reset_usage(white_agent)
         agent_reset_usage(black_agent)
@@ -220,6 +228,7 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
             move = agent.choose_move(board)
             if move is None:
                 break
+            reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else ""
 
             # --- ВСЕ, ЩО ПОТРЕБУЄ СТАРОЇ ПОЗИЦІЇ — РАХУЄМО ДО PUSH ---
             is_cap = board.is_capture(move)
@@ -233,6 +242,13 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
             except Exception:
                 # На всяк випадок, якщо агент повернув нелегальний Move
                 break
+
+            moves_log.append(san_before)
+            fens_log.append(board.fen())
+            if color_to_move == chess.WHITE:
+                modules_w.append(reason)
+            else:
+                modules_b.append(reason)
 
             # --- ПОДІЇ ПІСЛЯ PUSH ---
 
@@ -321,6 +337,22 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
             avg_L = l_sum / pos_count
             avg_L2 = l2_sum / pos_count
             logger.info(f"PERF: avg L={avg_L:.1f} | avg L^2={avg_L2:.1f} over {pos_count} positions")
+
+        os.makedirs("runs", exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        run_path = os.path.join("runs", f"{ts}.json")
+        with open(run_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "moves": moves_log,
+                    "fens": fens_log,
+                    "modules_w": modules_w,
+                    "modules_b": modules_b,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
     # Запис підсумків потоку — під Lock
     with STATS_LOCK:
