@@ -36,11 +36,14 @@ class MetricsManager:
         board = self.board_state
         white_attacked = chess.SquareSet()
         black_attacked = chess.SquareSet()
+        white_squares = {sq for sq, p in board.piece_map().items() if p.color == chess.WHITE}
+        black_squares = {sq for sq, p in board.piece_map().items() if p.color == chess.BLACK}
         for square, piece in board.piece_map().items():
+            attacks = board.attacks(square)
             if piece.color == chess.WHITE:
-                white_attacked |= board.attacks(square)
+                white_attacked |= attacks - white_squares
             else:
-                black_attacked |= board.attacks(square)
+                black_attacked |= attacks - black_squares
         return len(white_attacked) - len(black_attacked)
 
     def count_defended_pieces(self) -> int:
