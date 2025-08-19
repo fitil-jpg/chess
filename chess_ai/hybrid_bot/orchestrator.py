@@ -11,7 +11,7 @@ information is returned to aid visualisation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
 import chess
 
@@ -27,6 +27,8 @@ except Exception:  # pragma: no cover - rpy2 may be absent
 
 @dataclass
 class _Candidate:
+    """Container keeping intermediate scores for a single move."""
+
     move: chess.Move
     mcts: float
     ab: float
@@ -58,13 +60,22 @@ class HybridOrchestrator:
     #  Helpers
     # ------------------------------------------------------------------
     def _r_eval(self, board: chess.Board) -> float:
-        """Evaluate ``board`` using R evaluator if available."""
+        """Evaluate ``board`` using the optional R bridge if available."""
         if eval_board is not None:
             try:
                 return eval_board(board)
             except Exception:
+                # Fall back to the Python evaluator if the R call fails.
                 pass
         return evaluate_position(board)
+
+    @staticmethod
+    def _norm(vals: List[float]) -> List[float]:
+        """Normalise ``vals`` to ``[0, 1]`` with protection against constants."""
+        mn, mx = min(vals), max(vals)
+        if abs(mx - mn) < 1e-9:
+            return [0.5 for _ in vals]
+        return [(v - mn) / (mx - mn) for v in vals]
 
     # ------------------------------------------------------------------
     #  Public API
@@ -94,14 +105,8 @@ class HybridOrchestrator:
             candidates.append(_Candidate(move, node.q(), ab_score, r_val))
 
         # Normalise scores
-        def _norm(vals: List[float]) -> List[float]:
-            mn, mx = min(vals), max(vals)
-            if abs(mx - mn) < 1e-9:
-                return [0.5 for _ in vals]
-            return [(v - mn) / (mx - mn) for v in vals]
-
-        mcts_norms = _norm([c.mcts for c in candidates])
-        ab_norms = _norm([c.ab for c in candidates])
+        mcts_norms = self._norm([c.mcts for c in candidates])
+        ab_norms = self._norm([c.ab for c in candidates])
         for cand, m_n, a_n in zip(candidates, mcts_norms, ab_norms):
             cand.mcts_norm = m_n
             cand.ab_norm = a_n
