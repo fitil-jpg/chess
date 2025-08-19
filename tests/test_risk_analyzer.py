@@ -15,6 +15,15 @@ def test_risk_analyzer_detects_hanging_piece():
     assert not analyzer.is_risky(board, safe_move)
 
 
+def test_risk_analyzer_handles_hanging_and_safe_moves():
+    board = chess.Board("r3k2r/2n5/8/8/8/8/8/R3K2R w KQkq - 0 1")
+    analyzer = RiskAnalyzer()
+    risky = chess.Move.from_uci("a1a8")
+    safe = chess.Move.from_uci("h1h8")
+    assert analyzer.is_risky(board, risky)
+    assert not analyzer.is_risky(board, safe)
+
+
 def test_alpha_beta_prunes(monkeypatch):
     board = chess.Board()
     analyzer = RiskAnalyzer()
