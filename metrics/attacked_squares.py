@@ -1,15 +1,21 @@
 import chess
+from typing import Union
 
-def calculate_attacked_squares(piece: chess.Piece, board: chess.Board):
+
+def calculate_attacked_squares(square: Union[int, chess.Square], board: chess.Board) -> list[int]:
+    """Calculate squares attacked from ``square`` on ``board``.
+
+    Parameters
+    ----------
+    square:
+        Index or :class:`chess.Square` where the piece resides.
+    board:
+        The current :class:`chess.Board` instance.
+
+    Returns
+    -------
+    list[int]
+        Squares (as integers) that the piece attacks.
     """
-    Calculate all squares attacked by a given piece on the board.
-    :param piece: A chess.Piece instance
-    :param board: A chess.Board instance
-    :return: A list of squares (as integers) that the piece attacks
-    """
-    piece_square = next(
-        square for square in chess.SQUARES
-        if board.piece_at(square) == piece
-    )
-    attacked_squares = board.attacks(piece_square)
+    attacked_squares = board.attacks(square)
     return list(attacked_squares)
