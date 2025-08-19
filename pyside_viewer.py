@@ -153,6 +153,7 @@ class ChessViewer(QWidget):
         # Таймлайн застосованих модулів
         right_col.addWidget(QLabel("Usage timeline:"))
         self.timeline = UsageTimeline()
+        self.timeline.moveClicked.connect(self._on_timeline_click)
         right_col.addWidget(self.timeline)
 
         # Загальна діаграма використання модулів (нижня панель)
@@ -437,6 +438,11 @@ class ChessViewer(QWidget):
     def _update_usage_labels(self):
         self.lbl_usage_w.setText(f"Dynamic usage (W): {self._usage_labels_text(self.usage_w)}")
         self.lbl_usage_b.setText(f"Dynamic usage (B): {self._usage_labels_text(self.usage_b)}")
+
+    def _on_timeline_click(self, index: int, is_white: bool) -> None:
+        """Handle click on the usage timeline by reporting the move index."""
+        side = "W" if is_white else "B"
+        print(f"Timeline click: {side} move {index}")
 
     def _update_status(self, reason: str, feats: dict | None):
         self.lbl_module.setText(f"Модуль: {reason}")
