@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import chess
+import warnings
 
 try:  # pragma: no cover - optional dependency
     from rpy2 import robjects
@@ -22,11 +23,21 @@ def _ensure_loaded() -> None:
     if _loaded:
         return
     if robjects is None:
+        warnings.warn("rpy2 or R is not installed; R evaluation disabled.")
         raise RuntimeError("rpy2 is not installed")
     script = Path(__file__).with_name(f"{_FUNC_NAME}.R")
-    robjects.r["source"](str(script))
+    try:
+        robjects.r["source"](str(script))
+    except Exception as exc:
+        warnings.warn(f"Failed to source R script: {exc}")
+        raise RuntimeError("unable to source R evaluation script") from exc
     if _FUNC_NAME not in robjects.globalenv:
-        raise RuntimeError(f"R function '{_FUNC_NAME}' not found after sourcing")
+        warnings.warn(
+            f"R function '{_FUNC_NAME}' not found; check eval_position_complex.R"
+        )
+        raise RuntimeError(
+            f"R function '{_FUNC_NAME}' not found after sourcing"
+        )
     _loaded = True
 
 
