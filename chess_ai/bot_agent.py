@@ -831,7 +831,7 @@ class DynamicBot:
             return (mv, f"ENDGAME | {own_pieces} pcs | {rs}") if debug else (mv, "")
 
         # 7) Low mobility
-        mobility = sum(1 for _ in board.legal_moves)
+        mobility = board.legal_moves.count()
         if mobility < 8:
             mv, rs = self.random.choose_move(
                 board, context=context, evaluator=evaluator, debug=True
