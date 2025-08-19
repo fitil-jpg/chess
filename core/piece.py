@@ -25,14 +25,12 @@ class Piece:
         self.check_squares = set()
 
     def get_attacked_squares(self, board):
-        """Return squares this piece attacks.
+        """Return squares this piece attacks using python-chess helpers."""
 
-        The project currently does not model real chess movement, so this
-        placeholder simply returns an empty set.  It allows other modules –
-        notably :class:`BoardAnalyzer` – to query attack information without
-        raising ``AttributeError``.
-        """
-        return set()
+        if chess is None:
+            return set()
+        square = chess.square(self.position[1], self.position[0])
+        return set(board.attacks(square))
 
 class Pawn(Piece):
     def __init__(self, color, position):
@@ -43,20 +41,21 @@ class Rook(Piece):
         super().__init__(color, position)
     def update_defended(self, board):
         self.defended_moves.clear()
-        rook_sq = chess.square(self.position[1], self.position[0])
-        for sq in board.attacks(rook_sq):
+        self.attacked_moves.clear()
+        for sq in self.get_attacked_squares(board):
             piece = board.piece_at(sq)
             if piece and piece.color == self.color:
                 self.defended_moves.add(sq)
+            else:
+                self.attacked_moves.add(sq)
 
 class Knight(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
     def update_fork(self, board):
         self.fork_moves.clear()
-        knight_sq = chess.square(self.position[1], self.position[0])
         fork_targets = []
-        for sq in board.attacks(knight_sq):
+        for sq in self.get_attacked_squares(board):
             piece = board.piece_at(sq)
             if piece and piece.color != self.color and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.KING]:
                 fork_targets.append(sq)
@@ -72,8 +71,7 @@ class Queen(Piece):
         super().__init__(color, position)
     def update_hanging(self, board):
         self.hanging_targets.clear()
-        queen_sq = chess.square(self.position[1], self.position[0])
-        for sq in board.attacks(queen_sq):
+        for sq in self.get_attacked_squares(board):
             piece = board.piece_at(sq)
             if piece and piece.color != self.color:
                 defenders = board.attackers(not self.color, sq)
@@ -82,8 +80,9 @@ class Queen(Piece):
     def update_pin_and_check(self, board):
         self.pin_moves.clear()
         self.check_squares.clear()
+        attacks = self.get_attacked_squares(board)
         queen_sq = chess.square(self.position[1], self.position[0])
-        for sq in board.attacks(queen_sq):
+        for sq in attacks:
             piece = board.piece_at(sq)
             if piece and piece.color != self.color and piece.piece_type != chess.KING:
                 ksq = board.king(not self.color)
@@ -93,9 +92,9 @@ class Queen(Piece):
                     qr, qf = self.position
                     if rq == kr or rf == kf or abs(rq - kr) == abs(rf - kf):
                         self.pin_moves.add(sq)
-            king_sq = board.king(not self.color)
-            if king_sq and king_sq in board.attacks(queen_sq):
-                self.check_squares.add(king_sq)
+        king_sq = board.king(not self.color)
+        if king_sq and king_sq in attacks:
+            self.check_squares.add(king_sq)
 
 class King(Piece):
     def __init__(self, color, position):
