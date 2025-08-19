@@ -18,7 +18,7 @@ def test_chess_bot_takes_rook_over_check():
     board = _repetition_board()
     bot = ChessBot(chess.WHITE)
     evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator)
+    move, conf = bot.choose_move(board, evaluator=evaluator)
     assert move == chess.Move.from_uci('f7h8')
 
 
@@ -26,5 +26,5 @@ def test_dynamic_bot_takes_rook_over_check():
     board = _repetition_board()
     bot = DynamicBot(chess.WHITE)
     evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator, debug=False)
+    move, conf = bot.choose_move(board, evaluator=evaluator, debug=False)
     assert move == chess.Move.from_uci('f7h8')

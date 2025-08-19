@@ -40,6 +40,6 @@ def test_chess_bot_avoids_risky_trap(monkeypatch):
     monkeypatch.setattr(RiskAnalyzer, "is_risky", fake_is_risky)
     bot = ChessBot(chess.WHITE)
     evaluator = Evaluator(board)
-    move, conf = bot.choose_move(board, evaluator)
+    move, conf = bot.choose_move(board, evaluator=evaluator)
     assert move == safe
 

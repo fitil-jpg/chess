@@ -16,6 +16,10 @@ from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
 from core.evaluator import Evaluator
+from utils import GameContext
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 
 class FortifyBot:
@@ -37,16 +41,36 @@ class FortifyBot:
             self.W.update(weights)
 
     # -------------------- ПУБЛІЧНИЙ ІНТЕРФЕЙС --------------------
-    def choose_move(self, board: chess.Board, evaluator: Evaluator | None = None, debug: bool = True) -> Tuple[Optional[chess.Move], float]:
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ) -> Tuple[Optional[chess.Move], float]:
         """Return the move with the highest defensive score.
 
-        ``confidence`` corresponds to the internal fortification score based on
-        defense density and other heuristics.  When there are no legal moves or
-        it's not our turn, ``confidence`` is ``0.0`` and ``move`` is ``None``.
+        Parameters
+        ----------
+        board: chess.Board
+            Position to analyse.
+        context: GameContext | None, optional
+            Shared game context (unused).
+        evaluator: Evaluator | None, optional
+            Reusable evaluator.  A shared one is created if ``None``.
+        debug: bool, optional
+            Whether to print debugging information.
+
+        Returns
+        -------
+        tuple[Optional[chess.Move], float]
+            Chosen move and its fortification score.
         """
 
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
         if evaluator is None:
-            evaluator = Evaluator(board)
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
         if board.turn != self.color:
             return None, 0.0

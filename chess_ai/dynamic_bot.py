@@ -4,6 +4,10 @@ from .random_bot import RandomBot
 from .aggressive_bot import AggressiveBot
 from .fortify_bot import FortifyBot
 from core.evaluator import Evaluator
+from utils import GameContext
+
+
+_SHARED_EVALUATOR: Evaluator | None = None
 
 
 class DynamicBot:
@@ -23,11 +27,23 @@ class DynamicBot:
             ChessBot(color),
         ]
 
-    def choose_move(self, board, evaluator: Evaluator | None = None, debug: bool = False):
-        evaluator = evaluator or Evaluator(board)
+    def choose_move(
+        self,
+        board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = False,
+    ):
+        """Gather candidate moves from each sub-bot and choose the best."""
+
+        global _SHARED_EVALUATOR
+        evaluator = evaluator or _SHARED_EVALUATOR
+        if evaluator is None:
+            evaluator = _SHARED_EVALUATOR = Evaluator(board)
+
         proposals = []
         for agent in self.agents:
-            move, conf = agent.choose_move(board, evaluator)
+            move, conf = agent.choose_move(board, context=context, evaluator=evaluator)
             if move is not None:
                 proposals.append((conf, move))
 
