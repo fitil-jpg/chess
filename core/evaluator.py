@@ -40,9 +40,9 @@ class Evaluator:
         """
         board = board or self.board
         orig_turn = board.turn
-        white_moves = len(board.legal_moves)
+        white_moves = board.legal_moves.count()
         board.turn = not board.turn
-        black_moves = len(board.legal_moves)
+        black_moves = board.legal_moves.count()
         board.turn = orig_turn
         score = white_moves - black_moves
         self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
