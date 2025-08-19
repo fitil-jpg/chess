@@ -37,7 +37,8 @@ class ChessBot:
         board: chess.Board
             Position to analyse.
         context: GameContext | None, optional
-            Shared positional context, currently unused.
+            Shared positional context used for additional heuristics such as
+            material-deficit bonuses.
         evaluator: Evaluator | None, optional
             Reusable evaluator instance.  A shared one is created if ``None``.
         debug: bool, optional
@@ -57,7 +58,7 @@ class ChessBot:
         best_score = float("-inf")
         best_moves = []
         for move in board.legal_moves:
-            score, _ = self.evaluate_move(board, move)
+            score, _ = self.evaluate_move(board, move, context)
             tmp = board.copy(stack=False)
             tmp.push(move)
             score += evaluator.position_score(tmp, self.color)
@@ -69,7 +70,7 @@ class ChessBot:
         move = random.choice(best_moves) if best_moves else None
         return move, float(best_score if best_moves else 0.0)
 
-    def evaluate_move(self, board, move):
+    def evaluate_move(self, board, move, context: GameContext | None = None):
         if self.risk_analyzer.is_risky(board, move):
             return float('-inf'), "risky move"
 
@@ -120,6 +121,10 @@ class ChessBot:
             if target_piece and from_piece:
                 gain = PIECE_VALUES[target_piece.piece_type] - PIECE_VALUES[from_piece.piece_type]
                 score += gain
+                if context and context.material_diff < 0:
+                    bonus = abs(context.material_diff) * 10
+                    score += bonus
+                    reasons.append(f"material deficit capture bonus (+{bonus})")
                 defenders = board.attackers(not board.turn, move.to_square)
                 if not defenders:
                     score += 100
