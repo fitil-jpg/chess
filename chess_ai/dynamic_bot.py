@@ -79,7 +79,7 @@ class DynamicBot:
 
         for agent, weight in self.agents:
             move, conf = agent.choose_move(
-                board, context=context, evaluator=evaluator
+                board, context=context, evaluator=evaluator, debug=debug
             )
             if move is None:
                 continue
