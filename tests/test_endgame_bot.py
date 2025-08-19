@@ -16,14 +16,14 @@ def test_check_bonus_scaled_by_material():
         board,
         move,
         enemy_king,
-        GameContext(material_diff=0, mobility=0, king_safety=0),
+        GameContext(),
     )
     random.seed(0)
     ahead_score, _ = bot.evaluate_move(
         board,
         move,
         enemy_king,
-        GameContext(material_diff=2, mobility=0, king_safety=0),
+        GameContext(material_diff=2),
     )
 
     assert ahead_score > base_score
