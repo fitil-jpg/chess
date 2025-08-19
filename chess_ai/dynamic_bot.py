@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import Dict, List, Tuple
+
+import chess
+
+from .aggressive_bot import AggressiveBot
 from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
-from .random_bot import RandomBot
-from .aggressive_bot import AggressiveBot
 from .fortify_bot import FortifyBot
+from .random_bot import RandomBot
 from core.evaluator import Evaluator
 from utils import GameContext
 
@@ -11,21 +18,29 @@ _SHARED_EVALUATOR: Evaluator | None = None
 
 
 class DynamicBot:
-    """Meta-agent that gathers suggestions from all sub-bots.
+    """Meta-agent that aggregates suggestions from registered sub-bots.
 
-    Each sub-bot returns ``(move, confidence)``.  DynamicBot simply chooses the
-    move with the highest reported confidence.
+    Each registered agent is paired with a weight.  When choosing a move the
+    confidence of every agent is multiplied by its weight and accumulated per
+    move.  The move with the highest total score is returned.
     """
 
-    def __init__(self, color: bool):
+    def __init__(self, color: bool, *, weights: Dict[str, float] | None = None):
         self.color = color
-        self.agents = [
-            AggressiveBot(color),
-            FortifyBot(color),
-            EndgameBot(color),
-            RandomBot(color),
-            ChessBot(color),
-        ]
+        self.agents: List[Tuple[object, float]] = []
+        weights = weights or {}
+
+        # Register default agents with provided weights (fallback → 1.0)
+        self.register_agent(AggressiveBot(color), weights.get("aggressive", 1.0))
+        self.register_agent(FortifyBot(color), weights.get("fortify", 1.0))
+        self.register_agent(EndgameBot(color), weights.get("endgame", 1.0))
+        self.register_agent(RandomBot(color), weights.get("random", 1.0))
+        self.register_agent(ChessBot(color), weights.get("center", 1.0))
+
+    def register_agent(self, agent: object, weight: float = 1.0) -> None:
+        """Register a sub-agent with an optional weight."""
+
+        self.agents.append((agent, weight))
 
     def choose_move(
         self,
@@ -41,16 +56,29 @@ class DynamicBot:
         if evaluator is None:
             evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
-        proposals = []
-        for agent in self.agents:
-            move, conf = agent.choose_move(board, context=context, evaluator=evaluator)
-            if move is not None:
-                proposals.append((conf, move))
+        scores: Dict[chess.Move, float] = defaultdict(float)
+        debug_contrib: Dict[chess.Move, List[str]] = defaultdict(list)
 
-        if not proposals:
+        for agent, weight in self.agents:
+            move, conf = agent.choose_move(board, context=context, evaluator=evaluator)
+            if move is None:
+                continue
+            score = conf * weight
+            scores[move] += score
+            if debug:
+                debug_contrib[move].append(
+                    f"{type(agent).__name__}: conf={conf:.3f} w={weight:.3f} → {score:.3f}"
+                )
+
+        if not scores:
             return None, 0.0
 
-        conf, move = max(proposals, key=lambda x: x[0])
+        move = max(scores.items(), key=lambda kv: kv[1])[0]
+        total = scores[move]
         if debug:
-            print(f"DynamicBot selected {move} with confidence {conf}")
-        return move, conf
+            print("DynamicBot contributions:")
+            for mv, lines in debug_contrib.items():
+                for line in lines:
+                    print(f"  {mv}: {line}")
+            print(f"DynamicBot selected {move} with score {total:.3f}")
+        return move, total
