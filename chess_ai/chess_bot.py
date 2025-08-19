@@ -1,5 +1,4 @@
 import chess
-import random
 
 from core.evaluator import Evaluator
 from utils import GameContext
@@ -71,7 +70,10 @@ class ChessBot:
                 best_moves = [move]
             elif score == best_score:
                 best_moves.append(move)
-        move = random.choice(best_moves) if best_moves else None
+        # Pick a deterministic move to keep tests stable.  When multiple
+        # moves share the best score, choose the one with the smallest UCI
+        # string so that results are reproducible.
+        move = min(best_moves, key=lambda m: m.uci()) if best_moves else None
         return move, float(best_score if best_moves else 0.0)
 
     def evaluate_move(self, board, move, context: GameContext | None = None):
@@ -158,5 +160,5 @@ class ChessBot:
         if move.promotion:
             score += 90
             reasons.append("promotion")
-        score += random.uniform(0, 0.2)
+        # Avoid random noise to make evaluations deterministic for tests.
         return score, " | ".join(reasons)

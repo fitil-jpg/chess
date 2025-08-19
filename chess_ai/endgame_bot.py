@@ -1,5 +1,4 @@
 import chess
-import random
 
 from core.evaluator import Evaluator
 from utils import GameContext
@@ -56,7 +55,9 @@ class EndgameBot:
                 best_moves = [move]
             elif score == best_score:
                 best_moves.append(move)
-        move = random.choice(best_moves) if best_moves else None
+        # Choose a deterministic best move to avoid flaky tests.  Ties are
+        # broken by the move's UCI string.
+        move = min(best_moves, key=lambda m: m.uci()) if best_moves else None
         return move, float(best_score if best_moves else 0.0)
 
     def evaluate_move(
@@ -90,5 +91,5 @@ class EndgameBot:
                 score += 20
                 if not reason:
                     reason = "closer to king"
-        score += random.uniform(0, 0.2)
+        # Make evaluation deterministic by avoiding random jitter.
         return score, reason
