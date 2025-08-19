@@ -28,3 +28,16 @@ move, score = bot.choose_move(board, debug=True)
 
 The chosen move is the one with the highest total weighted confidence.
 
+## HybridBot demo
+
+A small demonstration script shows the hybrid MCTS/alpha-beta engine in action.
+Run it directly from the repository root:
+
+```bash
+python tests/run_hybrid_demo.py
+```
+
+The script starts from the initial position, lets the hybrid bot play a few
+plies and prints the chosen move, raw MCTS/alpha-beta scores and the time spent
+searching each move.
+
