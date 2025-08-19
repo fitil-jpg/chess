@@ -78,9 +78,14 @@ class DynamicBot:
         debug_contrib: Dict[chess.Move, List[str]] = defaultdict(list)
 
         for agent, weight in self.agents:
-            move, conf = agent.choose_move(
-                board, context=context, evaluator=evaluator, debug=debug
-            )
+            if debug:
+                move, conf = agent.choose_move(
+                    board, context=context, evaluator=evaluator, debug=True
+                )
+            else:
+                move, conf = agent.choose_move(
+                    board, context=context, evaluator=evaluator
+                )
             if move is None:
                 continue
             score = conf * weight
