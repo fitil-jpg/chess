@@ -20,8 +20,10 @@ _SHARED_EVALUATOR: Evaluator | None = None
 
 
 class AggressiveBot:
-    def __init__(self, color: bool):
+    def __init__(self, color: bool, capture_gain_factor: float = 1.5):
         self.color = color
+        # Scaling applied to capture gains when we're behind in material.
+        self.capture_gain_factor = capture_gain_factor
 
     def choose_move(
         self,
@@ -67,6 +69,14 @@ class AggressiveBot:
                 attacker = board.piece_at(move.from_square)
                 if captured and attacker:
                     gain = piece_value(captured) - piece_value(attacker)
+                    # Encourage trades when behind by boosting capture gains.
+                    if context and context.material_diff < 0:
+                        gain *= self.capture_gain_factor
+                        if debug:
+                            print(
+                                f"AggressiveBot: material deficit, "
+                                f"scaled capture gain to {gain:.1f}"
+                            )
 
             tmp = board.copy(stack=False)
             tmp.push(move)
