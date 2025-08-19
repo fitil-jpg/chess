@@ -16,6 +16,11 @@ import chess
 from core.evaluator import Evaluator
 from utils import GameContext
 
+try:
+    from .hybrid_bot import HybridOrchestrator  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    HybridOrchestrator = None  # type: ignore
+
 __all__ = [
     "BotAgent",
     "BotAgentLegacy",
@@ -25,6 +30,7 @@ __all__ = [
     "DynamicBot",
     "FortifyBot",
     "AggressiveBot",
+    "HybridBot",
     "ChessBot",
     "EndgameBot",
     "RandomBot",
@@ -87,6 +93,45 @@ except Exception:
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "LOW | RandomBot(STUB): random"
+
+
+class HybridBot:
+    """Bot that blends MCTS and alpha-beta via :class:`HybridOrchestrator`."""
+
+    def __init__(
+        self,
+        color: bool,
+        ab_depth: int = 3,
+        mcts_simulations: int = 64,
+        top_k: int = 3,
+        lam: float = 0.5,
+    ) -> None:
+        self.color = color
+        if HybridOrchestrator is None:
+            self.impl = None
+        else:
+            self.impl = HybridOrchestrator(
+                color,
+                ab_depth=ab_depth,
+                mcts_simulations=mcts_simulations,
+                top_k=top_k,
+                lam=lam,
+            )
+
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ):
+        if self.impl is None:
+            moves = list(board.legal_moves)
+            m = random.choice(moves) if moves else None
+            return m, "HYBRID(STUB): random"
+        move, diag = self.impl.choose_move(board)
+        reason = f"HYBRID | {diag.get('chosen')}" if isinstance(diag, dict) else "HYBRID"
+        return move, reason
 
 # ---------- Cow Opening (окремий планер) ----------
 class CowOpeningPlanner:
@@ -931,6 +976,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "DynamicBot":        _factory(DynamicBot),
     "FortifyBot":        _factory(FortifyBot),
     "AggressiveBot":     _factory(AggressiveBot),
+    "HybridBot":         _factory(HybridBot),
     "ChessBot":          _factory(ChessBot),
     "EndgameBot":        _factory(EndgameBot),
     "RandomBot":         _factory(RandomBot),
