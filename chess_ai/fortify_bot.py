@@ -16,6 +16,7 @@ from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
 from core.evaluator import Evaluator
+from core.constants import KING_SAFETY_THRESHOLD
 from utils import GameContext
 
 
@@ -47,6 +48,7 @@ class FortifyBot:
         context: GameContext | None = None,
         evaluator: Evaluator | None = None,
         debug: bool = True,
+        king_safety_threshold: int = KING_SAFETY_THRESHOLD,
     ) -> Tuple[Optional[chess.Move], float]:
         """Return the move with the highest defensive score.
 
@@ -66,6 +68,17 @@ class FortifyBot:
         tuple[Optional[chess.Move], float]
             Chosen move and its fortification score.
         """
+
+        if context and context.king_safety >= king_safety_threshold:
+            if debug:
+                print(
+                    f"FortifyBot: king safety {context.king_safety} ≥ {king_safety_threshold} – skipping fortification"
+                )
+            return None, 0.0
+        elif debug and context:
+            print(
+                f"FortifyBot: king safety {context.king_safety} < {king_safety_threshold} – evaluating moves"
+            )
 
         global _SHARED_EVALUATOR
         evaluator = evaluator or _SHARED_EVALUATOR
@@ -132,6 +145,11 @@ class FortifyBot:
         before_thin_self: int,
         evaluator: Evaluator,
     ) -> Tuple[float, Dict[str, Any]]:
+        """Return the defensive score of ``m`` using ``evaluator``.
+
+        The ``evaluator`` instance is reused across moves to avoid
+        repeatedly constructing :class:`Evaluator` objects.
+        """
         tmp = board.copy(stack=False)
         tmp.push(m)
 
