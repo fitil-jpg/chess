@@ -7,12 +7,36 @@ from core.evaluator import Evaluator
 
 
 def test_risk_analyzer_detects_hanging_piece():
-    board = chess.Board("4k3/8/8/1p6/8/8/8/3QK3 w - - 0 1")
+    board = chess.Board("4k3/8/8/1pn5/8/1P6/8/3QK3 w - - 0 1")
     analyzer = RiskAnalyzer()
     risky_move = chess.Move.from_uci("d1a4")
     safe_move = chess.Move.from_uci("d1e2")
     assert analyzer.is_risky(board, risky_move)
     assert not analyzer.is_risky(board, safe_move)
+
+
+def test_alpha_beta_prunes(monkeypatch):
+    board = chess.Board()
+    analyzer = RiskAnalyzer()
+    m1 = chess.Move.from_uci("e2e4")
+    m2 = chess.Move.from_uci("d2d4")
+
+    class Gen:
+        def __iter__(self):
+            return iter([m1, m2])
+
+    board.legal_moves = Gen()
+    original_push = board.push
+
+    def fake_push(move):
+        if move == m2:
+            raise AssertionError("alpha-beta failed to prune")
+        return original_push(move)
+
+    board.push = fake_push
+
+    result = analyzer._search(board, 1, True, board.turn, alpha=-float("inf"), beta=0)
+    assert result == 0
 
 
 def test_decision_engine_avoids_risky_trap(monkeypatch):
