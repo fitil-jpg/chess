@@ -25,7 +25,8 @@ class EndgameBot:
         board: chess.Board
             Position to analyse.
         context: GameContext | None, optional
-            Shared game context (unused in this bot).
+            Shared game context.  ``material_diff`` and ``king_safety`` are
+            used to slightly tweak the heuristics.
         evaluator: Evaluator | None, optional
             Reusable evaluator instance.  A shared one is created if ``None``.
         debug: bool, optional
@@ -46,7 +47,7 @@ class EndgameBot:
         best_moves = []
         enemy_king_sq = board.king(not self.color)
         for move in board.legal_moves:
-            score, _ = self.evaluate_move(board, move, enemy_king_sq)
+            score, _ = self.evaluate_move(board, move, enemy_king_sq, context)
             tmp = board.copy(stack=False)
             tmp.push(move)
             score += evaluator.position_score(tmp, self.color)
@@ -58,7 +59,13 @@ class EndgameBot:
         move = random.choice(best_moves) if best_moves else None
         return move, float(best_score if best_moves else 0.0)
 
-    def evaluate_move(self, board, move, enemy_king_sq):
+    def evaluate_move(
+        self,
+        board: chess.Board,
+        move: chess.Move,
+        enemy_king_sq: int,
+        context: GameContext | None = None,
+    ):
         score = 0
         reason = ""
         temp = board.copy()
@@ -66,12 +73,15 @@ class EndgameBot:
         if temp.is_check():
             from_sq = move.to_square
             defenders = temp.attackers(self.color, from_sq)
-            if defenders:
-                score += 100
-                reason = "check, protected"
-            else:
-                score += 50
-                reason = "check"
+            bonus = 100 if defenders else 50
+            if context:
+                # Reward checks more when ahead in material and slightly
+                # penalize if our own king is exposed.
+                if context.material_diff > 0:
+                    bonus += context.material_diff * 10
+                bonus += context.king_safety  # negative values lower the bonus
+            score += bonus
+            reason = "check, protected" if defenders else "check"
         piece = board.piece_at(move.from_square)
         if piece and piece.piece_type in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
             before = chess.square_distance(move.from_square, enemy_king_sq)
