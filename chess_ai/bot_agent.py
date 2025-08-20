@@ -31,6 +31,7 @@ __all__ = [
     "FortifyBot",
     "AggressiveBot",
     "HybridBot",
+    "KingValueBot",
     "ChessBot",
     "EndgameBot",
     "RandomBot",
@@ -131,6 +132,55 @@ class HybridBot:
             return m, "HYBRID(STUB): random"
         move, diag = self.impl.choose_move(board)
         reason = f"HYBRID | {diag.get('chosen')}" if isinstance(diag, dict) else "HYBRID"
+        return move, reason
+
+
+class KingValueBot:
+    """MCTS/alpha-beta bot using dynamic king coefficient evaluation.
+
+    This bot delegates move selection to :class:`HybridOrchestrator` which
+    blends batched Monte Carlo tree search visit counts with alpha-beta scores.
+    The underlying evaluation function employs a dynamic king value, making the
+    king's worth depend on surrounding material.  Users can configure the
+    number of MCTS simulations, the depth of the validating alpha-beta search
+    and the λ-mix parameter controlling how the two scores are combined.
+    """
+
+    def __init__(
+        self,
+        color: bool,
+        ab_depth: int = 3,
+        mcts_simulations: int = 64,
+        top_k: int = 3,
+        lam: float = 0.5,
+    ) -> None:
+        self.color = color
+        if HybridOrchestrator is None:
+            self.impl = None
+        else:
+            self.impl = HybridOrchestrator(
+                color,
+                ab_depth=ab_depth,
+                mcts_simulations=mcts_simulations,
+                top_k=top_k,
+                lam=lam,
+            )
+
+    def choose_move(
+        self,
+        board: chess.Board,
+        context: GameContext | None = None,
+        evaluator: Evaluator | None = None,
+        debug: bool = True,
+    ):
+        if self.impl is None:
+            moves = list(board.legal_moves)
+            m = random.choice(moves) if moves else None
+            return m, "KINGVAL(STUB): random"
+        move, diag = self.impl.choose_move(board)
+        reason = (
+            f"KINGVAL | {diag.get('chosen')}" if isinstance(diag, dict) else "KINGVAL"
+        )
         return move, reason
 
 # ---------- Cow Opening (окремий планер) ----------
@@ -977,6 +1027,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "FortifyBot":        _factory(FortifyBot),
     "AggressiveBot":     _factory(AggressiveBot),
     "HybridBot":         _factory(HybridBot),
+    "KingValueBot":     _factory(KingValueBot),
     "ChessBot":          _factory(ChessBot),
     "EndgameBot":        _factory(EndgameBot),
     "RandomBot":         _factory(RandomBot),
