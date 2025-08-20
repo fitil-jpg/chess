@@ -65,11 +65,14 @@ class RiskAnalyzer:
         if depth == 0 or board.is_game_over():
             stand_pat = self._material(board, color)
             # Quiescence: search further only through captures
-            for mv in board.legal_moves:
+            legal = board.generate_legal_moves()
+            while beta > alpha:
+                try:
+                    mv = next(legal)
+                except StopIteration:
+                    break
                 if not board.is_capture(mv):
                     continue
-                if beta <= alpha:
-                    break
                 board.push(mv)
                 score = self._search(board, 0, not maximizing, color, alpha, beta)
                 board.pop()
@@ -87,8 +90,11 @@ class RiskAnalyzer:
 
         if maximizing:
             best = -float("inf")
-            for mv in board.legal_moves:
-                if beta <= alpha:
+            legal = board.generate_legal_moves()
+            while beta > alpha:
+                try:
+                    mv = next(legal)
+                except StopIteration:
                     break
                 board.push(mv)
                 to_sq = mv.to_square
@@ -108,8 +114,11 @@ class RiskAnalyzer:
             return best
         else:
             best = float("inf")
-            for mv in board.legal_moves:
-                if beta <= alpha:
+            legal = board.generate_legal_moves()
+            while beta > alpha:
+                try:
+                    mv = next(legal)
+                except StopIteration:
                     break
                 board.push(mv)
                 to_sq = mv.to_square
