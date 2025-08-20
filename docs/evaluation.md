@@ -26,9 +26,12 @@ To enable these features install the following dependencies in order:
    ```
 
 After installing these packages the engine can call the R function `eval_position_complex` for advanced evaluation.
-This function accepts an optional ``enemy_material`` argument, a mapping with
-``"white"`` and ``"black"`` keys that scales king-attack penalties when the
-opponent has lost major pieces such as the queen.
+This heuristic scores king safety by counting attacks on squares around the
+king, how many of those squares are attacked multiple times, and whether the
+king is in check or even double check.  Each component carries its own weight.
+The overall penalty can be scaled via an optional ``enemy_material`` argument, a
+mapping with ``"white"`` and ``"black"`` keys that reduces the impact of king
+attacks when the opponent has lost major pieces such as the queen.
 
 ## Pawn structure helpers
 
