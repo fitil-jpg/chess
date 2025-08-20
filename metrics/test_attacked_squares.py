@@ -34,3 +34,4 @@ def test_missing_piece() -> None:
 
     with pytest.raises(ValueError):
         calculate_attacked_squares(square, board)
+
