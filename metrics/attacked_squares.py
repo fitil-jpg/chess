@@ -29,8 +29,10 @@ def calculate_attacked_squares(board: chess.Board, square: int) -> List[int]:
         If there is no piece on ``square``.
     """
 
-    if board.piece_at(square) is None:
+    piece = board.piece_at(square)
+    if piece is None or square not in board.pieces(piece.piece_type, piece.color):
         raise ValueError(f"no piece at square {square}")
 
-    attacked_squares: chess.SquareSet = board.attacks(square)
+    piece_square = square
+    attacked_squares: chess.SquareSet = board.attacks(piece_square)
     return list(attacked_squares)
