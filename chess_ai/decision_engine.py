@@ -6,6 +6,7 @@ import chess
 
 from core.quiescence import quiescence
 from .risk_analyzer import RiskAnalyzer
+from .piece_values import dynamic_piece_value
 
 
 class DecisionEngine:
@@ -29,18 +30,10 @@ class DecisionEngine:
 
     def _evaluate(self, board: chess.Board) -> int:
         """Проста матеріальна оцінка позиції з точки зору гравця, який ходить."""
-        values = {
-            chess.PAWN: 100,
-            chess.KNIGHT: 300,
-            chess.BISHOP: 300,
-            chess.ROOK: 500,
-            chess.QUEEN: 900,
-            chess.KING: 0,
-        }
         score = 0
-        for piece, val in values.items():
-            score += len(board.pieces(piece, board.turn)) * val
-            score -= len(board.pieces(piece, not board.turn)) * val
+        for _, piece in board.piece_map().items():
+            val = dynamic_piece_value(piece, board)
+            score += val if piece.color == board.turn else -val
         return score * self.material_weight
 
     def search(self, board: chess.Board, depth: int,
@@ -89,13 +82,7 @@ class DecisionEngine:
             capture_val = 0
             if board.is_capture(move):
                 target = board.piece_at(move.to_square)
-                capture_val = {
-                    chess.PAWN: 100,
-                    chess.KNIGHT: 300,
-                    chess.BISHOP: 300,
-                    chess.ROOK: 500,
-                    chess.QUEEN: 900,
-                }.get(target.piece_type, 0) if target else 0
+                capture_val = dynamic_piece_value(target, board) if target else 0
             board.push(move)
             score = -self.search(board, self.base_depth + extension)
             board.pop()
