@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import chess
 
+from ..piece_values import dynamic_piece_value
+
 # Basic piece values in centipawns.  The king's base value is determined
 # dynamically at evaluation time.
 PIECE_VALUES = {
@@ -19,29 +21,23 @@ PIECE_VALUES = {
 def calculate_king_value(board: chess.Board, color: chess.Color | None = None) -> int:
     """Return a material based value for the king.
 
-    The value is the weighted sum of the side's remaining material using the
-    formula ``p*8 + b*2 + n*2 + r*2 + q`` where ``p`` is the number of pawns,
-    ``b`` bishops, ``n`` knights, ``r`` rooks and ``q`` queens.  If the
-    opponent has no queen a small bonus is added as the king becomes slightly
-    safer.  The returned value is expressed in centipawns.
+    The king's value is defined as the sum of its allied pieces' dynamic
+    values.  If the opponent has lost major material (e.g. the queen), the
+    king becomes relatively safer and its value increases slightly.
     """
 
     if color is None:
         color = board.turn
 
-    p = len(board.pieces(chess.PAWN, color))
-    b = len(board.pieces(chess.BISHOP, color))
-    n = len(board.pieces(chess.KNIGHT, color))
-    r = len(board.pieces(chess.ROOK, color))
-    q = len(board.pieces(chess.QUEEN, color))
+    value = 0
+    for _, piece in board.piece_map().items():
+        if piece.color == color and piece.piece_type != chess.KING:
+            value += dynamic_piece_value(piece, board)
 
-    value = p * 8 + b * 2 + n * 2 + r * 2 + q
-
-    # Slightly increase the value of the king when the opponent lacks a queen.
     if not board.pieces(chess.QUEEN, not color):
-        value += 5
+        value = int(value * 1.1)
 
-    return value * 100
+    return value
 
 
 def evaluate_position(board: chess.Board) -> float:
