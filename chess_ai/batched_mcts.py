@@ -118,8 +118,6 @@ class BatchedMCTS:
         legal = list(board.legal_moves)
         if not legal:
             return None, root
-        # Expand root on first call
-        self._expand(root, board, add_dirichlet)
 
         sims_done = 0
         while sims_done < n_simulations:
@@ -144,13 +142,15 @@ class BatchedMCTS:
                 batch.append(node)
                 batch_boards.append(b)
                 batch_paths.append(path)
+                if node is root:
+                    break
             # ----------------------------------------------------------
             policies_values = self.net.predict_many(batch_boards)
             for leaf, (policy, value), path, b in zip(
                 batch, policies_values, batch_paths, batch_boards
             ):
                 # Expansion of leaf
-                if not b.is_game_over():
+                if not b.is_game_over() and not leaf.children:
                     legal_moves = list(b.legal_moves)
                     priors = [policy.get(m, 0.0) for m in legal_moves]
                     tot = sum(priors)
@@ -158,6 +158,12 @@ class BatchedMCTS:
                         priors = [1.0 / len(legal_moves)] * len(legal_moves)
                     else:
                         priors = [p / tot for p in priors]
+                    if leaf is root and add_dirichlet:
+                        noise = _dirichlet(self.dirichlet_alpha, len(legal_moves))
+                        priors = [
+                            (1 - self.epsilon) * p + self.epsilon * n
+                            for p, n in zip(priors, noise)
+                        ]
                     for m, p in zip(legal_moves, priors):
                         nb = b.copy()
                         nb.push(m)

@@ -48,10 +48,10 @@ def test_search_batch_calls_net_and_returns_move(n_simulations, batch_size):
         temperature=0.0,
     )
     assert move in board.legal_moves
-    expected_calls = 1 + math.ceil(n_simulations / batch_size)
+    expected_calls = 1 + math.ceil((n_simulations - 1) / batch_size)
     assert net.calls == expected_calls
     assert root_after.n == n_simulations
-    assert sum(child.n for child in root_after.children.values()) == n_simulations
+    assert sum(child.n for child in root_after.children.values()) == n_simulations - 1
 
 
 def test_choose_move_one_shot_uses_policy():
