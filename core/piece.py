@@ -88,10 +88,14 @@ class Rook(Piece):
         self.defended_moves.clear()
         self.attacked_moves.clear()
 
-        attacked = self.get_attacked_squares(board)
-        defended = self.get_defended_squares(board)
-        self.defended_moves.update(defended)
-        self.attacked_moves.update(attacked - defended)
+        for sq in self.get_attacked_squares(board):
+            piece = board.piece_at(sq)
+            if piece is None:
+                continue
+            if piece.color == self.color:
+                self.defended_moves.add(sq)
+            else:
+                self.attacked_moves.add(sq)
 
 class Knight(Piece):
     def __init__(self, color, position):
