@@ -52,10 +52,10 @@ class MetricsManager:
         white = black = 0
         for square, piece in board.piece_map().items():
             if piece.color == chess.WHITE:
-                if board.is_attacked_by(chess.WHITE, square):
+                if board.attackers(chess.WHITE, square):
                     white += 1
             else:
-                if board.is_attacked_by(chess.BLACK, square):
+                if board.attackers(chess.BLACK, square):
                     black += 1
         return white - black
 
@@ -72,9 +72,9 @@ class MetricsManager:
                     white += 1
                 else:
                     black += 1
-            if board.is_attacked_by(chess.WHITE, sq):
+            if board.attackers(chess.WHITE, sq):
                 white += 1
-            if board.is_attacked_by(chess.BLACK, sq):
+            if board.attackers(chess.BLACK, sq):
                 black += 1
         return white - black
 
@@ -92,7 +92,7 @@ class MetricsManager:
                 piece = board.piece_at(sq)
                 if piece and piece.color == enemy:
                     danger += 1
-                elif board.is_attacked_by(enemy, sq):
+                elif board.attackers(enemy, sq):
                     danger += 1
             return danger
 
