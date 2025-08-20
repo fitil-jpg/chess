@@ -9,51 +9,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
 )
-from PySide6.QtGui import QPainter, QColor, QPen
-from PySide6.QtCore import QRect
 
 from ui.mini_board import MiniBoard
 from ui.usage_timeline import UsageTimeline
+from ui.usage_pie import UsagePie
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
-from utils.module_colors import MODULE_COLORS
-
-
-class OverallUsageChart(QWidget):
-    """Simple bar chart summarising module usage across multiple runs."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.counts = {}
-        self.setMinimumSize(280, 150)
-
-    def set_data(self, counts):
-        self.counts = dict(counts)
-        self.update()
-
-    def paintEvent(self, ev):  # pragma: no cover - GUI drawing
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(250, 250, 250))
-        if not self.counts:
-            return
-
-        w = self.width()
-        pad = 8
-        bar_h = 14
-        y = pad
-        max_count = max(self.counts.values())
-        items = sorted(self.counts.items(), key=lambda kv: (-kv[1], kv[0]))
-
-        for name, count in items:
-            bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
-            color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
-            painter.fillRect(QRect(pad, y, bar_w, bar_h), color)
-            painter.setPen(QPen(QColor(60, 60, 60)))
-            painter.drawRect(QRect(pad, y, bar_w, bar_h))
-            painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
-            y += bar_h + pad
-            if y + bar_h > self.height():
-                break
 
 
 class RunViewer(QWidget):
@@ -103,13 +64,14 @@ class RunViewer(QWidget):
         top.addLayout(centre)
         top.addLayout(right)
 
-        # --- Bottom: overall usage chart ---
-        self.overall_chart = OverallUsageChart()
-        self.overall_chart.set_data(aggregate_module_usage(self.runs))
+        # --- Bottom: overall usage pie ---
+        self.usage_pie = UsagePie()
+        self.usage_pie.set_counts(aggregate_module_usage(self.runs))
 
         layout = QVBoxLayout(self)
         layout.addLayout(top)
-        layout.addWidget(self.overall_chart)
+        layout.addWidget(QLabel("Overall module usage"))
+        layout.addWidget(self.usage_pie)
 
         if self.runs:
             self.run_list.setCurrentRow(0)
@@ -128,7 +90,7 @@ class RunViewer(QWidget):
             label = f"{game_id} ({result})" if result else game_id
             self.run_list.addItem(label)
 
-        self.overall_chart.set_data(aggregate_module_usage(self.runs))
+        self.usage_pie.set_counts(aggregate_module_usage(self.runs))
 
         if not self.runs:
             self._on_run_selected(-1)
