@@ -1,18 +1,19 @@
 """HybridBot demonstration script.
 
 Runs a few plies from the initial position with :class:`HybridBot` and prints
-basic diagnostics for each move.  Vendor paths are added to ``sys.path`` so the
-bundled dependencies are used when the script is executed directly.
+basic diagnostics for each move.  Vendored dependencies are configured
+automatically so the bundled libraries are used when executed directly.
 """
 
 import os
 import sys
 import time
 
+# Ensure project root is importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "vendors"))
-)
+
+# Configure vendored packages
+import vendors.setup_path  # noqa: F401
 
 import chess
 
