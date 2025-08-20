@@ -29,7 +29,11 @@ class RunSelectorWindow(QWidget):
         for run in self.runs:
             game_id = run.get("game_id", "<unknown>")
             result: str | None = run.get("result")
-            label = f"{game_id} ({result})" if result else game_id
+            label = (
+                f"{game_id} ({result})"
+                if result and result != "*"
+                else game_id
+            )
             self.list_widget.addItem(label)
         self.list_widget.currentRowChanged.connect(self._on_run_selected)
 
