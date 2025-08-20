@@ -348,6 +348,7 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                     "fens": fens_log,
                     "modules_w": modules_w,
                     "modules_b": modules_b,
+                    "result": res,
                 },
                 f,
                 ensure_ascii=False,
