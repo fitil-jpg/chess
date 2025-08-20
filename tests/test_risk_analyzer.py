@@ -40,7 +40,7 @@ def test_alpha_beta_prunes(monkeypatch):
             raise AssertionError("alpha-beta failed to prune")
         return original_push(move)
 
-    board.push = fake_push
+    monkeypatch.setattr(board, "push", fake_push)
 
     result = analyzer._search(board, 1, True, board.turn, alpha=-float("inf"), beta=0)
     assert result == 0
