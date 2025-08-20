@@ -6,14 +6,16 @@ from pathlib import Path
 from typing import Mapping
 
 import chess
-import warnings
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency
     from rpy2 import robjects
 except Exception:  # rpy2 may be missing in lightweight environments
     robjects = None  # type: ignore
-    warnings.warn(
-        "R runtime or rpy2 is not available; install them to enable R evaluation.",
+    logger.debug(
+        "R runtime or rpy2 is not available; install them to enable R evaluation."
     )
 
 
@@ -27,22 +29,21 @@ def _ensure_loaded() -> None:
     if _loaded:
         return
     if robjects is None:
-        warnings.warn("rpy2 or R is not installed; R evaluation disabled.")
         raise RuntimeError("rpy2 is not installed")
     script = Path(__file__).with_name(f"{_FUNC_NAME}.R")
     if not script.exists():
-        warnings.warn(
-            f"R evaluation script '{script.name}' is missing; R evaluation disabled."
+        logger.warning(
+            "R evaluation script '%s' is missing; R evaluation disabled.", script.name
         )
         raise RuntimeError("missing R evaluation script")
     try:
         robjects.r["source"](str(script))
     except Exception as exc:
-        warnings.warn(f"Failed to source R script: {exc}")
+        logger.warning("Failed to source R script: %s", exc)
         raise RuntimeError("unable to source R evaluation script") from exc
     if _FUNC_NAME not in robjects.globalenv:
-        warnings.warn(
-            f"R function '{_FUNC_NAME}' not found; check eval_position_complex.R"
+        logger.warning(
+            "R function '%s' not found; check eval_position_complex.R", _FUNC_NAME
         )
         raise RuntimeError(
             f"R function '{_FUNC_NAME}' not found after sourcing"
