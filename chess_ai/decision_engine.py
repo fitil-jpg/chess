@@ -9,9 +9,23 @@ from .risk_analyzer import RiskAnalyzer
 
 
 class DecisionEngine:
-    def __init__(self):
-        # Зберігаємо порожній ініціалізатор для сумісності
+    def __init__(self, base_depth: int = 2, material_weight: int = 2):
+        """Create a new decision engine.
+
+        Parameters
+        ----------
+        base_depth:
+            Minimum search depth for root moves before selective
+            extensions are applied.
+        material_weight:
+            Multiplier used to emphasise material advantage in the
+            evaluation.  Capturing valuable pieces should therefore
+            outweigh sequences of repeated checks.
+        """
+
         self.risk_analyzer = RiskAnalyzer()
+        self.base_depth = base_depth
+        self.material_weight = material_weight
 
     def _evaluate(self, board: chess.Board) -> int:
         """Проста матеріальна оцінка позиції з точки зору гравця, який ходить."""
@@ -27,7 +41,7 @@ class DecisionEngine:
         for piece, val in values.items():
             score += len(board.pieces(piece, board.turn)) * val
             score -= len(board.pieces(piece, not board.turn)) * val
-        return score
+        return score * self.material_weight
 
     def search(self, board: chess.Board, depth: int,
                alpha: int = -float("inf"), beta: int = float("inf")) -> int:
@@ -79,7 +93,7 @@ class DecisionEngine:
                 chess.QUEEN: 900,
             }.get(target.piece_type, 0)
             board.push(move)
-            score = -self.search(board, extension) + capture_val
+            score = -self.search(board, self.base_depth + extension) + capture_val * self.material_weight
             board.pop()
             if (
                 score > best_score
