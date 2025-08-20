@@ -21,7 +21,8 @@ def test_rook_attacks_and_defense():
 
     rook.update_defended(board)
     assert rook.defended_moves == {chess.square(3, 5)}
-    assert rook.attacked_moves == expected_attacks - {chess.square(3, 5)}
+    # ``attacked_moves`` now only tracks enemy targets
+    assert rook.attacked_moves == {chess.square(6, 3)}
 
 
 def test_knight_attacks():

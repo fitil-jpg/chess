@@ -14,17 +14,11 @@ class BoardAnalyzer:
             'white': self.get_all_attacks('white'),
             'black': self.get_all_attacks('black')
         }
-
-    def _collect_defenses(self, color):
-        """Gather defended squares for ``color`` pieces."""
-        defenses = set()
-        for piece in self.board.get_pieces(color):
-            defenses.update(piece.get_defended_squares(self.board))
-        return defenses
-
+    
     def get_defense_map(self):
         """Return mapping of color to defended squares on the board."""
-        return {
-            'white': self._collect_defenses('white'),
-            'black': self._collect_defenses('black')
-        }
+        defense_map = {'white': set(), 'black': set()}
+        for color in ('white', 'black'):
+            for piece in self.board.get_pieces(color):
+                defense_map[color].update(piece.get_defended_squares(self.board))
+        return defense_map
