@@ -26,7 +26,9 @@ def plot_orchestrator_diag(
     Returns
     -------
     ``(fig, axes)``
-        Created matplotlib figure and axes.
+        Created matplotlib figure and axes. The weight column is
+        normalised to sum to one for easier comparison between
+        candidates.
     """
 
     import matplotlib.pyplot as plt  # local import to avoid heavy dependency
@@ -36,6 +38,9 @@ def plot_orchestrator_diag(
     mcts_vals = [c.get("mcts", 0.0) for c in candidates]
     ab_vals = [c.get("ab", 0.0) for c in candidates]
     weights = [c.get("mixed", 0.0) for c in candidates]
+    # Normalise weights so they sum to 1 for comparability across plots
+    s = sum(weights)
+    weights_norm = [w / s if s else 0.0 for w in weights]
     chosen = diag.get("chosen")
 
     # Highlight the chosen move.
@@ -52,7 +57,7 @@ def plot_orchestrator_diag(
     axes[1].bar(x, ab_vals, color=colors)
     axes[1].set_title("AB score")
 
-    axes[2].bar(x, weights, color=colors)
+    axes[2].bar(x, weights_norm, color=colors)
     axes[2].set_title("Normalised weight")
 
     for ax in axes:
