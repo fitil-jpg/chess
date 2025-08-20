@@ -34,6 +34,24 @@ class Piece:
         square = chess.square(file, rank)
         return set(board.attacks(square))
 
+    def get_defended_squares(self, board):
+        """Return squares defended by this piece.
+
+        A defended square is one that the piece attacks but is occupied by a
+        friendly piece.  The logic mirrors :meth:`get_attacked_squares` while
+        filtering out enemy or empty squares.
+        """
+
+        if chess is None:  # pragma: no cover - defensive fallback
+            return set()
+
+        defended = set()
+        for sq in self.get_attacked_squares(board):
+            piece = board.piece_at(sq)
+            if piece and piece.color == self.color:
+                defended.add(sq)
+        return defended
+
 class Pawn(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
@@ -42,15 +60,14 @@ class Rook(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
     def update_defended(self, board):
+        """Populate ``defended_moves`` and ``attacked_moves`` overlays."""
         self.defended_moves.clear()
         self.attacked_moves.clear()
 
-        for sq in self.get_attacked_squares(board):
-            piece = board.piece_at(sq)
-            if piece and piece.color == self.color:
-                self.defended_moves.add(sq)
-            else:
-                self.attacked_moves.add(sq)
+        attacked = self.get_attacked_squares(board)
+        defended = self.get_defended_squares(board)
+        self.defended_moves.update(defended)
+        self.attacked_moves.update(attacked - defended)
 
 class Knight(Piece):
     def __init__(self, color, position):
@@ -129,3 +146,4 @@ def piece_class_factory(piece, pos):
     elif t == 'k':
         return King(piece.color, pos)
     return Piece(piece.color, pos)
+
