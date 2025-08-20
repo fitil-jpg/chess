@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
 
-# Ensure vendored dependencies are importable by adding the ``vendor``
-# directory to ``sys.path`` before any other imports occur.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "vendor"))
+# Ensure vendored dependencies are importable by adding the ``vendors/chess``
+# directory to ``sys.path`` before any other imports occur and verifying it is
+# inserted ahead of other locations.
+vendor_path = Path(__file__).resolve().parents[1] / "vendors" / "chess"
+sys.path.insert(0, str(vendor_path))
+assert sys.path[0] == str(vendor_path)
 
 import chess
 import pytest
