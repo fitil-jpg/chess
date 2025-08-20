@@ -24,14 +24,51 @@ class Piece:
         self.pin_moves = set()
         self.check_squares = set()
 
+    # ------------------------------------------------------------------
+    # Utility helpers
+    # ------------------------------------------------------------------
+    def _as_square(self, pos=None):
+        """Return ``pos`` as a python-chess square index.
+
+        ``pos`` defaults to ``self.position`` and may be expressed either as a
+        ``(rank, file)`` tuple (0-indexed, matching :mod:`python-chess`) or as a
+        standard algebraic string such as ``"e4"``.  ``None`` is returned if the
+        :mod:`chess` dependency is unavailable or the position cannot be
+        converted.  This keeps the rest of the logic independent from how a
+        piece stores its location.
+        """
+
+        if chess is None:  # pragma: no cover - ``chess`` optional in tests
+            return None
+
+        pos = self.position if pos is None else pos
+
+        if isinstance(pos, int):  # already a square index
+            return pos
+
+        if isinstance(pos, str):
+            try:
+                return chess.parse_square(pos)
+            except Exception:  # pragma: no cover - defensive
+                return None
+
+        # Expect an (rank, file) tuple
+        try:
+            rank, file = pos
+        except Exception:  # pragma: no cover - malformed input
+            return None
+        return chess.square(file, rank)
+
     def get_attacked_squares(self, board):
         """Return squares this piece attacks using python-chess helpers."""
 
-        if chess is None:  # pragma: no cover - defensive fallback
+        if chess is None or not hasattr(board, "attacks"):
+            return set()  # pragma: no cover - defensive fallback
+
+        square = self._as_square()
+        if square is None:
             return set()
 
-        rank, file = self.position
-        square = chess.square(file, rank)
         return set(board.attacks(square))
 
     def get_defended_squares(self, board):
@@ -42,7 +79,7 @@ class Piece:
         filtering out enemy or empty squares.
         """
 
-        if chess is None:  # pragma: no cover - defensive fallback
+        if chess is None or not hasattr(board, "piece_at"):
             return set()
 
         defended = set()
@@ -101,7 +138,7 @@ class Queen(Piece):
         self.pin_moves.clear()
         self.check_squares.clear()
         attacks = self.get_attacked_squares(board)
-        queen_sq = chess.square(self.position[1], self.position[0])
+        queen_sq = self._as_square()
         for sq in attacks:
             piece = board.piece_at(sq)
             if piece and piece.color != self.color and piece.piece_type != chess.KING:
@@ -122,7 +159,7 @@ class King(Piece):
     def update_king_moves(self, board):
         self.safe_moves.clear()
         self.attacked_moves.clear()
-        king_sq = chess.square(self.position[1], self.position[0])
+        king_sq = self._as_square()
         for move in board.legal_moves:
             if move.from_square == king_sq:
                 attackers = board.attackers(not self.color, move.to_square)

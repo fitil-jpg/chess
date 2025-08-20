@@ -15,8 +15,25 @@ class BoardAnalyzer:
             'black': self.get_all_attacks('black')
         }
 
-    def get_defense_map(self, color):
-        defenses = set()
-        for piece in self.board.get_pieces(color):
-            defenses.update(piece.get_defended_squares(self.board))
-        return defenses
+    def get_defense_map(self, color=None):
+        """Return squares defended by each colour.
+
+        When ``color`` is provided (``"white"`` or ``"black"``) a set of
+        defended squares for that colour is returned.  With the default of
+        ``None`` a mapping for both colours is produced, mirroring the structure
+        of :meth:`get_threat_map`.
+        """
+
+        def collect(side):
+            defended = set()
+            for piece in self.board.get_pieces(side):
+                defended.update(piece.get_defended_squares(self.board))
+            return defended
+
+        if color is None:
+            return {
+                'white': collect('white'),
+                'black': collect('black'),
+            }
+
+        return collect(color)
