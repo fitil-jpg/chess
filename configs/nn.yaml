@@ -1,0 +1,5 @@
+# Configuration for neural network usage
+# use_dummy_model: when true, TorchNet will initialise with zero weights
+use_dummy_model: true
+# weights: optional path to a trained model's state_dict
+weights:
