@@ -67,7 +67,10 @@ class RunViewer(QWidget):
         # --- Left panel: list of run files ---
         self.run_list = QListWidget()
         for run in self.runs:
-            self.run_list.addItem(run["game_id"])
+            result = run.get("result")
+            game_id = run.get("game_id", "<unknown>")
+            label = f"{game_id} ({result})" if result else game_id
+            self.run_list.addItem(label)
         self.run_list.currentRowChanged.connect(self._on_run_selected)
 
         # --- Centre: usage timeline ---
