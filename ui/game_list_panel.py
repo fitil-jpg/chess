@@ -51,7 +51,7 @@ class GameListModel(QAbstractListModel):
         run = self._runs[index.row()]
         if role == Qt.DisplayRole:
             game_id = run.get("game_id", "<unknown>")
-            result = run.get("result")
+            result: str | None = run.get("result")
             return f"{game_id} ({result})" if result else game_id
         if role == self.RESULT_ROLE:
             return run.get("result")
@@ -203,7 +203,7 @@ class GameListPanel(QWidget):
             parent = QStandardItem(key)
             for run in groups[key]:
                 game_id = run.get("game_id", "<unknown>")
-                result = run.get("result")
+                result: str | None = run.get("result")
                 label = f"{game_id} ({result})" if result else game_id
                 child = QStandardItem(label)
                 child.setData(run, Qt.UserRole)
