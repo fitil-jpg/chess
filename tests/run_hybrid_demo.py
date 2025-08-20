@@ -1,7 +1,8 @@
-"""Demonstration script for :class:`HybridBot`.
+"""HybridBot demonstration script.
 
-Adds vendor paths to ``sys.path`` so that bundled dependencies are used when
-running the script directly.
+Runs a few plies from the initial position with :class:`HybridBot` and prints
+basic diagnostics for each move.  Vendor paths are added to ``sys.path`` so the
+bundled dependencies are used when the script is executed directly.
 """
 
 import os
