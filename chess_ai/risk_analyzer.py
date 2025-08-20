@@ -13,9 +13,9 @@ moving side with less material than before, the move is considered risky.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
-
 import chess
+
+from .piece_values import dynamic_piece_value
 
 
 @dataclass
@@ -28,27 +28,14 @@ class RiskAnalyzer:
     move is flagged as risky.
     """
 
-    values: Dict[chess.PieceType, int] | None = None
-
-    def __post_init__(self) -> None:  # pragma: no cover - trivial
-        if self.values is None:
-            self.values = {
-                chess.PAWN: 100,
-                chess.KNIGHT: 300,
-                chess.BISHOP: 300,
-                chess.ROOK: 500,
-                chess.QUEEN: 900,
-                chess.KING: 0,
-            }
-
     # ------------------------------------------------------------------
     def _material(self, board: chess.Board, color: chess.Color) -> int:
         """Return material balance from ``color`` point of view."""
 
         score = 0
-        for piece, val in self.values.items():
-            score += len(board.pieces(piece, color)) * val
-            score -= len(board.pieces(piece, not color)) * val
+        for _, piece in board.piece_map().items():
+            val = dynamic_piece_value(piece, board)
+            score += val if piece.color == color else -val
         return score
 
     def _search(
