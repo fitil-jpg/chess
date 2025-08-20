@@ -1,11 +1,13 @@
-# run_all_tests.py
-import subprocess
+"""Run the project's test suite.
 
-tests = [
-    "tests/test_evaluator.py",
-    "tests/test_metrics.py"   # replace with your second test's filename
-]
+This module provides a simple entry point that runs all tests using
+`pytest`'s built-in test discovery.  It is equivalent to executing the
+`pytest` command directly.
+"""
 
-for test in tests:
-    print(f"\n=== Running {test} ===")
-    subprocess.run(["python", test])
+import pytest
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main())
+
