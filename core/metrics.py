@@ -7,10 +7,7 @@ minimal :class:`BoardMetrics` used in legacy tests.
 
 from __future__ import annotations
 
-try:  # pragma: no cover - import may fail if chess dependency missing
-    from metrics import MetricsManager
-except ModuleNotFoundError:  # pragma: no cover
-    MetricsManager = None  # type: ignore
+from metrics import MetricsManager
 
 
 class BoardMetrics:

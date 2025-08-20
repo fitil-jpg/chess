@@ -113,6 +113,13 @@ class Board:
                     return True
         return False
 
+    def attackers(self, color: bool, square: int) -> SquareSet:
+        """Return squares of pieces of ``color`` attacking ``square``."""
+        return SquareSet(
+            sq for sq, p in self._pieces.items()
+            if p.color == color and square in self.attacks(sq)
+        )
+
     # helper functions ----------------------------------------------------
     def _knight_moves(self, square: int):
         offsets = [
@@ -172,4 +179,5 @@ __all__ = [
     "square_file",
     "square_rank",
     "Color",
+    "KING_ATTACKS",
 ] + [FILES[f].upper() + RANKS[r] for r in range(8) for f in range(8)]
