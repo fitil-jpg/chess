@@ -9,7 +9,8 @@ import chess
 from collections import defaultdict
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
-    QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy
+    QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
+    QListWidget,
 )
 from PySide6.QtCore import QTimer, QRect, Qt
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
@@ -150,6 +151,11 @@ class ChessViewer(QWidget):
             lab.setWordWrap(True)
             right_col.addWidget(lab)
 
+        # Список ходів SAN
+        right_col.addWidget(QLabel("Moves:"))
+        self.moves_list = QListWidget()
+        right_col.addWidget(self.moves_list)
+
         # Таймлайн застосованих модулів
         right_col.addWidget(QLabel("Usage timeline:"))
         self.timeline = UsageTimeline()
@@ -242,6 +248,7 @@ class ChessViewer(QWidget):
             self.timeline_b.clear()
             self.timeline.set_data(self.timeline_w, self.timeline_b)
             self._update_usage_labels()
+            self.moves_list.clear()
 
         if not self.auto_running:
             self.auto_running = True
@@ -268,6 +275,9 @@ class ChessViewer(QWidget):
             return
 
         san = self.board.san(move)  # до push
+        move_no = self.board.fullmove_number
+        prefix = f"{move_no}. " if mover_color == chess.WHITE else f"{move_no}... "
+
         self.board.push(move)
 
         self._init_pieces()
@@ -290,6 +300,11 @@ class ChessViewer(QWidget):
             print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
 
         self._update_status(reason, feats)
+
+        # Append SAN move to list and highlight
+        self.moves_list.addItem(f"{prefix}{san}")
+        self.moves_list.setCurrentRow(self.moves_list.count() - 1)
+        self.moves_list.scrollToBottom()
 
         if self.board.is_game_over():
             self.pause_auto()
@@ -443,6 +458,10 @@ class ChessViewer(QWidget):
         """Handle click on the usage timeline by reporting the move index."""
         side = "W" if is_white else "B"
         print(f"Timeline click: {side} move {index}")
+        row = index * 2 + (0 if is_white else 1)
+        if row < self.moves_list.count():
+            self.moves_list.setCurrentRow(row)
+            self.moves_list.scrollToItem(self.moves_list.item(row))
 
     def _update_status(self, reason: str, feats: dict | None):
         self.lbl_module.setText(f"Модуль: {reason}")
