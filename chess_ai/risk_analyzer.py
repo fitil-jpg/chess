@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import chess
 
-from .piece_values import dynamic_piece_value
+from .piece_values import PIECE_VALUES
 
 
 @dataclass
@@ -33,8 +33,15 @@ class RiskAnalyzer:
         """Return material balance from ``color`` point of view."""
 
         score = 0
+        from .chess_bot import calculate_king_value
+
+        wking = calculate_king_value(board, chess.WHITE)
+        bking = calculate_king_value(board, chess.BLACK)
         for _, piece in board.piece_map().items():
-            val = dynamic_piece_value(piece, board)
+            if piece.piece_type == chess.KING:
+                val = wking if piece.color == chess.WHITE else bking
+            else:
+                val = PIECE_VALUES[piece.piece_type]
             score += val if piece.color == color else -val
         return score
 
