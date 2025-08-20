@@ -10,9 +10,10 @@ class DummyNet:
         self.calls = []
 
     def predict_many(self, boards):
+        # Record one entry per network call rather than per board.
+        self.calls.append([b.fen() for b in boards])
         results = []
         for b in boards:
-            self.calls.append(b.fen())
             legal = list(b.legal_moves)
             if legal:
                 prob = 1.0 / len(legal)
@@ -41,9 +42,9 @@ def test_search_batch_calls_net_and_returns_move():
 def test_choose_move_one_shot_uses_policy():
     class PrefNet(DummyNet):
         def predict_many(self, boards):
+            self.calls.append([b.fen() for b in boards])
             results = []
             for b in boards:
-                self.calls.append(b.fen())
                 legal = list(b.legal_moves)
                 policy = {m: 0.1 / (len(legal) - 1) for m in legal}
                 for m in legal:

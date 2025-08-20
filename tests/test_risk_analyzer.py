@@ -1,7 +1,5 @@
 import chess
 
-import chess
-
 from chess_ai.risk_analyzer import RiskAnalyzer
 from chess_ai.decision_engine import DecisionEngine
 from chess_ai.chess_bot import ChessBot
@@ -31,11 +29,11 @@ def test_alpha_beta_prunes(monkeypatch):
     m1 = chess.Move.from_uci("e2e4")
     m2 = chess.Move.from_uci("d2d4")
 
-    class Gen:
-        def __iter__(self):
-            return iter([m1, m2])
+    def fake_legal_moves(self):
+        # Only expose the two test moves at the root; no moves after one is made.
+        return [m1, m2] if not self.move_stack else []
 
-    board.legal_moves = Gen()
+    monkeypatch.setattr(chess.Board, "legal_moves", property(fake_legal_moves))
     original_push = board.push
 
     def fake_push(move):

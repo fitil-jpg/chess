@@ -69,13 +69,24 @@ class DecisionEngine:
         best_score = float("-inf")
         best_moves = []
         for move in moves_to_consider:
-            extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
+            is_capture = board.is_capture(move)
+            extension = 1 if is_capture or board.gives_check(move) else 0
+            capture_value = 0
+            if is_capture:
+                target = board.piece_at(move.to_square)
+                if target:
+                    capture_value = self.risk_analyzer.values.get(target.piece_type, 0)
             board.push(move)
-            score = -self.search(board, extension)
+            score = -self.search(board, extension) + capture_value
             board.pop()
             if score > best_score:
                 best_score = score
                 best_moves = [move]
             elif score == best_score:
                 best_moves.append(move)
-        return random.choice(best_moves) if best_moves else random.choice(moves_to_consider)
+        if not best_moves:
+            return random.choice(moves_to_consider)
+
+        capturing = [m for m in best_moves if board.is_capture(m)]
+        pool = capturing if capturing else best_moves
+        return random.choice(pool)
