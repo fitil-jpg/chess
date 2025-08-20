@@ -16,14 +16,19 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 import chess
+import os
 
 from .alpha_beta import search as ab_search
 from .mcts import BatchMCTS
 from .evaluation import evaluate_position
 
-try:  # optional R evaluation
-    from .r_bridge import eval_board
-except Exception:  # pragma: no cover - rpy2 may be absent
+_USE_R = os.getenv("CHESS_USE_R") == "1"
+if _USE_R:
+    try:  # optional R evaluation
+        from .r_bridge import eval_board
+    except Exception:  # pragma: no cover - rpy2 may be absent
+        eval_board = None  # type: ignore
+else:  # R evaluation disabled
     eval_board = None  # type: ignore
 
 
