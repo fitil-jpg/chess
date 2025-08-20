@@ -44,7 +44,7 @@ def test_load_runs_missing_key():
             assert "modules_b" in msg and "result" not in msg
 
 
-def test_load_runs_missing_result_defaults_none():
+def test_load_runs_missing_result_defaults_star():
     with tempfile.TemporaryDirectory() as tmpdir:
         sample = {
             "moves": [],
@@ -57,7 +57,7 @@ def test_load_runs_missing_result_defaults_none():
 
         runs = load_runs(tmpdir)
         assert len(runs) == 1
-        assert runs[0]["result"] is None
+        assert runs[0]["result"] == "*"
 
 
 if __name__ == "__main__":
