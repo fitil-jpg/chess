@@ -6,6 +6,7 @@ import math
 import random
 import chess
 from .evaluation import evaluate_positions
+from ..utils.profile_stats import STATS, plot_profile_stats
 
 
 def _dirichlet(alpha: float, size: int) -> list[float]:
@@ -66,6 +67,8 @@ class BatchMCTS:
             b.push(m)
             root.children[m] = Node(b, root, p)
 
+        STATS.start()
+
         sims_done = 0
         while sims_done < n_simulations:
             batch_nodes: list[Node] = []
@@ -96,6 +99,7 @@ class BatchMCTS:
                 batch_nodes.append(node)
                 batch_boards.append(b)
                 batch_paths.append(path)
+                STATS.nodes += len(path)
 
             # Evaluate all boards in a single call
             values = evaluate_positions(batch_boards)
@@ -117,5 +121,8 @@ class BatchMCTS:
             s = sum(visits)
             probs = [v / s for v in visits]
             move = random.choices(list(root.children.keys()), weights=probs, k=1)[0]
+        STATS.stop()
+        print("MCTS:", STATS.summary())
+        plot_profile_stats(STATS, filename="mcts_profile.png")
         return move, root
 

@@ -27,6 +27,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import chess
 
 from .evaluation import evaluate_position
+from ..utils.profile_stats import STATS, plot_profile_stats
 
 
 INF = 10 ** 9
@@ -150,6 +151,11 @@ def ab_search(
 ) -> Tuple[float, Optional[chess.Move]]:
     """Negamax alpha-beta search with numerous enhancements."""
 
+    # Start profiling at the root if not already active
+    if ply == 0 and STATS.start_time == 0.0:
+        STATS.start()
+    STATS.nodes += 1
+
     alpha_orig = alpha
 
     # Transposition table lookup
@@ -158,6 +164,7 @@ def ab_search(
     entry = TT.get(key)
     if entry and entry.depth >= depth:
         tt_move = entry.move
+        STATS.tt_hits += 1
         if entry.flag == EXACT:
             return entry.value, tt_move
         if entry.flag == LOWERBOUND and entry.value > alpha:
@@ -193,6 +200,7 @@ def ab_search(
         reduce = 0
         if idx >= 3 and depth >= 3 and not board.is_capture(move) and not board.gives_check(move):
             reduce = 1
+            STATS.lmr_reductions += 1
 
         if first:
             score, _ = ab_search(board, depth - 1, -beta, -alpha, True, ply + 1)
@@ -213,6 +221,7 @@ def ab_search(
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            STATS.cutoffs += 1
             # Killer and history updates on beta cutoffs
             killers = KILLERS.setdefault(ply, [])
             if move not in killers:
@@ -229,6 +238,10 @@ def ab_search(
     elif best_val >= beta:
         flag = LOWERBOUND
     TT[key] = TTEntry(depth, flag, best_val, best_move)
+    if ply == 0:
+        STATS.stop()
+        print("Alpha-beta:", STATS.summary())
+        plot_profile_stats(STATS, filename="ab_profile.png")
 
     return best_val, best_move
 
@@ -240,6 +253,7 @@ HISTORY: Dict[Tuple[int, int, int], int] = {}
 
 def search(board: chess.Board, depth: int) -> Tuple[float, Optional[chess.Move]]:
     """Convenience wrapper around :func:`ab_search` with fresh tables."""
+    STATS.start()
 
     TT.clear()
     KILLERS.clear()
@@ -258,6 +272,10 @@ def search(board: chess.Board, depth: int) -> Tuple[float, Optional[chess.Move]]
             best_score, best_move = score, move
         if score > alpha:
             alpha = score
+
+    STATS.stop()
+    print("Alpha-beta:", STATS.summary())
+    plot_profile_stats(STATS, filename="ab_profile.png")
 
     return best_score, best_move
 
