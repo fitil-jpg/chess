@@ -3,7 +3,13 @@
 # ``enemy_material`` is a named list with entries ``white`` and ``black``
 # representing the attacking potential of each side (1 = full material).
 
-#' Evaluate a chess position with basic king-safety heuristics.
+#' Evaluate a chess position with king-safety heuristics.
+#'
+#' The evaluation penalizes attacks on the king's surrounding squares.
+#' Separate weights are applied for simple attacks, squares attacked by
+#' multiple pieces, direct checks, and double-checks.  The overall penalty can
+#' be further scaled via ``enemy_material`` to reflect missing attacking pieces
+#' (e.g. a captured queen).
 #'
 #' @param fen FEN string describing the position.
 #' @param enemy_material named list with keys ``white`` and ``black`` used to
@@ -110,14 +116,21 @@
 
 .eval_compute_threat <- function(board, kidx, attacker) {
   if (is.na(kidx) || length(kidx) == 0) {
-    return(list(attack = 0, double = 0, check = 0))
+    return(list(attack = 0, double_attack = 0, check = 0, double_check = 0))
   }
   atk <- .eval_get_attacks(board, attacker)
   zone <- .eval_king_zone(kidx)
   zone_hits <- atk[atk %in% zone]
-  check <- ifelse(kidx %in% atk, 1, 0)
+  checkers <- sum(atk == kidx)
+  check <- ifelse(checkers > 0, 1, 0)
+  double_check <- ifelse(checkers > 1, 1, 0)
   doubles <- sum(table(zone_hits) > 1)
-  list(attack = length(zone_hits), double = doubles, check = check)
+  list(
+    attack = length(zone_hits),
+    double_attack = doubles,
+    check = check,
+    double_check = double_check
+  )
 }
 
 #' @export
@@ -132,12 +145,12 @@ eval_position_complex <- function(fen, enemy_material = list(white = 1, black = 
   wk <- if (any(board == "K")) which(board == "K")[1] else NA
   bk <- if (any(board == "k")) which(board == "k")[1] else NA
 
-  weights <- c(attack = 0.5, double = 1.0, check = 3.0)
+  weights <- c(attack = 0.5, double_attack = 1.0, check = 3.0, double_check = 4.0)
   white_threat <- .eval_compute_threat(board, wk, "black")
   black_threat <- .eval_compute_threat(board, bk, "white")
 
-  white_penalty <- sum(unlist(white_threat) * weights) * enemy_material$black
-  black_penalty <- sum(unlist(black_threat) * weights) * enemy_material$white
+  white_penalty <- sum(unlist(white_threat) * weights[names(white_threat)]) * enemy_material$black
+  black_penalty <- sum(unlist(black_threat) * weights[names(black_threat)]) * enemy_material$white
 
   material + (black_penalty - white_penalty)
 }
