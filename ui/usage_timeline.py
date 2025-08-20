@@ -33,9 +33,18 @@ class UsageTimeline(QWidget):
         self.b_keys = list(b_keys)
         self.update()
 
-    def mousePressEvent(self, ev: QMouseEvent) -> None:  # pragma: no cover - UI interaction
+    def mousePressEvent(self, ev: QMouseEvent) -> tuple[int, bool] | None:  # pragma: no cover - UI interaction
+        """Emit the index and side of a clicked move.
+
+        The method also returns a tuple ``(index, is_white)`` for convenience
+        which eases unit testing and direct invocation.  ``None`` is returned
+        when the click does not correspond to a move tile.
+        """
+
         if ev.button() != Qt.LeftButton:
-            return
+            return None
+
+        # Geometry of the two lanes
         w = self.width()
         h = self.height()
         pad = 8
@@ -45,16 +54,23 @@ class UsageTimeline(QWidget):
         max_len = max(len(self.w_keys), len(self.b_keys), 1)
         seg_w = max(1, (w - pad * 2) // max_len)
 
-        x = ev.position().x()
-        y = ev.position().y()
+        pos = ev.position()
+        x, y = pos.x(), pos.y()
+
+        is_white: bool | None
+        keys: list[str]
         if y_w <= y < y_w + lane_h:
-            idx = int((x - pad) // seg_w)
-            if 0 <= idx < len(self.w_keys):
-                self.moveClicked.emit(idx, True)
+            is_white, keys = True, self.w_keys
         elif y_b <= y < y_b + lane_h:
-            idx = int((x - pad) // seg_w)
-            if 0 <= idx < len(self.b_keys):
-                self.moveClicked.emit(idx, False)
+            is_white, keys = False, self.b_keys
+        else:
+            return None
+
+        idx = int((x - pad) // seg_w)
+        if 0 <= idx < len(keys):
+            self.moveClicked.emit(idx, is_white)
+            return idx, is_white
+        return None
 
     def paintEvent(self, ev):  # pragma: no cover - GUI drawing
         painter = QPainter(self)
