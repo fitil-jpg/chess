@@ -19,7 +19,7 @@ def test_attacked_squares() -> None:
     piece = chess.Piece(chess.ROOK, chess.WHITE)
     board.set_piece_at(square, piece)
 
-    result = calculate_attacked_squares(piece, board)
+    result = calculate_attacked_squares(square, board)
     expected = list(board.attacks(square))
 
     assert result == expected
@@ -27,11 +27,11 @@ def test_attacked_squares() -> None:
 
 
 def test_calculate_attacked_squares_without_piece() -> None:
-    """``calculate_attacked_squares`` requires the piece to be on the board."""
+    """``calculate_attacked_squares`` requires a piece on the target square."""
     board = chess.Board()
     board.clear()  # Ensure the board has no pieces
-    missing_piece = chess.Piece(chess.BISHOP, chess.WHITE)
+    square = chess.E1
 
     with pytest.raises(ValueError):
-        calculate_attacked_squares(missing_piece, board)
+        calculate_attacked_squares(square, board)
 
