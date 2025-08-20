@@ -22,7 +22,13 @@ def dynamic_piece_value(piece: chess.Piece, board: chess.Board) -> int:
       * opponent material (pieces become slightly more valuable as the
         opponent loses major material such as the queen)
     """
-    base = PIECE_VALUES[piece.piece_type]
+    from .chess_bot import calculate_king_value
+
+    base = (
+        calculate_king_value(board, piece.color)
+        if piece.piece_type == chess.KING
+        else PIECE_VALUES[piece.piece_type]
+    )
 
     # Locate the piece's square
     square = next((sq for sq, p in board.piece_map().items() if p == piece), None)
@@ -34,9 +40,14 @@ def dynamic_piece_value(piece: chess.Piece, board: chess.Board) -> int:
     center_bonus = sum(10 for sq in attacks if sq in CENTER_SQUARES)
 
     enemy_color = not piece.color
-    enemy_material = sum(
-        PIECE_VALUES[p.piece_type] for p in board.piece_map().values() if p.color == enemy_color
-    )
+    enemy_material = 0
+    for p in board.piece_map().values():
+        if p.color != enemy_color:
+            continue
+        if p.piece_type == chess.KING:
+            enemy_material += calculate_king_value(board, enemy_color)
+        else:
+            enemy_material += PIECE_VALUES[p.piece_type]
     # Boost value if the opponent has lost their queen
     material_factor = 1.1 if not board.pieces(chess.QUEEN, enemy_color) else 1.0
     material_factor += (3900 - enemy_material) / 3900 * 0.05

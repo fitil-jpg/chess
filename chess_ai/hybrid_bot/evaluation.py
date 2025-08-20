@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import chess
 
-from ..piece_values import dynamic_piece_value
+from ..chess_bot import calculate_king_value
 
 # Basic piece values in centipawns.  The king's base value is determined
 # dynamically at evaluation time.
@@ -16,28 +16,6 @@ PIECE_VALUES = {
     chess.QUEEN: 900,
     chess.KING: 0,
 }
-
-
-def calculate_king_value(board: chess.Board, color: chess.Color | None = None) -> int:
-    """Return a material based value for the king.
-
-    The king's value is defined as the sum of its allied pieces' dynamic
-    values.  If the opponent has lost major material (e.g. the queen), the
-    king becomes relatively safer and its value increases slightly.
-    """
-
-    if color is None:
-        color = board.turn
-
-    value = 0
-    for _, piece in board.piece_map().items():
-        if piece.color == color and piece.piece_type != chess.KING:
-            value += dynamic_piece_value(piece, board)
-
-    if not board.pieces(chess.QUEEN, not color):
-        value = int(value * 1.1)
-
-    return value
 
 
 def evaluate_position(board: chess.Board) -> float:
