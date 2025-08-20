@@ -91,7 +91,7 @@ class RunSelectorWindow(QWidget):
         for idx, san in enumerate(run.get("moves", [])):
             self.moves.addItem(f"{idx + 1}. {san}")
 
-        first_fen = run.get("fens", [chess.STARTING_FEN])
+        first_fen = run.get("fens") or [chess.STARTING_FEN]
         self._apply_fen(first_fen[0])
 
     # ------------------------------------------------------------------
