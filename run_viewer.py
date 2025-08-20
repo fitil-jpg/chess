@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
+    QPushButton,
 )
 from PySide6.QtGui import QPainter, QColor, QPen
 from PySide6.QtCore import QRect
@@ -73,6 +74,13 @@ class RunViewer(QWidget):
             self.run_list.addItem(label)
         self.run_list.currentRowChanged.connect(self._on_run_selected)
 
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.clicked.connect(self._refresh_runs)
+
+        left = QVBoxLayout()
+        left.addWidget(self.run_list)
+        left.addWidget(self.refresh_btn)
+
         # --- Centre: usage timeline ---
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
@@ -91,7 +99,7 @@ class RunViewer(QWidget):
 
         # --- Assemble top layout ---
         top = QHBoxLayout()
-        top.addWidget(self.run_list)
+        top.addLayout(left)
         top.addLayout(centre)
         top.addLayout(right)
 
@@ -105,6 +113,29 @@ class RunViewer(QWidget):
 
         if self.runs:
             self.run_list.setCurrentRow(0)
+
+    # --------------------------------------------------------------
+    def _refresh_runs(self) -> None:
+        """Reload run files and update UI, preserving selection if possible."""
+        selected_id = self.current_run.get("game_id") if self.current_run else None
+
+        self.runs = load_runs("runs")
+
+        self.run_list.clear()
+        for run in self.runs:
+            result = run.get("result")
+            game_id = run.get("game_id", "<unknown>")
+            label = f"{game_id} ({result})" if result else game_id
+            self.run_list.addItem(label)
+
+        self.overall_chart.set_data(aggregate_module_usage(self.runs))
+
+        if not self.runs:
+            self._on_run_selected(-1)
+            return
+
+        row = next((i for i, r in enumerate(self.runs) if r.get("game_id") == selected_id), 0)
+        self.run_list.setCurrentRow(row)
 
     # --------------------------------------------------------------
     def _on_run_selected(self, row: int) -> None:
