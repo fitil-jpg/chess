@@ -36,7 +36,7 @@ class Evaluator:
 
         # Кількість можливих ходів (ігноруємо клітини з власними фігурами)
         attacks = self.board.attacks(piece_sq)
-        mobility = len([sq for sq in attacks if self.board.color_at(sq) != piece_color])
+        mobility = sum(1 for sq in attacks if self.board.color_at(sq) != piece_color)
         features["active_piece"] = mobility
 
         # Перевіряємо, чи вийшла фігура на повністю відкриту вертикаль
