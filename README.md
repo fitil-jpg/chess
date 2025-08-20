@@ -41,3 +41,10 @@ The script starts from the initial position, lets the hybrid bot play a few
 plies and prints the chosen move, raw MCTS/alpha-beta scores and the time spent
 searching each move.
 
+Example output::
+
+```text
+1. b2b4 | MCTS=0.000 AB=0.000 time=0.06s
+2. g7g5 | MCTS=0.000 AB=-0.000 time=0.57s
+```
+
