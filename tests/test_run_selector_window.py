@@ -12,8 +12,22 @@ from ui.run_selector_window import RunSelectorWindow
 def test_run_selector_aggregates_module_usage():
     app = QApplication.instance() or QApplication([])
     runs = [
-        {"game_id": "g1", "moves": [], "fens": [], "modules_w": ["A"], "modules_b": ["B"]},
-        {"game_id": "g2", "moves": [], "fens": [], "modules_w": ["A"], "modules_b": ["A", "B"]},
+        {
+            "game_id": "g1",
+            "result": "1-0",
+            "moves": [],
+            "fens": [],
+            "modules_w": ["A"],
+            "modules_b": ["B"],
+        },
+        {
+            "game_id": "g2",
+            "result": "0-1",
+            "moves": [],
+            "fens": [],
+            "modules_w": ["A"],
+            "modules_b": ["A", "B"],
+        },
     ]
     window = RunSelectorWindow(runs)
     expected = {"A": 3, "B": 2}
