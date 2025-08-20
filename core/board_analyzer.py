@@ -9,7 +9,7 @@ class BoardAnalyzer:
         chess_board = build_chess_board(self.board)
         attacks = set()
         for piece in self.board.get_pieces(color):
-            squares = piece.get_attacked_squares(self.board, chess_board)
+            squares = piece.get_attacked_squares(chess_board=chess_board)
             attacks.update(squares)
         return attacks
 
@@ -26,6 +26,6 @@ class BoardAnalyzer:
         for color in ('white', 'black'):
             for piece in self.board.get_pieces(color):
                 defense_map[color].update(
-                    piece.get_defended_squares(self.board, chess_board)
+                    piece.get_defended_squares(chess_board=chess_board)
                 )
         return defense_map

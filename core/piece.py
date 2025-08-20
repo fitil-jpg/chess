@@ -62,8 +62,14 @@ class Piece:
         rank, file = self.position
         return chess.square(file, rank)
 
-    def get_attacked_squares(self, board, chess_board=None):
-        """Return squares this piece attacks using python-chess helpers."""
+    def get_attacked_squares(self, board=None, chess_board=None):
+        """Return squares this piece attacks using python-chess helpers.
+
+        ``board`` is optional and only used when a pre-built
+        :class:`chess.Board` is not supplied via ``chess_board``.  This allows
+        callers that already have a python-chess board to avoid rebuilding it
+        for every piece, improving performance.
+        """
 
         if chess is None:  # pragma: no cover - defensive fallback
             return set()
@@ -72,12 +78,15 @@ class Piece:
         if square is None:
             return set()
 
-        cb = chess_board or (
-            board if hasattr(board, "attacks") else build_chess_board(board)
-        )
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return set()
+            cb = build_chess_board(board)
+
         return set(cb.attacks(square))
 
-    def get_defended_squares(self, board, chess_board=None):
+    def get_defended_squares(self, board=None, chess_board=None):
         """Return squares defended by this piece.
 
         A defended square is one that the piece attacks but is occupied by a
@@ -88,12 +97,15 @@ class Piece:
         if chess is None:  # pragma: no cover - defensive fallback
             return set()
 
-        cb = chess_board or (
-            board if hasattr(board, "piece_at") else build_chess_board(board)
-        )
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return set()
+            cb = build_chess_board(board)
+
         defended = set()
         self_color = _color_to_bool(self.color)
-        for sq in self.get_attacked_squares(board, chess_board=cb):
+        for sq in self.get_attacked_squares(chess_board=cb):
             piece = cb.piece_at(sq)
             if piece and piece.color == self_color:
                 defended.add(sq)
@@ -106,16 +118,18 @@ class Pawn(Piece):
 class Rook(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
-    def update_defended(self, board, chess_board=None):
+    def update_defended(self, board=None, chess_board=None):
         """Populate ``defended_moves`` and ``attacked_moves`` overlays."""
         self.defended_moves.clear()
         self.attacked_moves.clear()
 
-        cb = chess_board or (
-            board if hasattr(board, "piece_at") else build_chess_board(board)
-        )
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return
+            cb = build_chess_board(board)
 
-        for sq in self.get_attacked_squares(board, chess_board=cb):
+        for sq in self.get_attacked_squares(chess_board=cb):
             piece = cb.piece_at(sq)
             if piece is None:
                 continue
@@ -127,13 +141,15 @@ class Rook(Piece):
 class Knight(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
-    def update_fork(self, board, chess_board=None):
-        cb = chess_board or (
-            board if hasattr(board, "piece_at") else build_chess_board(board)
-        )
+    def update_fork(self, board=None, chess_board=None):
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return
+            cb = build_chess_board(board)
         self.fork_moves.clear()
         fork_targets = []
-        for sq in self.get_attacked_squares(board, chess_board=cb):
+        for sq in self.get_attacked_squares(chess_board=cb):
             piece = cb.piece_at(sq)
             if piece and piece.color != _color_to_bool(self.color) and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.KING]:
                 fork_targets.append(sq)
@@ -147,25 +163,29 @@ class Bishop(Piece):
 class Queen(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
-    def update_hanging(self, board, chess_board=None):
-        cb = chess_board or (
-            board if hasattr(board, "piece_at") else build_chess_board(board)
-        )
+    def update_hanging(self, board=None, chess_board=None):
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return
+            cb = build_chess_board(board)
         self.hanging_targets.clear()
-        for sq in self.get_attacked_squares(board, chess_board=cb):
+        for sq in self.get_attacked_squares(chess_board=cb):
             piece = cb.piece_at(sq)
             if piece and piece.color != _color_to_bool(self.color):
                 defenders = cb.attackers(not _color_to_bool(self.color), sq)
                 if not defenders:
                     self.hanging_targets.add(sq)
 
-    def update_pin_and_check(self, board, chess_board=None):
-        cb = chess_board or (
-            board if hasattr(board, "piece_at") else build_chess_board(board)
-        )
+    def update_pin_and_check(self, board=None, chess_board=None):
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return
+            cb = build_chess_board(board)
         self.pin_moves.clear()
         self.check_squares.clear()
-        attacks = self.get_attacked_squares(board, chess_board=cb)
+        attacks = self.get_attacked_squares(chess_board=cb)
         queen_sq = self._as_square()
         for sq in attacks:
             piece = cb.piece_at(sq)
@@ -184,10 +204,12 @@ class Queen(Piece):
 class King(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
-    def update_king_moves(self, board, chess_board=None):
-        cb = chess_board or (
-            board if hasattr(board, "legal_moves") else build_chess_board(board)
-        )
+    def update_king_moves(self, board=None, chess_board=None):
+        cb = chess_board
+        if cb is None:
+            if board is None:
+                return
+            cb = build_chess_board(board)
         self.safe_moves.clear()
         self.attacked_moves.clear()
         king_sq = self._as_square()
