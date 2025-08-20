@@ -7,6 +7,9 @@ from utils import GameContext
 
 def test_check_bonus_scaled_by_material():
     board = chess.Board()
+    # Clear path for Qd1h5+ and ensure the check is unobstructed
+    board.remove_piece_at(chess.E2)
+    board.remove_piece_at(chess.F7)
     bot = EndgameBot(chess.WHITE)
     move = chess.Move.from_uci("d1h5")  # Qh5+
     enemy_king = board.king(chess.BLACK)
