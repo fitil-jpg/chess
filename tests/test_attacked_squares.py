@@ -1,14 +1,6 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "vendors"))
-)
-
 import chess
 import pytest
-from attacked_squares import calculate_attacked_squares
+from metrics.attacked_squares import calculate_attacked_squares
 
 
 def test_attacked_squares() -> None:
