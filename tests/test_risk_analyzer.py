@@ -35,7 +35,11 @@ def test_alpha_beta_prunes(monkeypatch):
         def __iter__(self):
             return iter([m1, m2])
 
-    board.legal_moves = Gen()
+    monkeypatch.setattr(
+        chess.Board,
+        "legal_moves",
+        property(lambda self: iter([m1, m2]) if not self.move_stack else iter([])),
+    )
     original_push = board.push
 
     def fake_push(move):

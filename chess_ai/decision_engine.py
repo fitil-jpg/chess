@@ -8,6 +8,15 @@ import chess
 from core.quiescence import quiescence
 from .risk_analyzer import RiskAnalyzer
 
+PIECE_VALUES = {
+    chess.PAWN: 100,
+    chess.KNIGHT: 300,
+    chess.BISHOP: 300,
+    chess.ROOK: 500,
+    chess.QUEEN: 900,
+    chess.KING: 0,
+}
+
 
 class DecisionEngine:
     def __init__(self):
@@ -16,16 +25,8 @@ class DecisionEngine:
 
     def _evaluate(self, board: chess.Board) -> int:
         """Проста матеріальна оцінка позиції з точки зору гравця, який ходить."""
-        values = {
-            chess.PAWN: 100,
-            chess.KNIGHT: 300,
-            chess.BISHOP: 300,
-            chess.ROOK: 500,
-            chess.QUEEN: 900,
-            chess.KING: 0,
-        }
         score = 0
-        for piece, val in values.items():
+        for piece, val in PIECE_VALUES.items():
             score += len(board.pieces(piece, board.turn)) * val
             score -= len(board.pieces(piece, not board.turn)) * val
         return score
@@ -67,15 +68,23 @@ class DecisionEngine:
         moves_to_consider = safe_moves if safe_moves else legal_moves
 
         best_score = float("-inf")
+        best_capture = -1
         best_moves = []
         for move in moves_to_consider:
+            capture_value = 0
+            if board.is_capture(move):
+                captured = board.piece_at(move.to_square)
+                if captured:
+                    capture_value = PIECE_VALUES.get(captured.piece_type, 0)
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             board.push(move)
             score = -self.search(board, extension)
             board.pop()
-            if score > best_score:
+            score += capture_value
+            if (score > best_score) or (score == best_score and capture_value > best_capture):
                 best_score = score
+                best_capture = capture_value
                 best_moves = [move]
-            elif score == best_score:
+            elif score == best_score and capture_value == best_capture:
                 best_moves.append(move)
         return random.choice(best_moves) if best_moves else random.choice(moves_to_consider)
