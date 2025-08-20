@@ -14,6 +14,44 @@ CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
 # considering capturing moves.  Encourages material recovery when behind.
 MATERIAL_DEFICIT_BONUS = 10
 
+
+def calculate_king_value(board: chess.Board, color: chess.Color | None = None) -> int:
+    """Return a dynamic material value for the king.
+
+    The king's value scales with the material of its own side to roughly
+    reflect how difficult it is to checkmate.  It is computed as::
+
+        8*P + 2*B + 2*N + 2*R + Q
+
+    where ``P`` is the number of allied pawns and so on.  If the opponent has
+    no queen the king is considered slightly safer and its value is reduced by
+    15%.
+
+    Parameters
+    ----------
+    board:
+        Current position to evaluate.
+    color:
+        Side for which to compute the king's value.  Defaults to the side to
+        move.
+    """
+
+    if color is None:
+        color = board.turn
+
+    value = (
+        8 * len(board.pieces(chess.PAWN, color))
+        + 2 * len(board.pieces(chess.BISHOP, color))
+        + 2 * len(board.pieces(chess.KNIGHT, color))
+        + 2 * len(board.pieces(chess.ROOK, color))
+        + len(board.pieces(chess.QUEEN, color))
+    )
+
+    if not board.pieces(chess.QUEEN, not color):
+        value = int(value * 0.85)
+
+    return value
+
 class ChessBot:
     def __init__(self, color: bool):
         self.color = color
