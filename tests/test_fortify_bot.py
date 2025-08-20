@@ -40,3 +40,6 @@ def test_reuses_provided_evaluator(monkeypatch, context):
 
     move, score = bot.choose_move(board, context=context, evaluator=dummy)
     assert dummy.calls > 0
+    assert move is not None
+    # ensure that providing an evaluator doesn't populate the shared instance
+    assert fortify_bot._SHARED_EVALUATOR is None
