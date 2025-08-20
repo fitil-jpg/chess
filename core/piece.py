@@ -24,14 +24,38 @@ class Piece:
         self.pin_moves = set()
         self.check_squares = set()
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _as_square(self):
+        """Return the python-chess ``square`` index for ``self.position``.
+
+        The ``position`` attribute stores coordinates as ``(rank, file)`` to
+        match the project's convention.  python-chess, however, expects a
+        single square index.  This helper performs the conversion so that
+        higher level methods can simply work with the returned square.  If the
+        optional :mod:`chess` dependency is missing the function returns
+        ``None`` which signals callers to fall back to defensive defaults.
+        """
+
+        if chess is None:  # pragma: no cover - chess may be absent in tests
+            return None
+
+        rank, file = self.position
+        return chess.square(file, rank)
+
     def get_attacked_squares(self, board):
         """Return squares this piece attacks using python-chess helpers."""
 
         if chess is None:  # pragma: no cover - defensive fallback
             return set()
 
-        rank, file = self.position
-        square = chess.square(file, rank)
+        square = self._as_square()
+        if square is None:
+            return set()
+
+        # ``board.attacks`` is provided by python-chess; for custom board
+        # implementations the method is expected to mirror this behaviour.
         return set(board.attacks(square))
 
     def get_defended_squares(self, board):
@@ -101,7 +125,7 @@ class Queen(Piece):
         self.pin_moves.clear()
         self.check_squares.clear()
         attacks = self.get_attacked_squares(board)
-        queen_sq = chess.square(self.position[1], self.position[0])
+        queen_sq = self._as_square()
         for sq in attacks:
             piece = board.piece_at(sq)
             if piece and piece.color != self.color and piece.piece_type != chess.KING:
@@ -122,7 +146,7 @@ class King(Piece):
     def update_king_moves(self, board):
         self.safe_moves.clear()
         self.attacked_moves.clear()
-        king_sq = chess.square(self.position[1], self.position[0])
+        king_sq = self._as_square()
         for move in board.legal_moves:
             if move.from_square == king_sq:
                 attackers = board.attackers(not self.color, move.to_square)
