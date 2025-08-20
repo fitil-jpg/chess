@@ -34,19 +34,29 @@ class Evaluator:
     def mobility(self, board=None):
         """Return a tuple with number of legal moves for white and black.
 
-        Counts moves via ``board.legal_moves.count()`` so the generator is not
-        materialized. The board's ``turn`` attribute is temporarily flipped to
-        count the opponent's moves, and results are stored in
-        ``self.mobility_stats`` for telemetry purposes.
+        Counts moves via ``board.legal_moves.count()`` when available so the
+        generator is not materialized.  Falls back to ``sum(1 for _ in
+        board.legal_moves)`` if ``count()`` is unsupported (e.g. when tests
+        replace ``legal_moves`` with a plain iterator).  The board's ``turn``
+        attribute is temporarily flipped to count the opponent's moves, and
+        results are stored in ``self.mobility_stats`` for telemetry purposes.
         """
         board = board or self.board
         orig_turn = board.turn
         # Use ``count()`` instead of ``len()`` because ``legal_moves`` is a
-        # generator.  Counting directly avoids materializing the entire move
-        # list and ensures compatibility with custom generators used in tests.
-        white_moves = board.legal_moves.count()
+        # generator.  If ``count()`` is unavailable or requires an argument
+        # (like on plain lists), fall back to summing over the iterator.
+        moves = board.legal_moves
+        try:
+            white_moves = moves.count()
+        except (AttributeError, TypeError):
+            white_moves = sum(1 for _ in moves)
         board.turn = not board.turn
-        black_moves = board.legal_moves.count()
+        moves = board.legal_moves
+        try:
+            black_moves = moves.count()
+        except (AttributeError, TypeError):
+            black_moves = sum(1 for _ in moves)
         board.turn = orig_turn
         score = white_moves - black_moves
         self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
