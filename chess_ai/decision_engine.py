@@ -79,31 +79,28 @@ class DecisionEngine:
         safe_moves = [m for m in legal_moves if not self.risk_analyzer.is_risky(board, m)]
         moves_to_consider = safe_moves if safe_moves else legal_moves
 
-        best_move: chess.Move | None = None
-        best_score = float("-inf")
-        best_capture = -1
+        scored_moves: list[tuple[int, int, chess.Move]] = []
         for move in moves_to_consider:
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
-            target = board.piece_at(move.to_square)
-            capture_val = 0 if not target else {
-                chess.PAWN: 100,
-                chess.KNIGHT: 300,
-                chess.BISHOP: 300,
-                chess.ROOK: 500,
-                chess.QUEEN: 900,
-            }.get(target.piece_type, 0)
+            capture_val = 0
+            if board.is_capture(move):
+                target = board.piece_at(move.to_square)
+                capture_val = {
+                    chess.PAWN: 100,
+                    chess.KNIGHT: 300,
+                    chess.BISHOP: 300,
+                    chess.ROOK: 500,
+                    chess.QUEEN: 900,
+                }.get(target.piece_type, 0) if target else 0
             board.push(move)
-            score = -self.search(board, self.base_depth + extension) + capture_val * self.material_weight
+            score = -self.search(board, self.base_depth + extension)
             board.pop()
-            if (
-                score > best_score
-                or (
-                    score == best_score
-                    and (capture_val > best_capture or (capture_val == best_capture and (best_move is None or move.to_square > best_move.to_square)))
-                )
-            ):
-                best_score = score
-                best_capture = capture_val
-                best_move = move
+            score += capture_val * self.material_weight
+            scored_moves.append((score, capture_val, move))
 
-        return best_move if best_move else None
+        if not scored_moves:
+            return None
+        best_score = max(score for score, _, _ in scored_moves)
+        best_moves = [m for s, c, m in scored_moves if s == best_score]
+        capture_moves = [m for s, c, m in scored_moves if s == best_score and c > 0]
+        return capture_moves[0] if capture_moves else best_moves[0]
