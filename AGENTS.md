@@ -1,8 +1,7 @@
 # AGENTS.md
 
 ## Vendored dependencies
-- Use libraries in `vendors/` before installing external packages.
-- To import the vendored chess library, ensure `vendors` is added to `sys.path` (see `tests/conftest.py`).
+- `tests/conftest.py` automatically appends `vendors/` to `sys.path`. When running scripts outside the test suite, manually add `vendors/` to `sys.path`.
 
 ## Testing
 - Run `pytest` after code changes. For quick checks you can run a subset, e.g. `pytest tests/test_random_bot.py -q`.
