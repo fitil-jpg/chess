@@ -1,22 +1,32 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "metrics"))
+sys.path.insert(0, str(ROOT / "vendors"))
+sys.path.insert(0, str(ROOT))
+
 import chess
+import pytest
 from attacked_squares import calculate_attacked_squares
 
 
-def test_attacked_squares():
-    # Set up a simple position
+def test_attacked_squares_returns_attacks():
     board = chess.Board()
-    board.set_fen("8/8/8/8/8/8/8/R7 w - - 0 1")
-    board.set_piece_at(chess.E1, chess.Piece(chess.ROOK, chess.WHITE))
+    board.clear()
+    square = chess.E1
+    piece = chess.Piece(chess.ROOK, chess.WHITE)
+    board.set_piece_at(square, piece)
 
-    result = calculate_attacked_squares(chess.E1, board)
-
-    # Check the number of attacked squares
-    expected_number_of_squares = 14  # Rook on e1 with another rook on a1
-    assert len(result) == expected_number_of_squares, \
-        f"Expected {expected_number_of_squares}, but got {len(result)}."
-
-    print("test_attacked_squares passed!")
+    result = calculate_attacked_squares(piece, board)
+    expected = list(board.attacks(square))
+    assert result == expected
 
 
-if __name__ == "__main__":
-    test_attacked_squares()
+def test_missing_piece_raises_value_error():
+    board = chess.Board()
+    board.clear()
+    piece = chess.Piece(chess.BISHOP, chess.WHITE)
+
+    with pytest.raises(ValueError):
+        calculate_attacked_squares(piece, board)
