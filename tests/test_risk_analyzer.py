@@ -1,7 +1,5 @@
 import chess
 
-import chess
-
 from chess_ai.risk_analyzer import RiskAnalyzer
 from chess_ai.decision_engine import DecisionEngine
 from chess_ai.chess_bot import ChessBot
@@ -26,7 +24,6 @@ def test_risk_analyzer_handles_hanging_and_safe_moves():
 
 
 def test_alpha_beta_prunes(monkeypatch):
-    board = chess.Board()
     analyzer = RiskAnalyzer()
     m1 = chess.Move.from_uci("e2e4")
     m2 = chess.Move.from_uci("d2d4")
@@ -35,7 +32,15 @@ def test_alpha_beta_prunes(monkeypatch):
         def __iter__(self):
             return iter([m1, m2])
 
-    board.legal_moves = Gen()
+    class DummyBoard(chess.Board):
+        @property
+        def legal_moves(self):  # type: ignore[override]
+            # Expose two moves only at the root node.  After one move has been
+            # made ``move_stack`` is no longer empty and the generator returns
+            # an empty list so deeper searches do not try to play them again.
+            return list(Gen()) if not self.move_stack else []
+
+    board = DummyBoard()
     original_push = board.push
 
     def fake_push(move):
