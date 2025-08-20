@@ -11,6 +11,7 @@ def test_load_runs_valid():
             "fens": ["startpos"],
             "modules_w": ["module1"],
             "modules_b": ["module2"],
+            "result": "1-0",
         }
         with open(os.path.join(tmpdir, "game1.json"), "w", encoding="utf-8") as f:
             json.dump(sample, f)
@@ -39,7 +40,8 @@ def test_load_runs_missing_key():
             load_runs(tmpdir)
             assert False, "Expected ValueError due to missing keys"
         except ValueError as e:
-            assert "modules_b" in str(e)
+            msg = str(e)
+            assert "modules_b" in msg and "result" in msg
 
 
 if __name__ == "__main__":
