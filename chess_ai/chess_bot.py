@@ -3,19 +3,12 @@ import chess
 from core.evaluator import Evaluator
 from utils import GameContext
 from .risk_analyzer import RiskAnalyzer
+from .piece_values import dynamic_piece_value
 
 
 _SHARED_EVALUATOR: Evaluator | None = None
 
 CENTER_SQUARES = [chess.E4, chess.D4, chess.E5, chess.D5]
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 300,
-    chess.BISHOP: 300,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 0,
-}
 
 # Additional score applied for each point of material deficit when
 # considering capturing moves.  Encourages material recovery when behind.
@@ -125,7 +118,7 @@ class ChessBot:
             target_piece = board.piece_at(move.to_square)
             from_piece = board.piece_at(move.from_square)
             if target_piece and from_piece:
-                gain = PIECE_VALUES[target_piece.piece_type] - PIECE_VALUES[from_piece.piece_type]
+                gain = dynamic_piece_value(target_piece, board) - dynamic_piece_value(from_piece, board)
                 score += gain
                 if context and context.material_diff < 0:
                     bonus = abs(context.material_diff) * MATERIAL_DEFICIT_BONUS
