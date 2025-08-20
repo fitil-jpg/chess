@@ -3,9 +3,9 @@ from __future__ import annotations
 """Add missing results to run JSON files.
 
 The script scans a directory for ``*.json`` files produced by ``main.py`` and
-ensures that each contains a ``result`` field.  When the field is absent, the
-final game outcome is reconstructed either from the last FEN string or by
-replaying the recorded SAN moves.
+ensures that each contains a ``result`` field.  When the field is absent or
+set to the placeholder ``"*"``, the final game outcome is reconstructed either
+from the last FEN string or by replaying the recorded SAN moves.
 
 Usage
 -----
@@ -18,6 +18,8 @@ from pathlib import Path
 from typing import Any
 
 import chess
+
+DEFAULT_RESULT = "*"
 
 
 def _derive_result(data: dict[str, Any]) -> str:
@@ -44,7 +46,8 @@ def migrate_runs(path: str) -> None:
         with file.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
 
-        if data.get("result"):
+        result = data.get("result")
+        if result not in (None, DEFAULT_RESULT):
             continue
 
         try:
