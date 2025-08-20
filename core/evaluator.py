@@ -43,20 +43,18 @@ class Evaluator:
         """
         board = board or self.board
         orig_turn = board.turn
-        # Use ``count()`` instead of ``len()`` because ``legal_moves`` is a
-        # generator.  If ``count()`` is unavailable or requires an argument
-        # (like on plain lists), fall back to summing over the iterator.
-        moves = board.legal_moves
-        try:
-            white_moves = moves.count()
-        except (AttributeError, TypeError):
-            white_moves = sum(1 for _ in moves)
+
+        def _move_count(moves):
+            """Count moves without materializing the generator."""
+            try:
+                return moves.count()
+            except (AttributeError, TypeError):
+                return sum(1 for _ in moves)
+
+        # Count white's moves, then temporarily flip the turn to count black's.
+        white_moves = _move_count(board.legal_moves)
         board.turn = not board.turn
-        moves = board.legal_moves
-        try:
-            black_moves = moves.count()
-        except (AttributeError, TypeError):
-            black_moves = sum(1 for _ in moves)
+        black_moves = _move_count(board.legal_moves)
         board.turn = orig_turn
         score = white_moves - black_moves
         self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
