@@ -1,12 +1,4 @@
-import sys
-from pathlib import Path
-
-# ``vendors/`` contains all third-party libraries bundled with the project.
-# Prepend it to ``sys.path`` so modules like ``PySide6`` can be imported
-# without being globally installed.
-vendor_root = Path(__file__).resolve().parents[1] / "vendors"
-sys.path.insert(0, str(vendor_root))
-assert sys.path[0] == str(vendor_root)
+from vendors import setup_path  # noqa: F401
 
 import chess
 import pytest

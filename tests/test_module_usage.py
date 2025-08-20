@@ -1,3 +1,5 @@
+from vendors import setup_path  # noqa: F401
+
 from utils.module_usage import aggregate_module_usage
 
 
