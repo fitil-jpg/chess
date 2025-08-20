@@ -77,29 +77,6 @@ class BatchedMCTS:
         self.epsilon = epsilon
 
     # ------------------------------------------------------------------
-    def _expand(self, node: Node, board: chess.Board, add_dirichlet: bool) -> None:
-        """Expand ``node`` using network policy on ``board``."""
-        legal = list(board.legal_moves)
-        if not legal:
-            return
-        policy, _ = self.net.predict_many([board])[0]
-        priors = [policy.get(m, 0.0) for m in legal]
-        total = sum(priors)
-        if total <= 0:
-            priors = [1.0 / len(legal)] * len(legal)
-        else:
-            priors = [p / total for p in priors]
-        if add_dirichlet:
-            noise = _dirichlet(self.dirichlet_alpha, len(legal))
-            priors = [
-                (1 - self.epsilon) * p + self.epsilon * n for p, n in zip(priors, noise)
-            ]
-        for move, prior in zip(legal, priors):
-            nb = board.copy()
-            nb.push(move)
-            node.children[move] = Node(nb, node, prior)
-
-    # ------------------------------------------------------------------
     def search_batch(
         self,
         root: Node,
