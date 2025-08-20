@@ -4,9 +4,9 @@ class BoardAnalyzer:
 
     def get_all_attacks(self, color):
         attacks = set()
-        for piece in self.board.get_pieces(color):
-            squares = piece.get_attacked_squares(self.board)
-            attacks.update(squares)
+        color_flag = color if isinstance(color, bool) else (color == 'white')
+        for piece in self.board.get_pieces(color_flag):
+            attacks.update(piece.get_attacked_squares(self.board))
         return attacks
 
     def get_threat_map(self):
@@ -17,7 +17,7 @@ class BoardAnalyzer:
 
     def get_defense_map(self, color):
         defenses = set()
-        for piece in self.board.get_pieces(color):
-            if hasattr(piece, 'get_defended_squares'):
-                defenses.update(piece.get_defended_squares(self.board))
+        color_flag = color if isinstance(color, bool) else (color == 'white')
+        for piece in self.board.get_pieces(color_flag):
+            defenses.update(piece.get_defended_squares(self.board))
         return defenses
