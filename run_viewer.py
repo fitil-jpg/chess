@@ -65,7 +65,7 @@ class RunViewer(QWidget):
         top.addLayout(right)
 
         # --- Bottom: overall usage pie ---
-        self.usage_pie = UsagePie()
+        self.usage_pie = UsagePie()  # pie chart showing overall module usage
         self.usage_pie.set_counts(aggregate_module_usage(self.runs))
 
         layout = QVBoxLayout(self)
