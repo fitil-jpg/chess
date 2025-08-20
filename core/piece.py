@@ -3,6 +3,16 @@ try:  # Optional dependency used only for advanced piece logic
 except Exception:  # pragma: no cover - chess may be absent in tests
     chess = None
 
+from .board import Board
+
+
+def _color_to_str(color):
+    """Return ``'white'`` or ``'black'`` for various color representations."""
+
+    if isinstance(color, str):
+        return color
+    return 'white' if color else 'black'
+
 class Piece:
     def __init__(self, color, position):
         self.color = color
@@ -174,4 +184,20 @@ def piece_class_factory(piece, pos):
     elif t == 'k':
         return King(piece.color, pos)
     return Piece(piece.color, pos)
+
+
+def _build_board(chess_board):
+    """Construct a project :class:`Board` from a python-chess board."""
+
+    board = Board()
+    if chess is None:  # pragma: no cover - python-chess is optional
+        return board
+
+    for square, p in chess_board.piece_map().items():
+        pos = (chess.square_rank(square), chess.square_file(square))
+        piece = piece_class_factory(p, pos)
+        piece.color = _color_to_str(piece.color)
+        board.place_piece(piece)
+
+    return board
 
