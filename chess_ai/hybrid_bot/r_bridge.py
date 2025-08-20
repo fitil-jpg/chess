@@ -12,6 +12,9 @@ try:  # pragma: no cover - optional dependency
     from rpy2 import robjects
 except Exception:  # rpy2 may be missing in lightweight environments
     robjects = None  # type: ignore
+    warnings.warn(
+        "R runtime or rpy2 is not available; install them to enable R evaluation.",
+    )
 
 
 _FUNC_NAME = "eval_position_complex"
@@ -27,6 +30,11 @@ def _ensure_loaded() -> None:
         warnings.warn("rpy2 or R is not installed; R evaluation disabled.")
         raise RuntimeError("rpy2 is not installed")
     script = Path(__file__).with_name(f"{_FUNC_NAME}.R")
+    if not script.exists():
+        warnings.warn(
+            f"R evaluation script '{script.name}' is missing; R evaluation disabled."
+        )
+        raise RuntimeError("missing R evaluation script")
     try:
         robjects.r["source"](str(script))
     except Exception as exc:
