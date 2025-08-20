@@ -94,7 +94,11 @@ class RunViewer(QWidget):
         for run in self.runs:
             result: str | None = run.get("result")
             game_id = run.get("game_id", "<unknown>")
-            label = f"{game_id} ({result})" if result else game_id
+            label = (
+                f"{game_id} ({result})"
+                if result and result != "*"
+                else game_id
+            )
             self.run_list.addItem(label)
         self.run_list.currentRowChanged.connect(self._on_run_selected)
 
@@ -157,7 +161,11 @@ class RunViewer(QWidget):
         for run in self.runs:
             result: str | None = run.get("result")
             game_id = run.get("game_id", "<unknown>")
-            label = f"{game_id} ({result})" if result else game_id
+            label = (
+                f"{game_id} ({result})"
+                if result and result != "*"
+                else game_id
+            )
             self.run_list.addItem(label)
 
         if not self.runs:
