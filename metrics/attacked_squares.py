@@ -23,10 +23,10 @@ def calculate_attacked_squares(piece: chess.Piece, board: chess.Board) -> list[i
         If ``piece`` is not present on ``board``.
     """
 
-    if piece not in board.piece_map().values():
+    piece_map = board.piece_map()
+    if piece not in piece_map.values():
         raise ValueError("piece is not on the board")
 
-    piece_square = next(sq for sq, p in board.piece_map().items() if p == piece)
+    piece_square = next(sq for sq, p in piece_map.items() if p == piece)
     attacked_squares = board.attacks(piece_square)
     return list(attacked_squares)
-
