@@ -6,9 +6,10 @@ def test_attacked_squares():
     # Set up a simple position
     board = chess.Board()
     board.set_fen("8/8/8/8/8/8/8/R7 w - - 0 1")
-    board.set_piece_at(chess.E1, chess.Piece(chess.ROOK, chess.WHITE))
+    square = chess.E1
+    board.set_piece_at(square, chess.Piece(chess.ROOK, chess.WHITE))
 
-    result = calculate_attacked_squares(chess.E1, board)
+    result = calculate_attacked_squares(square, board)
 
     # Check the number of attacked squares
     expected_number_of_squares = 14  # Rook on e1 with another rook on a1
