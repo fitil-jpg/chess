@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
 
 from ui.mini_board import MiniBoard
 from ui.usage_timeline import UsageTimeline
+from ui.usage_pie import UsagePie
+from utils.module_usage import aggregate_module_usage
 
 
 class RunSelectorWindow(QWidget):
@@ -44,11 +46,22 @@ class RunSelectorWindow(QWidget):
         right.addWidget(QLabel("Moves"))
         right.addWidget(self.moves)
 
+        # --- Overall module usage pie --------------------------------------------
+        self.usage_pie = UsagePie()
+        self.usage_counts = aggregate_module_usage(self.runs)
+        self.usage_pie.set_counts(self.usage_counts)
+
         # --- Assemble layout ------------------------------------------------------
-        layout = QHBoxLayout(self)
-        layout.addWidget(self.list_widget)
-        layout.addLayout(centre)
-        layout.addLayout(right)
+        layout_main = QVBoxLayout(self)
+        top = QHBoxLayout()
+        top.addWidget(self.list_widget)
+        top.addLayout(centre)
+        top.addLayout(right)
+        layout_main.addLayout(top)
+        pie_box = QVBoxLayout()
+        pie_box.addWidget(QLabel("Overall module usage"))
+        pie_box.addWidget(self.usage_pie)
+        layout_main.addLayout(pie_box)
 
         if self.runs:
             self.list_widget.setCurrentRow(0)
