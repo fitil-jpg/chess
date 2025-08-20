@@ -43,6 +43,7 @@ class RunSelectorWindow(QWidget):
         # --- Right: board and moves list -----------------------------------------
         self.board = MiniBoard(scale=0.5)
         self.moves = QListWidget()
+        self.moves.currentRowChanged.connect(self._on_move_selected)
         right = QVBoxLayout()
         right.addWidget(self.board)
         right.addWidget(QLabel("Moves"))
@@ -88,6 +89,16 @@ class RunSelectorWindow(QWidget):
 
         first_fen = run.get("fens", [chess.STARTING_FEN])
         self._apply_fen(first_fen[0])
+
+    # ------------------------------------------------------------------
+    def _on_move_selected(self, row: int) -> None:
+        """Show the position for the move selected in the list."""
+        if not self.current_run or row < 0:
+            return
+
+        idx = row // 2
+        is_white = (row % 2) == 0
+        self._on_timeline_click(idx, is_white)
 
     # ------------------------------------------------------------------
     def _on_timeline_click(self, idx: int, is_white: bool) -> None:
