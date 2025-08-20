@@ -70,15 +70,21 @@ class BatchMCTS:
         while sims_done < n_simulations:
             batch_nodes: list[Node] = []
             batch_boards: list[chess.Board] = []
-            for _ in range(min(batch_size, n_simulations - sims_done)):
+            batch_paths: list[list[Node]] = []
+            while (
+                len(batch_nodes) < batch_size
+                and sims_done + len(batch_nodes) < n_simulations
+            ):
                 node = root
                 b = board.copy()
+                path = [node]
                 # Selection
                 while node.children:
                     move, node = max(
                         node.children.items(), key=lambda kv: kv[1].u(self.c_puct)
                     )
                     b.push(move)
+                    path.append(node)
                 # Expansion
                 if not b.is_game_over():
                     moves = list(b.legal_moves)
@@ -89,19 +95,18 @@ class BatchMCTS:
                         node.children[m] = Node(nb, node, p)
                 batch_nodes.append(node)
                 batch_boards.append(b)
+                batch_paths.append(path)
 
             # Evaluate all boards in a single call
             values = evaluate_positions(batch_boards)
 
             # Backup each result along its path
-            for node, value in zip(batch_nodes, values):
-                cur = node
+            for path, value in zip(batch_paths, values):
                 v = value
-                while cur is not None:
+                for cur in reversed(path):
                     cur.n += 1
                     cur.w += v
                     v = -v
-                    cur = cur.parent
             sims_done += len(batch_nodes)
 
         # Choose move from root
