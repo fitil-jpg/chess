@@ -19,11 +19,15 @@ class UsagePie(QWidget):
         self.counts: Dict[str, int] = {}
         self.setMinimumHeight(100)
 
-    def set_counts(self, counts: Mapping[str, int]) -> None:
+    def set_data(self, counts: Mapping[str, int]) -> None:
         """Set *counts* mapping module name to occurrence count."""
 
         self.counts = {k: int(v) for k, v in counts.items() if v}
         self.update()
+
+    # Backwards compatibility alias
+    def set_counts(self, counts: Mapping[str, int]) -> None:  # pragma: no cover - simple wrapper
+        self.set_data(counts)
 
     # ------------------------------------------------------------------
     def paintEvent(self, ev) -> None:  # pragma: no cover - GUI drawing

@@ -66,7 +66,7 @@ class RunViewer(QWidget):
 
         # --- Bottom: overall usage pie ---
         self.usage_pie = UsagePie()  # pie chart showing overall module usage
-        self.usage_pie.set_counts(aggregate_module_usage(self.runs))
+        self.usage_pie.set_data(aggregate_module_usage(self.runs))
 
         layout = QVBoxLayout(self)
         layout.addLayout(top)
@@ -90,7 +90,7 @@ class RunViewer(QWidget):
             label = f"{game_id} ({result})" if result else game_id
             self.run_list.addItem(label)
 
-        self.usage_pie.set_counts(aggregate_module_usage(self.runs))
+        self.usage_pie.set_data(aggregate_module_usage(self.runs))
 
         if not self.runs:
             self._on_run_selected(-1)
