@@ -1,5 +1,3 @@
-import vendors.setup_path  # noqa: F401
-
 import chess
 import pytest
 
