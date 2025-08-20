@@ -109,6 +109,24 @@ class UsageTimeline(QWidget):
         draw_lane(self.w_keys, y_w)
         draw_lane(self.b_keys, y_b)
 
+        # Secondary bar showing per-move module usage
+        bar_keys: list[str] = []
+        for i in range(max_len):
+            if i < len(self.w_keys):
+                bar_keys.append(self.w_keys[i])
+            if i < len(self.b_keys):
+                bar_keys.append(self.b_keys[i])
+
+        bar_h = max(2, pad // 2)
+        if bar_keys:
+            y_bar = y_b + lane_h + 2
+            seg_bar = max(1, (w - pad * 2) // len(bar_keys))
+            x = pad
+            for key in bar_keys:
+                color = MODULE_COLORS.get(key, MODULE_COLORS["OTHER"])
+                painter.fillRect(QRect(x, y_bar, seg_bar, bar_h), color)
+                x += seg_bar
+
         # Labels
         painter.setPen(QPen(QColor(60, 60, 60)))
         font = QFont()
@@ -118,7 +136,7 @@ class UsageTimeline(QWidget):
         painter.drawText(pad, y_b - 2, "B")
 
         # Legend (single line, truncated if not enough space)
-        y_leg = y_b + lane_h + pad
+        y_leg = y_b + lane_h + pad + bar_h + 4
         x_leg = pad
         for key in REASON_PRIORITY + ["OTHER"]:
             label = key
