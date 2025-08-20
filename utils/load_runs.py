@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 REQUIRED_KEYS = {"moves", "fens", "modules_w", "modules_b"}
+DEFAULT_RESULT = "*"
 
 
 def load_runs(path: str) -> List[Dict[str, Any]]:
@@ -47,7 +48,7 @@ def load_runs(path: str) -> List[Dict[str, Any]]:
                 "fens": data["fens"],
                 "modules_w": data["modules_w"],
                 "modules_b": data["modules_b"],
-                "result": data.get("result"),
+                "result": data.get("result", DEFAULT_RESULT),
             }
         )
 
