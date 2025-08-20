@@ -27,9 +27,11 @@ class Piece:
     def get_attacked_squares(self, board):
         """Return squares this piece attacks using python-chess helpers."""
 
-        if chess is None:
+        if chess is None:  # pragma: no cover - defensive fallback
             return set()
-        square = chess.square(self.position[1], self.position[0])
+
+        rank, file = self.position
+        square = chess.square(file, rank)
         return set(board.attacks(square))
 
 class Pawn(Piece):
@@ -42,6 +44,7 @@ class Rook(Piece):
     def update_defended(self, board):
         self.defended_moves.clear()
         self.attacked_moves.clear()
+
         for sq in self.get_attacked_squares(board):
             piece = board.piece_at(sq)
             if piece and piece.color == self.color:
