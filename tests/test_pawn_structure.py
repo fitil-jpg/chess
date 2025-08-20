@@ -77,9 +77,9 @@ def test_pawn_structure_score_doubled_white():
 
 
 def test_pawn_structure_score_doubled_black():
-    # Two black pawns stacked on the c-file (c6 and c5) should incur a
-    # doubled‑pawn penalty for Black, giving White a +5 score.
-    board = chess.Board("8/8/1pp5/2p5/8/1PP5/8/8 w - - 0 1")
+    # Black pawns on b6, c6, and c5 include a doubled pair on the c-file.
+    # This doubled‑pawn penalty for Black should give White a +5 score.
+    board = chess.Board('8/8/1pp5/2p5/8/1PP5/8/8 w - - 0 1')
     evaluator = Evaluator(board)
     assert evaluator.pawn_structure_score() == 5
 
