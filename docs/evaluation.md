@@ -5,18 +5,22 @@ These metrics feed into the engine's evaluation and are available through `core.
 
 ## Setup
 
-Some evaluation helpers rely on an optional R bridge and PyTorch‑based models. To enable these features install the following dependencies:
+Some evaluation helpers rely on an optional R bridge and PyTorch‑based models.
+To enable these features install the following dependencies in order:
 
-1. **R runtime**
+1. **R runtime** – provides the interpreter required by `rpy2`.
    ```bash
-   sudo apt-get update && sudo apt-get install -y r-base
+   sudo apt-get update
+   sudo apt-get install -y r-base
    ```
-2. **rpy2 Python package**
+   After installation you can verify the setup with `R --version`.
+2. **`rpy2` Python package** – exposes R functions to Python.
    ```bash
    pip install rpy2
    ```
-3. **PyTorch and related packages**
-   Visit <https://pytorch.org/get-started/locally/> for platform-specific commands or use the CPU wheels:
+3. **PyTorch and related packages** – required for neural‑network evaluators.
+   Visit <https://pytorch.org/get-started/locally/> for platform-specific commands
+   or use the CPU wheels:
    ```bash
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
    ```
