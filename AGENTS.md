@@ -10,13 +10,6 @@
 ## GameContext
 - `GameContext` metrics default to zero; tests only specify non-zero fields.
 
-## Sync with remote
-- Before starting development, run `git fetch origin`.
-- Verify your branch is not behind `origin/main` with `git status -uno` or `git rev-list origin/main...HEAD`.
-- If your branch is behind, run `git pull --rebase origin main` (or merge) before proceeding.
-
-## Pull requests
-- Before calling `make_pr`, ensure your branch is synchronized with `origin/main`:
-  - Run `git fetch origin` and confirm your branch is not behind using `git status -uno` or `git rev-list origin/main...HEAD`.
-  - If it is behind, run `git pull --rebase origin main` (or merge) and resolve conflicts.
-- Run `pytest` (e.g., `pytest tests/test_random_bot.py -q`) and address any failures before creating the PR.
+## Repository
+- This repository has no remote configured. Do not run `git fetch origin` or `git push`; all work should be done locally.
+- When preparing a pull request with `make_pr`, ensure your worktree is clean and tests pass; syncing with a remote is unnecessary.
