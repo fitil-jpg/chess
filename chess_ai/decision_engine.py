@@ -52,7 +52,11 @@ class DecisionEngine:
         horizon effect.
         """
         if depth == 0 or board.is_game_over() or board.is_repetition(3):
-            return quiescence(board, alpha, beta)
+            # Scale the quiescence search to emphasise material balance
+            # without distorting the alpha--beta window.
+            scaled_alpha = alpha / self.material_weight
+            scaled_beta = beta / self.material_weight
+            return quiescence(board, scaled_alpha, scaled_beta) * self.material_weight
 
         best = float("-inf")
         for move in board.legal_moves:
