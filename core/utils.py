@@ -9,9 +9,9 @@ from core.piece import Piece, Pawn, Rook, Knight, Bishop, Queen, King
 class GameContext:
     """Shared positional metrics available to all agents."""
 
-    material_diff: int
-    mobility: int
-    king_safety: int
+    material_diff: int = 0
+    mobility: int = 0
+    king_safety: int = 0
 
 def piece_class_factory(piece, pos):
     t = piece.symbol().lower()

@@ -24,15 +24,38 @@ class Piece:
         self.pin_moves = set()
         self.check_squares = set()
 
-    def get_attacked_squares(self, board):
-        """Return squares this piece attacks.
+    def _as_square(self):
+        """Translate ``(rank, file)`` tuple to a python-chess square."""
+        if chess is None:
+            return None
+        return chess.square(self.position[1], self.position[0])
 
-        The project currently does not model real chess movement, so this
-        placeholder simply returns an empty set.  It allows other modules –
-        notably :class:`BoardAnalyzer` – to query attack information without
-        raising ``AttributeError``.
+    def get_attacked_squares(self, board):
+        """Return squares this piece attacks on ``board``.
+
+        ``board`` is expected to expose the python-chess ``attacks`` API.
+        When the ``chess`` package is unavailable the function falls back to
+        returning an empty set so the rest of the project can continue to
+        operate in a degraded mode.
         """
-        return set()
+        if chess is None:
+            return set()
+        sq = self._as_square()
+        return set(board.attacks(sq))
+
+    def get_defended_squares(self, board):
+        """Squares defended by this piece.
+
+        Friendly pieces among the attack set are considered defended.
+        """
+        if chess is None:
+            return set()
+        defended = set()
+        for target in self.get_attacked_squares(board):
+            piece = board.piece_at(target)
+            if piece and piece.color == self.color:
+                defended.add(target)
+        return defended
 
 class Pawn(Piece):
     def __init__(self, color, position):
@@ -42,12 +65,15 @@ class Rook(Piece):
     def __init__(self, color, position):
         super().__init__(color, position)
     def update_defended(self, board):
+        """Populate ``attacked_moves`` and ``defended_moves`` for visualizers."""
+        self.attacked_moves.clear()
         self.defended_moves.clear()
-        rook_sq = chess.square(self.position[1], self.position[0])
-        for sq in board.attacks(rook_sq):
+        for sq in self.get_attacked_squares(board):
             piece = board.piece_at(sq)
             if piece and piece.color == self.color:
                 self.defended_moves.add(sq)
+            else:
+                self.attacked_moves.add(sq)
 
 class Knight(Piece):
     def __init__(self, color, position):

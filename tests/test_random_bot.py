@@ -11,11 +11,11 @@ def test_random_bot_mobility_bias():
 
     random.seed(0)
     _, conf_pos = bot.choose_move(
-        board, GameContext(material_diff=0, mobility=5, king_safety=0)
+        board, GameContext(mobility=5)
     )
     random.seed(0)
     _, conf_neg = bot.choose_move(
-        board, GameContext(material_diff=0, mobility=-5, king_safety=0)
+        board, GameContext(mobility=-5)
     )
 
     assert conf_pos - conf_neg == 2 * MOBILITY_FACTOR
