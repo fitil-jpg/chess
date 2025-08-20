@@ -7,18 +7,30 @@ sys.path.insert(
 )
 
 import chess
+import pytest
 from attacked_squares import calculate_attacked_squares
 
 
 def test_attacked_squares() -> None:
     """Verify the number of squares a rook attacks."""
     board = chess.Board()
-    board.set_fen("8/8/8/8/8/8/8/R7 w - - 0 1")
+    board.clear()
     square = chess.E1
-    board.set_piece_at(square, chess.Piece(chess.ROOK, chess.WHITE))
+    piece = chess.Piece(chess.ROOK, chess.WHITE)
+    board.set_piece_at(square, piece)
 
-    result = calculate_attacked_squares(square, board)
+    result = calculate_attacked_squares(piece, board)
     expected = list(board.attacks(square))
 
     assert result == expected
-    assert len(result) == 14  # Rook on e1 with another rook on a1
+    assert len(result) == 14  # Rook on e1 on an otherwise empty board
+
+
+def test_missing_piece() -> None:
+    """Ensure a ``ValueError`` is raised when the piece is absent."""
+    board = chess.Board()
+    board.clear()
+    piece = chess.Piece(chess.BISHOP, chess.WHITE)
+
+    with pytest.raises(ValueError):
+        calculate_attacked_squares(piece, board)
