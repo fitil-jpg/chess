@@ -17,11 +17,15 @@ from PySide6.QtCore import (
     Qt,
     QSortFilterProxyModel,
 )
+from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QListView,
+    QTreeView,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QComboBox,
+    QCheckBox,
 )
 
 
@@ -128,14 +132,28 @@ class GameListPanel(QWidget):
         self.list_view = QListView()
         self.list_view.setModel(self.proxy)
 
+        self.tree_model = QStandardItemModel()
+        self.tree_view = QTreeView()
+        self.tree_view.setModel(self.tree_model)
+        self.tree_view.setHeaderHidden(True)
+        self.tree_view.hide()
+
         self.sort_combo = QComboBox()
         self.sort_combo.addItem("Result", "result")
         self.sort_combo.addItem("Run Date", "date")
         self.sort_combo.currentIndexChanged.connect(self._on_sort_mode_changed)
 
+        self.group_checkbox = QCheckBox("Group by date")
+        self.group_checkbox.toggled.connect(self._on_group_toggled)
+
+        controls = QHBoxLayout()
+        controls.addWidget(self.sort_combo)
+        controls.addWidget(self.group_checkbox)
+
         layout = QVBoxLayout(self)
-        layout.addWidget(self.sort_combo)
+        layout.addLayout(controls)
         layout.addWidget(self.list_view)
+        layout.addWidget(self.tree_view)
 
         # Apply initial sort
         self._on_sort_mode_changed(self.sort_combo.currentIndex())
@@ -150,7 +168,44 @@ class GameListPanel(QWidget):
             self.proxy.set_sort_mode("result")
             self.proxy.sort(0, Qt.AscendingOrder)
 
+        if self.group_checkbox.isChecked():
+            self._populate_tree()
+
+    # ------------------------------------------------------------------
+    def _on_group_toggled(self, checked: bool) -> None:
+        self.list_view.setVisible(not checked)
+        self.tree_view.setVisible(checked)
+        if checked:
+            self._populate_tree()
+
     # ------------------------------------------------------------------
     def set_runs(self, runs: Iterable[Dict[str, Any]]) -> None:
         self.model.set_runs(runs)
         self._on_sort_mode_changed(self.sort_combo.currentIndex())
+        if self.group_checkbox.isChecked():
+            self._populate_tree()
+
+    # ------------------------------------------------------------------
+    def _populate_tree(self) -> None:
+        self.tree_model.clear()
+        self.tree_model.setHorizontalHeaderLabels(["Games"])
+
+        groups: Dict[str, List[Dict[str, Any]]] = {}
+        for run in self.model._runs:
+            date = run.get("date") or ""
+            if isinstance(date, datetime):
+                key = date.date().isoformat()
+            else:
+                key = str(date)
+            groups.setdefault(key, []).append(run)
+
+        for key in sorted(groups.keys(), reverse=True):
+            parent = QStandardItem(key)
+            for run in groups[key]:
+                game_id = run.get("game_id", "<unknown>")
+                result = run.get("result")
+                label = f"{game_id} ({result})" if result else game_id
+                child = QStandardItem(label)
+                child.setData(run, Qt.UserRole)
+                parent.appendRow(child)
+            self.tree_model.appendRow(parent)
