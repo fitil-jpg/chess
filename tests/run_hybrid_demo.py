@@ -10,9 +10,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "vendors"))
-)
+
+from vendors import setup_path  # noqa: F401
 
 import chess
 
