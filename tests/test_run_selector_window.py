@@ -1,3 +1,5 @@
+from vendors import setup_path  # noqa: F401
+
 import os
 import pytest
 
