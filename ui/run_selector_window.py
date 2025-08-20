@@ -102,13 +102,19 @@ class RunSelectorWindow(QWidget):
         if not self.current_run:
             return
 
-        fen_idx = idx * 2 + (0 if is_white else 1)
+        # ``fens`` contains the starting position followed by a FEN after
+        # every played move.  ``idx`` therefore refers to the ply number for
+        # the colour indicated by ``is_white``.  Convert this to the index of
+        # the resulting board position and highlight the corresponding move in
+        # the textual list.
+        fen_idx = idx * 2 + (1 if is_white else 2)
         fens = self.current_run.get("fens", [])
         if 0 <= fen_idx < len(fens):
             self._apply_fen(fens[fen_idx])
 
-        if 0 <= fen_idx < self.moves.count():
-            self.moves.setCurrentRow(fen_idx)
+        move_row = fen_idx - 1
+        if 0 <= move_row < self.moves.count():
+            self.moves.setCurrentRow(move_row)
 
     # ------------------------------------------------------------------
     def _apply_fen(self, fen: str) -> None:
