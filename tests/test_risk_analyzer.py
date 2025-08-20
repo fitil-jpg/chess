@@ -27,20 +27,12 @@ def test_alpha_beta_prunes(monkeypatch):
     analyzer = RiskAnalyzer()
     m1 = chess.Move.from_uci("e2e4")
     m2 = chess.Move.from_uci("d2d4")
+    board = chess.Board()
 
-    class Gen:
-        def __iter__(self):
-            return iter([m1, m2])
+    monkeypatch.setattr(
+        board, "generate_legal_moves", lambda: iter([m1, m2]) if not board.move_stack else iter([])
+    )
 
-    class DummyBoard(chess.Board):
-        @property
-        def legal_moves(self):  # type: ignore[override]
-            # Expose two moves only at the root node.  After one move has been
-            # made ``move_stack`` is no longer empty and the generator returns
-            # an empty list so deeper searches do not try to play them again.
-            return list(Gen()) if not self.move_stack else []
-
-    board = DummyBoard()
     original_push = board.push
 
     def fake_push(move):
