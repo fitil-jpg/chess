@@ -1,13 +1,13 @@
 import chess
 
 
-def calculate_attacked_squares(square: chess.Square, board: chess.Board) -> list[int]:
+def calculate_attacked_squares(square: int, board: chess.Board) -> list[int]:
     """Calculate squares attacked from ``square`` on ``board``.
 
     Parameters
     ----------
     square:
-        :class:`chess.Square` where the piece resides.
+        Board coordinate of the piece represented as an ``int`` in ``[0, 63]``.
     board:
         The current :class:`chess.Board` instance.
 
