@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-REQUIRED_KEYS = {"moves", "fens", "modules_w", "modules_b", "result"}
+REQUIRED_KEYS = {"moves", "fens", "modules_w", "modules_b"}
 
 
 def load_runs(path: str) -> List[Dict[str, Any]]:
@@ -47,7 +47,7 @@ def load_runs(path: str) -> List[Dict[str, Any]]:
                 "fens": data["fens"],
                 "modules_w": data["modules_w"],
                 "modules_b": data["modules_b"],
-                "result": data["result"],
+                "result": data.get("result"),
             }
         )
 

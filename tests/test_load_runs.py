@@ -41,7 +41,23 @@ def test_load_runs_missing_key():
             assert False, "Expected ValueError due to missing keys"
         except ValueError as e:
             msg = str(e)
-            assert "modules_b" in msg and "result" in msg
+            assert "modules_b" in msg and "result" not in msg
+
+
+def test_load_runs_missing_result_defaults_none():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sample = {
+            "moves": [],
+            "fens": [],
+            "modules_w": [],
+            "modules_b": [],
+        }
+        with open(os.path.join(tmpdir, "game3.json"), "w", encoding="utf-8") as f:
+            json.dump(sample, f)
+
+        runs = load_runs(tmpdir)
+        assert len(runs) == 1
+        assert runs[0]["result"] is None
 
 
 if __name__ == "__main__":

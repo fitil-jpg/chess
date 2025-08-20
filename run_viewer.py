@@ -92,7 +92,7 @@ class RunViewer(QWidget):
         # --- Left panel: list of run files ---
         self.run_list = QListWidget()
         for run in self.runs:
-            result = run.get("result")
+            result: str | None = run.get("result")
             game_id = run.get("game_id", "<unknown>")
             label = f"{game_id} ({result})" if result else game_id
             self.run_list.addItem(label)
@@ -155,7 +155,7 @@ class RunViewer(QWidget):
         self.runs = filtered
         self.run_list.clear()
         for run in self.runs:
-            result = run.get("result")
+            result: str | None = run.get("result")
             game_id = run.get("game_id", "<unknown>")
             label = f"{game_id} ({result})" if result else game_id
             self.run_list.addItem(label)
