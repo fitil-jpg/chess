@@ -91,5 +91,7 @@ def test_board_analyzer_defense_map_rook_guards_pawn():
     simple.pieces.append(piece_class_factory(board.piece_at(pawn_sq), pawn_pos))
 
     analyzer = BoardAnalyzer(simple)
-    assert analyzer.get_defense_map('white') == {pawn_sq}
+    defense_map = analyzer.get_defense_map()
+    assert defense_map['white'] == {pawn_sq}
+    assert defense_map['black'] == set()
 
