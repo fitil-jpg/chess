@@ -1,8 +1,10 @@
+from typing import List
+
 import chess
 
 
-def calculate_attacked_squares(piece: chess.Piece, board: chess.Board) -> list[int]:
-    """Calculate squares ``piece`` attacks on ``board``.
+def calculate_attacked_squares(board: chess.Board, square: int) -> List[int]:
+    """Calculate squares a piece on ``square`` attacks on ``board``.
 
     The function is a light wrapper around :meth:`chess.Board.attacks`.
     ``Board.attacks`` returns a :class:`chess.SquareSet`, which is converted
@@ -11,27 +13,24 @@ def calculate_attacked_squares(piece: chess.Piece, board: chess.Board) -> list[i
 
     Parameters
     ----------
-    piece:
-        The :class:`chess.Piece` whose attacks are being calculated.  The
-        function verifies that this piece exists on ``board``.
     board:
         The current :class:`chess.Board` instance.
+    square:
+        The integer index of the square from which to calculate attacks.
 
     Returns
     -------
-    list[int]
-        Squares (as integers) that ``piece`` attacks.
+    List[int]
+        Squares (as integers) that the piece on ``square`` attacks.
 
     Raises
     ------
     ValueError
-        If ``piece`` is not present on ``board``.
+        If there is no piece on ``square``.
     """
 
-    piece_squares: chess.SquareSet = board.pieces(piece.piece_type, piece.color)
-    if not piece_squares:
-        raise ValueError(f"{piece} is not on the board")
+    if board.piece_at(square) is None:
+        raise ValueError(f"no piece at square {square}")
 
-    piece_square = next(iter(piece_squares))
-    attacked_squares: chess.SquareSet = board.attacks(piece_square)
+    attacked_squares: chess.SquareSet = board.attacks(square)
     return list(attacked_squares)
