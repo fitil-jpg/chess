@@ -48,3 +48,17 @@ Example output::
 2. g7g5 | MCTS=0.000 AB=-0.000 time=0.57s
 ```
 
+## Running Tests
+
+Execute the entire test suite with `pytest`'s automatic discovery:
+
+```bash
+python tests.py
+```
+
+Running `pytest` directly works as well:
+
+```bash
+pytest
+```
+
