@@ -1,4 +1,7 @@
 import chess
+import math
+
+import pytest
 
 from chess_ai.batched_mcts import BatchedMCTS, Node, choose_move_one_shot
 
@@ -24,19 +27,31 @@ class DummyNet:
         return results
 
 
-def test_search_batch_calls_net_and_returns_move():
+@pytest.mark.parametrize(
+    "n_simulations,batch_size",
+    [
+        (4, 2),
+        (5, 2),
+        (8, 3),
+    ],
+)
+def test_search_batch_calls_net_and_returns_move(n_simulations, batch_size):
     board = chess.Board()
     net = DummyNet()
     mcts = BatchedMCTS(net)
     root = Node(board.copy())
     move, root_after = mcts.search_batch(
-        root, n_simulations=4, batch_size=2, add_dirichlet=False, temperature=0.0
+        root,
+        n_simulations=n_simulations,
+        batch_size=batch_size,
+        add_dirichlet=False,
+        temperature=0.0,
     )
     assert move in board.legal_moves
-    # predict_many should be called for root + two batches
-    assert net.calls == 3
-    assert root_after.n == 4
-    assert sum(child.n for child in root_after.children.values()) == 4
+    expected_calls = 1 + math.ceil(n_simulations / batch_size)
+    assert net.calls == expected_calls
+    assert root_after.n == n_simulations
+    assert sum(child.n for child in root_after.children.values()) == n_simulations
 
 
 def test_choose_move_one_shot_uses_policy():

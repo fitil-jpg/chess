@@ -127,7 +127,10 @@ class BatchedMCTS:
             batch_boards: List[chess.Board] = []
             batch_paths: List[List[Node]] = []
             # ----------------------------------------------------------
-            for _ in range(min(batch_size, n_simulations - sims_done)):
+            while (
+                len(batch) < batch_size
+                and sims_done + len(batch) < n_simulations
+            ):
                 node = root
                 b = board.copy()
                 path = [node]
