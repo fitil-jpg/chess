@@ -99,8 +99,28 @@ class HybridOrchestrator:
     # ------------------------------------------------------------------
     #  Public API
     # ------------------------------------------------------------------
-    def choose_move(self, board: chess.Board) -> Tuple[chess.Move | None, Dict[str, Any]]:
-        """Return the final move and diagnostic information."""
+    def choose_move(
+        self,
+        board: chess.Board,
+        *,
+        plot: bool = False,
+        plot_title: str | None = None,
+        plot_path: str | None = None,
+    ) -> Tuple[chess.Move | None, Dict[str, Any]]:
+        """Return the final move and optional visualisation.
+
+        Parameters
+        ----------
+        board:
+            Current game state.
+        plot:
+            If ``True``, :func:`plot_orchestrator_diag` is invoked to visualise
+            the diagnostic information returned by this method.
+        plot_title:
+            Optional title passed to :func:`plot_orchestrator_diag`.
+        plot_path:
+            If provided, the generated figure is saved to this path.
+        """
         if board.turn != self.color:
             return None, {"candidates": [], "chosen": None, "mcts_first": None}
 
@@ -138,6 +158,16 @@ class HybridOrchestrator:
             "chosen": chosen.move.uci(),
             "mcts_first": mcts_first.move.uci(),
         }
+
+        if plot:
+            from .viz import plot_orchestrator_diag
+
+            title = plot_title
+            if title is None:
+                colour = "White" if self.color == chess.WHITE else "Black"
+                title = f"{colour} move {board.fullmove_number}"
+            plot_orchestrator_diag(diag, title=title, save_path=plot_path)
+
         return chosen.move, diag
 
 
