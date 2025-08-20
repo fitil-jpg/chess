@@ -76,12 +76,22 @@ class RunSelectorWindow(QWidget):
 
     # ------------------------------------------------------------------
     def _on_timeline_click(self, idx: int, is_white: bool) -> None:
+        """Show the position for the clicked move and highlight it.
+
+        ``idx`` is the 0-based ply index within the selected run while
+        ``is_white`` indicates whether the move belongs to White.  The method
+        updates the mini board to the corresponding FEN and selects the move in
+        the textual list, if available.
+        """
+
         if not self.current_run:
             return
+
         fen_idx = idx * 2 + (0 if is_white else 1)
         fens = self.current_run.get("fens", [])
         if 0 <= fen_idx < len(fens):
             self._apply_fen(fens[fen_idx])
+
         if 0 <= fen_idx < self.moves.count():
             self.moves.setCurrentRow(fen_idx)
 
