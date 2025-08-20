@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 from PySide6.QtGui import QPainter, QColor, QPen
-from PySide6.QtCore import QRect
+from PySide6.QtCore import QRect, Signal
 
 from ui.mini_board import MiniBoard
 from ui.usage_timeline import UsageTimeline
@@ -22,18 +22,28 @@ from utils.module_colors import MODULE_COLORS
 class OverallUsageChart(QWidget):
     """Simple bar chart summarising module usage across multiple runs."""
 
+    moduleClicked = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.counts = {}
+        self._bar_rects = []  # regions for click detection
+        self._selected = None
         self.setMinimumSize(280, 150)
 
     def set_data(self, counts):
         self.counts = dict(counts)
         self.update()
 
+    def set_selected(self, name: str | None) -> None:
+        """Highlight *name* in the chart (or clear with ``None``)."""
+        self._selected = name
+        self.update()
+
     def paintEvent(self, ev):  # pragma: no cover - GUI drawing
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(250, 250, 250))
+        self._bar_rects = []
         if not self.counts:
             return
 
@@ -46,13 +56,25 @@ class OverallUsageChart(QWidget):
 
         for name, count in items:
             bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
+            rect = QRect(pad, y, bar_w, bar_h)
+            self._bar_rects.append((rect, name))
             color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
-            painter.fillRect(QRect(pad, y, bar_w, bar_h), color)
-            painter.setPen(QPen(QColor(60, 60, 60)))
-            painter.drawRect(QRect(pad, y, bar_w, bar_h))
+            if self._selected and name != self._selected:
+                color = color.lighter(160)
+            painter.fillRect(rect, color)
+            pen_width = 2 if name == self._selected else 1
+            painter.setPen(QPen(QColor(60, 60, 60), pen_width))
+            painter.drawRect(rect)
             painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
             y += bar_h + pad
             if y + bar_h > self.height():
+                break
+
+    def mousePressEvent(self, ev):  # pragma: no cover - GUI interaction
+        pos = ev.position().toPoint()
+        for rect, name in self._bar_rects:
+            if rect.contains(pos):
+                self.moduleClicked.emit(name)
                 break
 
 
@@ -62,8 +84,10 @@ class RunViewer(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Run Viewer")
-        self.runs = load_runs("runs")
+        self.all_runs = load_runs("runs")
+        self.runs = list(self.all_runs)
         self.current_run = None
+        self.active_module = None
 
         # --- Left panel: list of run files ---
         self.run_list = QListWidget()
@@ -105,7 +129,8 @@ class RunViewer(QWidget):
 
         # --- Bottom: overall usage chart ---
         self.overall_chart = OverallUsageChart()
-        self.overall_chart.set_data(aggregate_module_usage(self.runs))
+        self.overall_chart.set_data(aggregate_module_usage(self.all_runs))
+        self.overall_chart.moduleClicked.connect(self._on_overall_module_click)
 
         layout = QVBoxLayout(self)
         layout.addLayout(top)
@@ -115,12 +140,19 @@ class RunViewer(QWidget):
             self.run_list.setCurrentRow(0)
 
     # --------------------------------------------------------------
-    def _refresh_runs(self) -> None:
-        """Reload run files and update UI, preserving selection if possible."""
-        selected_id = self.current_run.get("game_id") if self.current_run else None
+    def _apply_run_filter(self, selected_id: str | None = None) -> None:
+        """Filter ``self.all_runs`` by the active module and rebuild list."""
+        if self.active_module:
+            filtered = [
+                r
+                for r in self.all_runs
+                if self.active_module in r.get("modules_w", [])
+                or self.active_module in r.get("modules_b", [])
+            ]
+        else:
+            filtered = list(self.all_runs)
 
-        self.runs = load_runs("runs")
-
+        self.runs = filtered
         self.run_list.clear()
         for run in self.runs:
             result = run.get("result")
@@ -128,14 +160,35 @@ class RunViewer(QWidget):
             label = f"{game_id} ({result})" if result else game_id
             self.run_list.addItem(label)
 
-        self.overall_chart.set_data(aggregate_module_usage(self.runs))
-
         if not self.runs:
             self._on_run_selected(-1)
             return
 
-        row = next((i for i, r in enumerate(self.runs) if r.get("game_id") == selected_id), 0)
+        row = 0
+        if selected_id:
+            row = next(
+                (i for i, r in enumerate(self.runs) if r.get("game_id") == selected_id),
+                0,
+            )
         self.run_list.setCurrentRow(row)
+
+    # --------------------------------------------------------------
+    def _refresh_runs(self) -> None:
+        """Reload run files and update UI, preserving selection if possible."""
+        selected_id = self.current_run.get("game_id") if self.current_run else None
+
+        self.all_runs = load_runs("runs")
+        self.overall_chart.set_data(aggregate_module_usage(self.all_runs))
+        self._apply_run_filter(selected_id)
+
+    # --------------------------------------------------------------
+    def _on_overall_module_click(self, module: str) -> None:
+        if self.active_module == module:
+            self.active_module = None
+        else:
+            self.active_module = module
+        self.overall_chart.set_selected(self.active_module)
+        self._apply_run_filter()
 
     # --------------------------------------------------------------
     def _on_run_selected(self, row: int) -> None:
