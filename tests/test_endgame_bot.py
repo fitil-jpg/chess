@@ -5,7 +5,7 @@ from chess_ai.endgame_bot import EndgameBot
 from utils import GameContext
 
 
-def test_check_bonus_scaled_by_material():
+def test_check_bonus_scaled_by_material(context):
     # Position after 1.e4 f6 where Qh5 delivers check on e8.
     board = chess.Board("rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
     bot = EndgameBot(chess.WHITE)
@@ -16,7 +16,7 @@ def test_check_bonus_scaled_by_material():
         board,
         move,
         enemy_king,
-        GameContext(),
+        context,
     )
     ahead_score, _ = bot.evaluate_move(
         board,
