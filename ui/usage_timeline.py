@@ -54,7 +54,10 @@ class UsageTimeline(QWidget):
         max_len = max(len(self.w_keys), len(self.b_keys), 1)
         seg_w = max(1, (w - pad * 2) // max_len)
 
-        pos = ev.position()
+        # ``QMouseEvent.position`` is available in Qt6; fall back to ``pos``
+        # for older Qt versions.  Coordinates are extracted in float to avoid
+        # rounding issues when calculating the tile index.
+        pos = ev.position() if hasattr(ev, "position") else ev.pos()
         x, y = pos.x(), pos.y()
 
         is_white: bool | None
