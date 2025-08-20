@@ -48,7 +48,10 @@ class Piece:
     def _color(self):
         if chess is None:
             return None
-        return chess.WHITE if self.color == 'white' else chess.BLACK
+        if isinstance(self.color, str):
+            return chess.WHITE if self.color == 'white' else chess.BLACK
+        # Assume boolean from python-chess: True -> white
+        return chess.WHITE if self.color else chess.BLACK
 
     @staticmethod
     def _build_board(board):
@@ -75,8 +78,9 @@ class Piece:
 
         The original project only needed a placeholder.  For this kata we
         leverage :mod:`python-chess` to compute the real attack set whenever
-        the dependency is available.  Results are returned as python-chess
-        square indices (0..63).
+        the dependency is available.  Squares are returned using standard
+        algebraic notation like ``"e4"`` so that callers can work with a
+        human friendly representation.
         """
         if chess is None:
             return set()
@@ -84,7 +88,7 @@ class Piece:
         sq = self._square()
         if cb is None or sq is None:
             return set()
-        return set(cb.attacks(sq))
+        return {chess.square_name(t) for t in cb.attacks(sq)}
 
     def get_defended_squares(self, board):
         """Return squares occupied by friendly pieces that this piece protects."""
@@ -100,7 +104,7 @@ class Piece:
         for target in cb.attacks(sq):
             piece = cb.piece_at(target)
             if piece and piece.color == color:
-                defended.add(target)
+                defended.add(chess.square_name(target))
         return defended
 
 class Pawn(Piece):
@@ -112,10 +116,12 @@ class Rook(Piece):
         super().__init__(color, position)
     def update_defended(self, board):
         self.defended_moves.clear()
-        rook_sq = chess.square(self.position[1], self.position[0])
+        rook_sq = self._square()
+        if rook_sq is None:
+            return
         for sq in board.attacks(rook_sq):
             piece = board.piece_at(sq)
-            if piece and piece.color == self.color:
+            if piece and piece.color == self._color():
                 self.defended_moves.add(sq)
 
 class Knight(Piece):
@@ -123,11 +129,13 @@ class Knight(Piece):
         super().__init__(color, position)
     def update_fork(self, board):
         self.fork_moves.clear()
-        knight_sq = chess.square(self.position[1], self.position[0])
+        knight_sq = self._square()
+        if knight_sq is None:
+            return
         fork_targets = []
         for sq in board.attacks(knight_sq):
             piece = board.piece_at(sq)
-            if piece and piece.color != self.color and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.KING]:
+            if piece and piece.color != self._color() and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.KING]:
                 fork_targets.append(sq)
         if len(fork_targets) >= 2:
             self.fork_moves.update(fork_targets)
@@ -141,28 +149,32 @@ class Queen(Piece):
         super().__init__(color, position)
     def update_hanging(self, board):
         self.hanging_targets.clear()
-        queen_sq = chess.square(self.position[1], self.position[0])
+        queen_sq = self._square()
+        if queen_sq is None:
+            return
         for sq in board.attacks(queen_sq):
             piece = board.piece_at(sq)
-            if piece and piece.color != self.color:
-                defenders = board.attackers(not self.color, sq)
+            if piece and piece.color != self._color():
+                defenders = board.attackers(not self._color(), sq)
                 if not defenders:
                     self.hanging_targets.add(sq)
     def update_pin_and_check(self, board):
         self.pin_moves.clear()
         self.check_squares.clear()
-        queen_sq = chess.square(self.position[1], self.position[0])
+        queen_sq = self._square()
+        if queen_sq is None:
+            return
         for sq in board.attacks(queen_sq):
             piece = board.piece_at(sq)
-            if piece and piece.color != self.color and piece.piece_type != chess.KING:
-                ksq = board.king(not self.color)
+            if piece and piece.color != self._color() and piece.piece_type != chess.KING:
+                ksq = board.king(not self._color())
                 if ksq is not None:
                     rq, rf = chess.square_rank(sq), chess.square_file(sq)
                     kr, kf = chess.square_rank(ksq), chess.square_file(ksq)
-                    qr, qf = self.position
+                    qr, qf = chess.square_rank(queen_sq), chess.square_file(queen_sq)
                     if rq == kr or rf == kf or abs(rq - kr) == abs(rf - kf):
                         self.pin_moves.add(sq)
-            king_sq = board.king(not self.color)
+            king_sq = board.king(not self._color())
             if king_sq and king_sq in board.attacks(queen_sq):
                 self.check_squares.add(king_sq)
 
@@ -172,10 +184,12 @@ class King(Piece):
     def update_king_moves(self, board):
         self.safe_moves.clear()
         self.attacked_moves.clear()
-        king_sq = chess.square(self.position[1], self.position[0])
+        king_sq = self._square()
+        if king_sq is None:
+            return
         for move in board.legal_moves:
             if move.from_square == king_sq:
-                attackers = board.attackers(not self.color, move.to_square)
+                attackers = board.attackers(not self._color(), move.to_square)
                 if attackers:
                     self.attacked_moves.add(move.to_square)
                 else:
