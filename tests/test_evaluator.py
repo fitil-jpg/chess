@@ -1,3 +1,5 @@
+from vendors import setup_path  # noqa: F401
+
 from core.board import Board
 from core.piece import Pawn, Knight
 from core.board_analyzer import BoardAnalyzer
