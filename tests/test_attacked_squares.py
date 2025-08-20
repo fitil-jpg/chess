@@ -11,7 +11,7 @@ def test_attacked_squares() -> None:
     piece = chess.Piece(chess.ROOK, chess.WHITE)
     board.set_piece_at(square, piece)
 
-    result = calculate_attacked_squares(piece, board)
+    result = calculate_attacked_squares(board, square)
     expected = list(board.attacks(square))
 
     assert result == expected
@@ -19,11 +19,10 @@ def test_attacked_squares() -> None:
 
 
 def test_calculate_attacked_squares_missing_piece_raises_value_error() -> None:
-    """``calculate_attacked_squares`` raises ``ValueError`` if the piece is absent."""
+    """``calculate_attacked_squares`` raises ``ValueError`` if the square is empty."""
     board = chess.Board()
     board.clear()
-    missing_piece = chess.Piece(chess.BISHOP, chess.WHITE)
+    square = chess.E1
 
     with pytest.raises(ValueError):
-        calculate_attacked_squares(missing_piece, board)
-
+        calculate_attacked_squares(board, square)
