@@ -119,7 +119,8 @@ class BatchedMCTS:
         if not legal:
             return None, root
         # Expand root on first call
-        self._expand(root, board, add_dirichlet)
+        if not root.children:
+            self._expand(root, board, add_dirichlet)
 
         sims_done = 0
         while sims_done < n_simulations:
