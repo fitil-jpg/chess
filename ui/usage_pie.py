@@ -45,4 +45,3 @@ class UsagePie(QWidget):
             painter.setPen(Qt.NoPen)
             painter.drawPie(rect, int(start * 16), int(span * 16))
             start += span
-
