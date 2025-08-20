@@ -32,6 +32,6 @@ def calculate_attacked_squares(piece: chess.Piece, board: chess.Board) -> list[i
     if not piece_squares:
         raise ValueError("Piece is not on the board")
 
-    piece_square = piece_squares.pop()  # ``board.pieces`` returns a copy, so ``pop`` is safe
+    piece_square = piece_squares.pop()  # board.pieces returns a copy, so pop is safe
     attacked_squares = board.attacks(piece_square)
     return list(attacked_squares)
