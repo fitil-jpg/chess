@@ -17,18 +17,25 @@ class Qt:
     UserRole = 256
     AscendingOrder = 0
     DescendingOrder = 1
+    LeftButton = 1
+    NoModifier = 0
+    white = 0xFFFFFF
+    black = 0x000000
+    WA_TransparentForMouseEvents = 0x0001
+    AlignCenter = 0
+    NoPen = 0
 
 
 class Signal:
     """Very small replacement for Qt's signal/slot mechanism."""
 
-    def __init__(self) -> None:
+    def __init__(self, *types: Any) -> None:  # pragma: no cover - trivial
         self._slots: List[Callable[..., None]] = []
 
-    def connect(self, slot: Callable[..., None]) -> None:
+    def connect(self, slot: Callable[..., None]) -> None:  # pragma: no cover - trivial
         self._slots.append(slot)
 
-    def emit(self, *args: Any, **kwargs: Any) -> None:
+    def emit(self, *args: Any, **kwargs: Any) -> None:  # pragma: no cover - trivial
         for slot in list(self._slots):
             slot(*args, **kwargs)
 
@@ -127,3 +134,27 @@ class QSortFilterProxyModel(QAbstractListModel):
         self._rows.sort(key=cmp_to_key(cmp))
         if order == Qt.DescendingOrder:
             self._rows.reverse()
+
+
+@dataclass
+class QPoint:
+    """Minimal QPoint implementation for tests."""
+
+    _x: int = 0
+    _y: int = 0
+
+    def x(self) -> int:  # pragma: no cover - trivial
+        return self._x
+
+    def y(self) -> int:  # pragma: no cover - trivial
+        return self._y
+
+
+@dataclass
+class QRect:
+    """Simple rectangle container."""
+
+    x: int
+    y: int
+    width: int
+    height: int
