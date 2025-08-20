@@ -17,5 +17,5 @@ def calculate_attacked_squares(square: Union[int, chess.Square], board: chess.Bo
     list[int]
         Squares (as integers) that the piece attacks.
     """
-    attacked_squares = board.attacks(square)
-    return list(attacked_squares)
+    square_index = int(square)
+    return list(board.attacks(square_index))
