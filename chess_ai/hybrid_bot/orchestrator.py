@@ -1,11 +1,13 @@
 """Hybrid orchestrator blending MCTS and alpha-beta search.
 
 This module defines :class:`HybridOrchestrator` which performs a Monte
-Carlo tree search to gather the top-K candidate moves.  Each candidate is
+Carlo tree search to gather the top-K candidate moves. Each candidate is
 validated by running an alpha-beta search and by invoking the optional
-R-based evaluator.  The normalised scores from the MCTS and alpha-beta
-steps are combined using a λ-mix to determine the final move.  Diagnostic
-information is returned to aid visualisation.
+R-based evaluator. The normalised scores from the MCTS and alpha-beta
+steps are combined using a λ-mix to determine the final move. Diagnostic
+information, including the list of evaluated candidates, the move selected
+after mixing, and the best MCTS move before mixing, is returned to aid
+visualisation.
 """
 
 from __future__ import annotations
@@ -36,6 +38,18 @@ class _Candidate:
     mcts_norm: float = 0.0
     ab_norm: float = 0.0
     mixed: float = 0.0
+
+    def as_dict(self) -> Dict[str, float | str]:
+        """Return a dictionary representation for diagnostics."""
+        return {
+            "move": self.move.uci(),
+            "mcts": self.mcts,
+            "ab": self.ab,
+            "r": self.r,
+            "mcts_norm": self.mcts_norm,
+            "ab_norm": self.ab_norm,
+            "mixed": self.mixed,
+        }
 
 
 class HybridOrchestrator:
@@ -115,18 +129,7 @@ class HybridOrchestrator:
         chosen = max(candidates, key=lambda c: c.mixed)
         mcts_first = max(candidates, key=lambda c: c.mcts)
         diag = {
-            "candidates": [
-                {
-                    "move": c.move.uci(),
-                    "mcts": c.mcts,
-                    "ab": c.ab,
-                    "r": c.r,
-                    "mcts_norm": c.mcts_norm,
-                    "ab_norm": c.ab_norm,
-                    "mixed": c.mixed,
-                }
-                for c in candidates
-            ],
+            "candidates": [c.as_dict() for c in candidates],
             "chosen": chosen.move.uci(),
             "mcts_first": mcts_first.move.uci(),
         }
