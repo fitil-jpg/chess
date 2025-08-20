@@ -6,24 +6,18 @@ from utils import GameContext
 
 
 def test_check_bonus_scaled_by_material():
-    board = chess.Board()
+    board = chess.Board("4k3/8/8/8/8/8/8/3QK3 w - - 0 1")
     bot = EndgameBot(chess.WHITE)
     move = chess.Move.from_uci("d1h5")  # Qh5+
     enemy_king = board.king(chess.BLACK)
 
     random.seed(0)
     base_score, _ = bot.evaluate_move(
-        board,
-        move,
-        enemy_king,
-        GameContext(),
+        board, move, enemy_king, GameContext()
     )
     random.seed(0)
     ahead_score, _ = bot.evaluate_move(
-        board,
-        move,
-        enemy_king,
-        GameContext(material_diff=2),
+        board, move, enemy_king, GameContext(material_diff=2)
     )
 
     assert ahead_score > base_score
