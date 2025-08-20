@@ -34,19 +34,19 @@ class Evaluator:
     def mobility(self, board=None):
         """Return a tuple with number of legal moves for white and black.
 
-        Counts moves via ``board.legal_moves.count()`` so the generator is not
-        materialized. The board's ``turn`` attribute is temporarily flipped to
-        count the opponent's moves, and results are stored in
-        ``self.mobility_stats`` for telemetry purposes.
+        Counts moves by iterating through ``board.legal_moves`` instead of
+        materialising the generator. The board's ``turn`` attribute is
+        temporarily flipped to count the opponent's moves, and results are
+        stored in ``self.mobility_stats`` for telemetry purposes.
         """
         board = board or self.board
         orig_turn = board.turn
-        # Use ``count()`` instead of ``len()`` because ``legal_moves`` is a
-        # generator.  Counting directly avoids materializing the entire move
-        # list and ensures compatibility with custom generators used in tests.
-        white_moves = board.legal_moves.count()
+        # Iterate through ``legal_moves`` instead of calling ``len()`` because
+        # it is a generator.  Summing avoids materialising the entire move list
+        # and ensures compatibility with custom generators used in tests.
+        white_moves = sum(1 for _ in board.legal_moves)
         board.turn = not board.turn
-        black_moves = board.legal_moves.count()
+        black_moves = sum(1 for _ in board.legal_moves)
         board.turn = orig_turn
         score = white_moves - black_moves
         self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
