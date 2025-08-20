@@ -34,9 +34,10 @@ class Evaluator:
     def mobility(self, board=None):
         """Return a tuple with number of legal moves for white and black.
 
-        The board's ``turn`` attribute is temporarily flipped to count the
-        opponent's moves.  Results are stored in ``self.mobility_stats`` for
-        telemetry purposes.
+        Counts moves via ``board.legal_moves.count()`` so the generator is not
+        materialized. The board's ``turn`` attribute is temporarily flipped to
+        count the opponent's moves, and results are stored in
+        ``self.mobility_stats`` for telemetry purposes.
         """
         board = board or self.board
         orig_turn = board.turn
