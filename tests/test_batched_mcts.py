@@ -54,6 +54,32 @@ def test_search_batch_calls_net_and_returns_move(n_simulations, batch_size):
     assert sum(child.n for child in root_after.children.values()) == n_simulations
 
 
+def test_search_batch_reuse_root_does_not_reexpand():
+    board = chess.Board()
+    net = DummyNet()
+    mcts = BatchedMCTS(net)
+    root = Node(board.copy())
+    n_simulations = 4
+    batch_size = 2
+    mcts.search_batch(
+        root,
+        n_simulations=n_simulations,
+        batch_size=batch_size,
+        add_dirichlet=False,
+        temperature=0.0,
+    )
+    first_calls = net.calls
+    assert first_calls == 1 + math.ceil(n_simulations / batch_size)
+    mcts.search_batch(
+        root,
+        n_simulations=n_simulations,
+        batch_size=batch_size,
+        add_dirichlet=False,
+        temperature=0.0,
+    )
+    assert net.calls - first_calls == math.ceil(n_simulations / batch_size)
+
+
 def test_choose_move_one_shot_uses_policy():
     class PrefNet(DummyNet):
         def predict_many(self, boards):
