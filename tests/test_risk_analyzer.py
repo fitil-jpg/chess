@@ -74,3 +74,12 @@ def test_chess_bot_avoids_risky_trap(monkeypatch, context, evaluator):
     move, conf = bot.choose_move(board, context=context, evaluator=evaluator)
     assert move == safe
 
+
+def test_engine_prefers_safe_valuable_capture(monkeypatch):
+    """When no moves are risky, the engine should capture valuable pieces."""
+    board = chess.Board("r3n1k1/8/8/3Q4/8/8/8/5K2 w - - 0 1")
+    monkeypatch.setattr(RiskAnalyzer, "is_risky", lambda self, b, m: False)
+    engine = DecisionEngine()
+    best = engine.choose_best_move(board)
+    assert best == chess.Move.from_uci("d5a8")
+
