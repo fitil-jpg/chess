@@ -26,11 +26,12 @@ def test_attacked_squares() -> None:
     assert len(result) == 14  # Rook on e1 on an otherwise empty board
 
 
-def test_missing_piece() -> None:
-    """Ensure a ``ValueError`` is raised when the piece is absent."""
+def test_calculate_attacked_squares_without_piece() -> None:
+    """``calculate_attacked_squares`` requires the piece to be on the board."""
     board = chess.Board()
-    board.clear()
-    piece = chess.Piece(chess.BISHOP, chess.WHITE)
+    board.clear()  # Ensure the board has no pieces
+    missing_piece = chess.Piece(chess.BISHOP, chess.WHITE)
 
     with pytest.raises(ValueError):
-        calculate_attacked_squares(piece, board)
+        calculate_attacked_squares(missing_piece, board)
+
