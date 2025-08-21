@@ -39,3 +39,6 @@ Thumbs.db
 # Qt/PySide (збірки)
 *.qrc.dep
 *.qm
+
+# Vendored Torch libraries
+vendors/torch/torch/lib/
