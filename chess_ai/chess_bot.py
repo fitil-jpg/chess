@@ -156,7 +156,16 @@ class ChessBot:
             target_piece = board.piece_at(move.to_square)
             from_piece = board.piece_at(move.from_square)
             if target_piece and from_piece:
-                gain = dynamic_piece_value(target_piece, board) - dynamic_piece_value(from_piece, board)
+                # Evaluate pieces with dynamic king-aware values
+                if target_piece.piece_type == chess.KING:
+                    target_val = calculate_king_value(board, target_piece.color)
+                else:
+                    target_val = dynamic_piece_value(target_piece, board)
+                if from_piece.piece_type == chess.KING:
+                    from_val = calculate_king_value(board, from_piece.color)
+                else:
+                    from_val = dynamic_piece_value(from_piece, board)
+                gain = target_val - from_val
                 score += gain
                 if context and context.material_diff < 0:
                     bonus = abs(context.material_diff) * MATERIAL_DEFICIT_BONUS
