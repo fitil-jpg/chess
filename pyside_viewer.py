@@ -142,12 +142,22 @@ class ChessViewer(QWidget):
         self.lbl_threat   = QLabel("ThreatMap: —")
         self.lbl_attacks  = QLabel("Attacks: —")
         self.lbl_leaders  = QLabel("Attack leaders: —")
+        self.lbl_king     = QLabel("King coeff: —")
 
         # Usage — два окремі рядки (як ти просив)
         self.lbl_usage_w  = QLabel("Dynamic usage (W): —")
         self.lbl_usage_b  = QLabel("Dynamic usage (B): —")
 
-        for lab in (self.lbl_module, self.lbl_features, self.lbl_threat, self.lbl_attacks, self.lbl_leaders, self.lbl_usage_w, self.lbl_usage_b):
+        for lab in (
+            self.lbl_module,
+            self.lbl_features,
+            self.lbl_threat,
+            self.lbl_attacks,
+            self.lbl_leaders,
+            self.lbl_king,
+            self.lbl_usage_w,
+            self.lbl_usage_b,
+        ):
             lab.setWordWrap(True)
             right_col.addWidget(lab)
 
@@ -423,6 +433,21 @@ class ChessViewer(QWidget):
         b_txt = display_max_for(chess.BLACK)
         return f"Attack leaders: W={w_txt} | B={b_txt}"
 
+    def _king_coeff_text(self) -> str:
+        def side(color: chess.Color) -> str:
+            base = (
+                8 * len(self.board.pieces(chess.PAWN, color))
+                + 2 * len(self.board.pieces(chess.BISHOP, color))
+                + 2 * len(self.board.pieces(chess.KNIGHT, color))
+                + 2 * len(self.board.pieces(chess.ROOK, color))
+                + len(self.board.pieces(chess.QUEEN, color))
+            )
+            modifier = 0.85 if not self.board.pieces(chess.QUEEN, not color) else 1.0
+            value = int(base * modifier)
+            return f"{value} (m={modifier:.2f})"
+
+        return f"King coeff: W={side(chess.WHITE)} | B={side(chess.BLACK)}"
+
     def _extract_reason_key(self, reason: str) -> str:
         """
         Витягуємо «ключ модуля/тега» із reason:
@@ -485,6 +510,7 @@ class ChessViewer(QWidget):
         self.lbl_attacks.setText(f"Attacks: cells W={cw}, B={cb} | pieces under attack W={pw}, B={pb}")
 
         self.lbl_leaders.setText(self._attack_leaders_text())
+        self.lbl_king.setText(self._king_coeff_text())
 
         # Оновити usage-лейбли і графік
         self._update_usage_labels()
