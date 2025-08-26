@@ -42,3 +42,7 @@ Thumbs.db
 
 # Vendored Torch libraries
 vendors/torch/torch/lib/
+vendors/torch/
+vendors/matplotlib/
+vendors/torch/
+vendors/matplotlib/
