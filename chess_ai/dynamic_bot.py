@@ -11,6 +11,7 @@ from .endgame_bot import EndgameBot
 from .fortify_bot import FortifyBot
 from .random_bot import RandomBot
 from .critical_bot import CriticalBot
+from .neural_bot import NeuralBot
 from core.evaluator import Evaluator
 from utils import GameContext
 
@@ -38,6 +39,7 @@ class DynamicBot:
         self.register_agent(EndgameBot(color), weights.get("endgame", 1.0))
         self.register_agent(RandomBot(color), weights.get("random", 1.0))
         self.register_agent(ChessBot(color), weights.get("center", 1.0))
+        self.register_agent(NeuralBot(color), weights.get("neural", 1.0))
 
     def register_agent(self, agent: object, weight: float = 1.0) -> None:
         """Register a sub-agent with an optional weight."""
