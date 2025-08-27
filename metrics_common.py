@@ -101,10 +101,40 @@ def evaluate_pawn_structure(board: chess.Board) -> int:
     return score
 
 
+def evaluate_pressure(board: chess.Board) -> int:
+    """Return the pressure differential on valuable enemy pieces."""
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0,
+    }
+    pressure = {chess.WHITE: 0, chess.BLACK: 0}
+    for color in (chess.WHITE, chess.BLACK):
+        for sq, piece in board.piece_map().items():
+            if piece.color != color and board.is_attacked_by(color, sq):
+                pressure[color] += piece_values[piece.piece_type]
+    return pressure[chess.WHITE] - pressure[chess.BLACK]
+
+
+def evaluate_synergy(board: chess.Board) -> int:
+    """Return the difference in squares attacked by multiple pieces."""
+    synergy = {chess.WHITE: 0, chess.BLACK: 0}
+    for sq in chess.SQUARES:
+        for color in (chess.WHITE, chess.BLACK):
+            if len(board.attackers(color, sq)) >= 2:
+                synergy[color] += 1
+    return synergy[chess.WHITE] - synergy[chess.BLACK]
+
+
 __all__ = [
     "count_attacked_squares",
     "count_defended_pieces",
     "evaluate_center_control",
     "evaluate_king_safety",
     "evaluate_pawn_structure",
+    "evaluate_pressure",
+    "evaluate_synergy",
 ]
