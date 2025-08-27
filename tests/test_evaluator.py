@@ -37,8 +37,3 @@ def test_board_metrics():
 
     assert isinstance(result, dict), "Metrics result is not a dict!"
     assert "material_balance" in result, "No material_balance key found!"
-
-
-if __name__ == "__main__":
-    test_agent_evaluator()
-    test_board_metrics()
