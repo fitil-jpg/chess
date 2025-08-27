@@ -88,6 +88,48 @@ class Evaluator:
             "score": 0,
         }
 
+    @staticmethod
+    def piece_zone(board: chess.Board, square: int, radius: int) -> set[int]:
+        """Return squares around ``square`` relevant for piece safety.
+
+        The shape of the returned zone depends on the piece type located on
+        ``square``:
+
+        * King and most pieces use a simple circle based on
+          :func:`chess.square_distance`.
+        * Knights also use a circular zone but callers typically pass a larger
+          ``radius`` (e.g. ``2``).
+        * Queens expand along ranks, files and diagonals up to ``radius``
+          squares, forming an "intersection of lines".
+        """
+
+        piece = board.piece_at(square)
+        if piece is None:
+            return set()
+
+        zone: set[int] = set()
+
+        file = chess.square_file(square)
+        rank = chess.square_rank(square)
+
+        if piece.piece_type == chess.QUEEN:
+            directions = [
+                (1, 0), (-1, 0), (0, 1), (0, -1),
+                (1, 1), (1, -1), (-1, 1), (-1, -1),
+            ]
+            for df, dr in directions:
+                for dist in range(1, radius + 1):
+                    f = file + df * dist
+                    r = rank + dr * dist
+                    if 0 <= f < 8 and 0 <= r < 8:
+                        zone.add(chess.square(f, r))
+        else:
+            for sq in chess.SQUARES:
+                if chess.square_distance(square, sq) <= radius:
+                    zone.add(sq)
+
+        return zone
+
     def mobility(self, board=None):
         """Return total mobility for white and black.
 

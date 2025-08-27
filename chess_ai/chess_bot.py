@@ -116,6 +116,16 @@ class ChessBot:
         opp_color = not self.color
         opp_king_sq = board.king(opp_color)
         repetition = board.is_repetition(2)
+        evaluator = Evaluator(board)
+
+        # --- контроль зони навколо нашого короля ДО ходу ---
+        our_king_sq = board.king(self.color)
+        before_unprotected = 0
+        if our_king_sq is not None:
+            zone = evaluator.piece_zone(board, our_king_sq, radius=2)
+            for sq in zone:
+                if board.is_attacked_by(opp_color, sq) and not board.is_attacked_by(self.color, sq):
+                    before_unprotected += 1
 
         # 1. Кількість safe square у суперника ДО ходу
         before_safe = []
@@ -149,6 +159,51 @@ class ChessBot:
             if defenders and not attackers:
                 score += 40
                 reasons.append("attacks king's safe square under protection (+40)")
+
+        # --- покращення безпеки нашого короля ---
+        after_unprotected = 0
+        new_king_sq = temp.king(self.color)
+        if new_king_sq is not None:
+            zone = evaluator.piece_zone(temp, new_king_sq, radius=2)
+            for sq in zone:
+                if temp.is_attacked_by(opp_color, sq) and not temp.is_attacked_by(self.color, sq):
+                    after_unprotected += 1
+        if after_unprotected < before_unprotected:
+            bonus = (before_unprotected - after_unprotected) * 30
+            score += bonus
+            reasons.append(
+                f"improves king zone: {before_unprotected}→{after_unprotected} (+{bonus})"
+            )
+
+        # --- зменшення зони критичної фігури суперника ---
+        critical = evaluator.criticality(board, self.color)
+        if critical:
+            crit_sq, _ = critical[0]
+            crit_piece = board.piece_at(crit_sq)
+            if crit_piece:
+                if crit_piece.piece_type == chess.KNIGHT:
+                    radius = 2
+                elif crit_piece.piece_type == chess.KING:
+                    radius = 3
+                else:
+                    radius = 1
+                before_zone = evaluator.piece_zone(board, crit_sq, radius)
+                before_safe = sum(
+                    1 for sq in before_zone if not board.is_attacked_by(self.color, sq)
+                )
+                if temp.piece_at(crit_sq) is None:
+                    after_safe = 0
+                else:
+                    after_zone = evaluator.piece_zone(temp, crit_sq, radius)
+                    after_safe = sum(
+                        1 for sq in after_zone if not temp.is_attacked_by(self.color, sq)
+                    )
+                if after_safe < before_safe:
+                    bonus = (before_safe - after_safe) * 20
+                    score += bonus
+                    reasons.append(
+                        f"limits enemy {crit_piece.symbol().upper()} zone: {before_safe}→{after_safe} (+{bonus})"
+                    )
 
         # --- стандартна логіка:
         # 5. Захоплення фігури
