@@ -4,14 +4,32 @@ suppressPackageStartupMessages({
   library(jsonlite)
   library(dplyr)
   library(ggplot2)
+  library(optparse)
+  library(RColorBrewer)
 })
 
-args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 1) {
-  stop("Usage: generate_heatmaps.R <moves.csv>")
+option_list <- list(
+  make_option(c("-p", "--palette"), type = "character", default = "Reds",
+              help = "Color palette for heatmap (RColorBrewer palette name) [default %default]"),
+  make_option(c("-t", "--theme"), type = "character", default = "minimal",
+              help = "ggplot2 theme to use (e.g., minimal, classic) [default %default]"),
+  make_option(c("-r", "--resolution"), type = "integer", default = 300,
+              help = "Resolution (DPI) for output PNG files [default %default]")
+)
+
+parser <- OptionParser(usage = "%prog [options] <moves.csv>",
+                       option_list = option_list)
+args <- parse_args(parser, positional_arguments = TRUE)
+
+if (length(args$args) < 1) {
+  print_help(parser)
+  stop("Missing moves.csv")
 }
 
-moves <- read.csv(args[1], stringsAsFactors = FALSE)
+input_csv <- args$args[1]
+opts <- args$options
+
+moves <- read.csv(input_csv, stringsAsFactors = FALSE)
 
 # Extract file (a-h) and rank (1-8) from destination square
 moves <- moves %>%
@@ -41,10 +59,12 @@ for (p in pieces) {
 
   plotdf <- as.data.frame(as.table(mat))
   colnames(plotdf) <- c("rank", "file", "freq")
+  theme_fun <- get(paste0("theme_", opts$theme), envir = asNamespace("ggplot2"))
   g <- ggplot(plotdf, aes(x = file, y = rank, fill = freq)) +
     geom_tile() +
     scale_y_continuous(trans = "reverse") +
-    scale_fill_gradient(low = "white", high = "red") +
-    ggtitle(paste("Move frequencies for", p))
-  ggsave(file.path(out_dir, paste0("heatmap_", p, ".png")), g)
+    scale_fill_distiller(palette = opts$palette, direction = 1) +
+    ggtitle(paste("Move frequencies for", p)) +
+    theme_fun()
+  ggsave(file.path(out_dir, paste0("heatmap_", p, ".png")), g, dpi = opts$resolution)
 }
