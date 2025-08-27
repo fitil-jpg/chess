@@ -16,10 +16,16 @@ import chess
 from core.evaluator import Evaluator
 from utils import GameContext
 
+# HybridOrchestrator lives in ``chess_ai.hybrid_orchestrator`` but older
+# installations may still provide it under ``chess_ai.hybrid_bot``.  We try the
+# new location first and fall back to the legacy package if necessary.
 try:
-    from .hybrid_bot import HybridOrchestrator  # type: ignore
+    from .hybrid_orchestrator import HybridOrchestrator
 except Exception:  # pragma: no cover - optional dependency
-    HybridOrchestrator = None  # type: ignore
+    try:
+        from .hybrid_bot import HybridOrchestrator  # type: ignore
+    except Exception:  # pragma: no cover - orchestrator unavailable
+        HybridOrchestrator = None  # type: ignore
 
 __all__ = [
     "BotAgent",
