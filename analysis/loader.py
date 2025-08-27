@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 import csv
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import chess
 
@@ -115,6 +115,49 @@ def export_move_table(
         }
         df = robjects.DataFrame(columns)
         robjects.r["saveRDS"](df, rds_path)
+
+    return records
+
+
+def export_fen_table(
+    fens: Iterable[str],
+    csv_path: Optional[str] = None,
+) -> List[Dict[str, str]]:
+    """Convert FEN strings into piece/square records.
+
+    Parameters
+    ----------
+    fens:
+        Iterable of Forsyth-Edwards Notation strings.
+    csv_path:
+        Optional output path.  When provided the extracted table is written as
+        a CSV file suitable for :mod:`analysis.heatmaps.generate_heatmaps.R`.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of ``{"fen_id", "piece", "to"}`` dictionaries for every piece
+        occurrence in *fens*.
+    """
+
+    records: List[Dict[str, str]] = []
+
+    for idx, fen in enumerate(fens):
+        board = chess.Board(fen)
+        for square, piece in board.piece_map().items():
+            records.append(
+                {
+                    "fen_id": str(idx),
+                    "piece": chess.piece_name(piece.piece_type),
+                    "to": chess.square_name(square),
+                }
+            )
+
+    if csv_path:
+        with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["fen_id", "piece", "to"])
+            writer.writeheader()
+            writer.writerows(records)
 
     return records
 
