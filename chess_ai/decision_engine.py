@@ -1,5 +1,8 @@
-"""
-decision_engine.py — вибирає найкращий хід на основі пошуку з селективними розширеннями.
+"""Alpha–beta search with selective extensions.
+
+Used by :class:`chess_ai.dynamic_bot.DynamicBot` to deepen analysis.
+For a Monte Carlo tree search counterpart see
+:class:`chess_ai.batched_mcts.BatchedMCTS`.
 """
 
 import chess
@@ -10,6 +13,11 @@ from .piece_values import dynamic_piece_value
 
 
 class DecisionEngine:
+    """Selective alpha–beta engine used by :class:`chess_ai.dynamic_bot.DynamicBot`.
+
+    The Monte Carlo equivalent lives in :class:`chess_ai.batched_mcts.BatchedMCTS`.
+    """
+
     def __init__(self, base_depth: int = 2, material_weight: int = 2):
         """Create a new decision engine.
 

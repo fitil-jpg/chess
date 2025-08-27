@@ -74,7 +74,9 @@ class DynamicBot:
 
     A :class:`DecisionEngine` instance performs a deeper search to refine
     ambiguous results or act as a fallback when the lightweight sub-agents do
-    not provide a confident choice.
+    not provide a confident choice.  For a Monte Carlo tree search counterpart
+    see :class:`chess_ai.batched_mcts.BatchedMCTS`.  Both engines are showcased
+    together in ``tests/run_hybrid_demo.py``.
     """
 
     def __init__(

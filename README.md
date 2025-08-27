@@ -35,10 +35,24 @@ move, score = bot.choose_move(board, debug=True)
 
 The chosen move is the one with the highest total weighted confidence.
 
-## HybridBot demo
+## Search-based play
 
-A small demonstration script shows the hybrid MCTS/alpha-beta engine in action.
-Run it directly from the repository root:
+Two optional search engines complement the lightweight heuristics:
+
+- [`chess_ai/decision_engine.py`](chess_ai/decision_engine.py) implements a
+  selective alpha–beta search:
+
+  ```python
+  from chess_ai.decision_engine import DecisionEngine
+
+  engine = DecisionEngine()
+  best = engine.choose_best_move(board)
+  ```
+
+- [`chess_ai/batched_mcts.py`](chess_ai/batched_mcts.py) provides a minimal
+  neural-network-guided Monte Carlo tree search (MCTS).
+
+A small demonstration script combines both approaches:
 
 ```bash
 python tests/run_hybrid_demo.py
