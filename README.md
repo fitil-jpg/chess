@@ -62,28 +62,17 @@ Running `pytest` directly works as well:
 pytest
 ```
 
-## Vendor Import Test
+## Dependencies
 
-The project keeps third‑party libraries in the `vendors/` directory. To confirm
-that these vendored packages can be imported, run the dedicated test:
+Install required packages with:
 
 ```bash
-pytest tests/test_vendor_imports.py
+pip install -r requirements.txt
 ```
 
-Optional arguments:
+Run the dependency import test to verify optional libraries are available:
 
-- Add `-q` for quieter output:
-
-  ```bash
-  pytest tests/test_vendor_imports.py -q
-  ```
-- Pass any other standard `pytest` flags as needed.
-
-Expected failure modes:
-
-- If a library is missing, the test will be skipped for that module.
-- Import errors such as `ImportError: DLL load failed` indicate missing native
-  dependencies or architecture mismatches. Ensure the required DLLs and the
-  library itself are present in `vendors/`.
+```bash
+pytest tests/test_vendor_imports.py -q
+```
 

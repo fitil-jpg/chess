@@ -1,0 +1,4 @@
+torch
+matplotlib
+rpy2
+python-chess
