@@ -77,12 +77,23 @@ class TorchNet:
 
 if __name__ == "__main__":
     import argparse
+    from .viz_heatmap import plot_policy_heatmap, plot_value_gradient
 
     parser = argparse.ArgumentParser(description="TorchNet demo")
     parser.add_argument("--config", default="configs/nn.yaml", help="Path to nn config file")
+    parser.add_argument(
+        "--policy-heatmap", help="Save policy heatmap for the initial position"
+    )
+    parser.add_argument(
+        "--value-heatmap", help="Save value-gradient heatmap for the initial position"
+    )
     args = parser.parse_args()
 
     net = TorchNet.from_config(args.config)
     board = chess.Board()
     policy, value = net.predict_many([board])[0]
     print(f"Value: {value:.3f}, policy moves: {len(policy)}")
+    if args.policy_heatmap:
+        plot_policy_heatmap(board, policy, save_path=args.policy_heatmap)
+    if args.value_heatmap:
+        plot_value_gradient(net, board, save_path=args.value_heatmap)
