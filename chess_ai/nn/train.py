@@ -72,6 +72,10 @@ def main() -> None:
     parser.add_argument(
         "--output", default="chess_ai/nn/simple_model.pth", help="Where to save model weights"
     )
+    parser.add_argument(
+        "--heatmap",
+        help="Save value-gradient heatmap for the first training sample to this path",
+    )
     args = parser.parse_args()
 
     dataset = FenOutcomeDataset(args.data)
@@ -80,6 +84,13 @@ def main() -> None:
     train(model, loader, epochs=args.epochs, lr=args.lr)
     torch.save(model.state_dict(), args.output)
     print(f"Saved weights to {args.output}")
+    if args.heatmap and dataset.samples:
+        from .torch_net import TorchNet
+        from .viz_heatmap import plot_value_gradient
+
+        board = chess.Board(dataset.samples[0][0])
+        net = TorchNet(model=model)
+        plot_value_gradient(net, board, save_path=args.heatmap)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entrypoint
