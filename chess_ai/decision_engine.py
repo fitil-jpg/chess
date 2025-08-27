@@ -91,7 +91,20 @@ class DecisionEngine:
 
         if not scored_moves:
             return None
-        best_score = max(score for score, _, _ in scored_moves)
-        best_moves = [m for s, c, m in scored_moves if s == best_score]
-        capture_moves = [m for s, c, m in scored_moves if s == best_score and c > 0]
-        return capture_moves[0] if capture_moves else best_moves[0]
+
+        # Prefer the highest scoring move that does not lead to a
+        # threefold repetition.  Sort first by score and capture value to
+        # keep behaviour deterministic across runs.
+        scored_moves.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        for score, capture_val, move in scored_moves:
+            board.push(move)
+            rep = board.is_repetition(3)
+            board.pop()
+            if not rep:
+                return move
+
+        # All candidate moves repeat the position; fall back to a random
+        # choice to break the repetition cycle.
+        from .random_bot import RandomBot
+
+        return RandomBot(board.turn).choose_move(board)[0]
