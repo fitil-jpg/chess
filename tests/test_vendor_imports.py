@@ -1,6 +1,6 @@
 import pytest
 
-MODULES = ["torch", "matplotlib", "rpy2"]
+MODULES = ["python_chess", "torch", "rpy2", "matplotlib"]
 
 @pytest.mark.parametrize("module_name", MODULES)
 def test_vendor_imports(module_name):
