@@ -1,8 +1,7 @@
 """HybridBot demonstration script.
 
 Runs a few plies from the initial position with :class:`HybridBot` and prints
-basic diagnostics for each move.  Vendor paths are added to ``sys.path`` so the
-bundled dependencies are used when the script is executed directly.
+basic diagnostics for each move.
 """
 
 import os
@@ -10,8 +9,6 @@ import sys
 import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from vendors import setup_path  # noqa: F401
 
 import chess
 
