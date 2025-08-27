@@ -63,12 +63,22 @@ pytest
 ```
 
 ## Dependencies
-
-Install required packages with:
+Install core requirements with:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+`requirements.txt` lists both mandatory and optional packages:
+
+- `python-chess`, `torch`, and `PyYAML` are required for the AI engine.
+- `matplotlib` plots profiling metrics.
+- `rpy2` enables optional R-based evaluation and requires an R runtime.
+- `PySide6` provides GUI widgets used in viewer utilities and some tests.
+- `pytest` is needed to run the test suite.
+
+Missing optional libraries may be vendored by placing them under `vendors/`,
+which the test suite automatically adds to `sys.path`.
 
 Run the dependency import test to verify optional libraries are available:
 

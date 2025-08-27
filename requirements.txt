@@ -1,4 +1,7 @@
-torch
-matplotlib
-rpy2
-python-chess
+python-chess>=1.9
+PyYAML>=6.0
+torch>=2.0
+matplotlib>=3.7  # optional: plotting utilities
+rpy2>=3.5        # optional: R evaluation bridge
+PySide6>=6.5     # optional: GUI components
+pytest>=7.4      # test suite
