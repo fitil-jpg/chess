@@ -126,3 +126,23 @@ Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/moves.csv
 
 Heatmap matrices are written as CSV and JSON files into `analysis/heatmaps/`.
 
+## Piece positions from FEN
+
+Generate per-piece coordinates directly from a list of FEN strings using R:
+
+```bash
+Rscript analysis/extract_positions.R fens.txt analysis/positions.csv
+```
+
+From Python the same functionality is available via a small wrapper:
+
+```python
+from analysis.extract_positions import extract_positions
+
+fens = ["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+extract_positions(fens, "positions.csv")
+```
+
+The resulting CSV contains `file`, `rank`, and `piece` columns for each board
+entry.
+
