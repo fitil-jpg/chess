@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 import csv
-from typing import Any, Dict, Iterable, List, Optional
+import random
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 import chess
 
@@ -19,17 +20,34 @@ except Exception:  # pragma: no cover - rpy2 may be missing in tests
 REQUIRED_KEYS = {"moves", "fens", "modules_w", "modules_b"}
 
 
-def load_runs(path: str) -> List[Dict[str, Any]]:
-    """Load run JSON files from *path* and include save timestamps.
+def stream_runs(
+    path: str, sample_size: Optional[int] = None, seed: Optional[int] = None
+) -> Iterator[Dict[str, Any]]:
+    """Yield run dictionaries from *path* one by one.
 
-    Each JSON file must contain the keys defined in :data:`REQUIRED_KEYS`.
-    The returned run dictionaries additionally include a ``date`` field with
-    the file's modification time encoded via :meth:`datetime.isoformat`.
+    Parameters
+    ----------
+    path:
+        Directory containing run JSON files.
+    sample_size, seed:
+        Optional sampling parameters.  When *sample_size* is provided, a
+        deterministic subset of files is chosen using *seed*.
+
+    Yields
+    ------
+    Dict[str, Any]
+        Run dictionaries containing the required fields plus ``game_id`` and
+        ``date``.
     """
-    runs: List[Dict[str, Any]] = []
-    base_path = Path(path)
 
-    for file in sorted(base_path.glob("*.json")):
+    base_path = Path(path)
+    files = sorted(base_path.glob("*.json"))
+
+    if sample_size is not None and sample_size < len(files):
+        rng = random.Random(seed)
+        files = rng.sample(files, sample_size)
+
+    for file in files:
         with file.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
 
@@ -39,26 +57,52 @@ def load_runs(path: str) -> List[Dict[str, Any]]:
                 f"Missing keys in {file.name}: {', '.join(sorted(missing))}"
             )
 
-        runs.append(
-            {
-                "game_id": file.stem,
-                "moves": data["moves"],
-                "fens": data["fens"],
-                "modules_w": data["modules_w"],
-                "modules_b": data["modules_b"],
-                "result": data.get("result"),
-                "date": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
-            }
-        )
+        yield {
+            "game_id": file.stem,
+            "moves": data["moves"],
+            "fens": data["fens"],
+            "modules_w": data["modules_w"],
+            "modules_b": data["modules_b"],
+            "result": data.get("result"),
+            "date": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
+        }
 
-    return runs
+
+def load_runs(path: str) -> List[Dict[str, Any]]:
+    """Load run JSON files from *path*.
+
+    This helper materializes :func:`stream_runs` into a list for
+    compatibility with existing callers.
+    """
+
+    return list(stream_runs(path))
+
+
+def aggregate_run_stats(
+    path: str, sample_size: Optional[int] = None, seed: Optional[int] = None
+) -> Dict[str, int]:
+    """Aggregate basic statistics from run files in *path*.
+
+    Statistics include the number of games and total moves processed.
+    The calculation streams files one by one to avoid loading all runs into
+    memory.
+    """
+
+    stats = {"games": 0, "moves": 0}
+    for run in stream_runs(path, sample_size=sample_size, seed=seed):
+        stats["games"] += 1
+        stats["moves"] += len(run["moves"])
+    return stats
 
 
 def export_move_table(
     path: str,
     csv_path: Optional[str] = None,
     rds_path: Optional[str] = None,
-) -> List[Dict[str, str]]:
+    *,
+    sample_size: Optional[int] = None,
+    seed: Optional[int] = None,
+) -> tuple[List[Dict[str, str]], Dict[str, int]]:
     """Extract per-move piece and destination square information.
 
     Parameters
@@ -69,18 +113,21 @@ def export_move_table(
         Optional output paths.  When provided the extracted table is written
         either as a CSV file or an RDS file.  Exporting to RDS requires
         :mod:`rpy2` to be installed.
+    sample_size, seed:
+        Limit the number of games processed and control the randomness of the
+        selection.
 
     Returns
     -------
-    List[Dict[str, str]]
-        A list of ``{"game_id", "piece", "to"}`` dictionaries for every move
-        in *path*.
+    tuple[List[Dict[str, str]], Dict[str, int]]
+        The per-move records and basic statistics collected during parsing.
     """
 
-    runs = load_runs(path)
     records: List[Dict[str, str]] = []
+    stats = {"games": 0, "moves": 0}
 
-    for run in runs:
+    for run in stream_runs(path, sample_size=sample_size, seed=seed):
+        stats["games"] += 1
         board = chess.Board()
         for mv in run["moves"]:
             move = chess.Move.from_uci(mv)
@@ -96,6 +143,7 @@ def export_move_table(
                     "to": chess.square_name(move.to_square),
                 }
             )
+            stats["moves"] += 1
 
     if csv_path:
         with open(csv_path, "w", newline="", encoding="utf-8") as fh:
@@ -116,7 +164,8 @@ def export_move_table(
         df = robjects.DataFrame(columns)
         robjects.r["saveRDS"](df, rds_path)
 
-    return records
+    # Stats are primarily for CLI output; callers may ignore them.
+    return records, stats
 
 
 def export_fen_table(
@@ -171,6 +220,25 @@ if __name__ == "__main__":  # pragma: no cover - CLI utility
     parser.add_argument("path", help="Directory containing run JSON files")
     parser.add_argument("--csv", dest="csv_path", help="Output CSV path")
     parser.add_argument("--rds", dest="rds_path", help="Output RDS path")
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        help="Limit the number of games processed",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        help="Seed for deterministic sampling",
+    )
     args = parser.parse_args()
-
-    export_move_table(args.path, csv_path=args.csv_path, rds_path=args.rds_path)
+    records, stats = export_move_table(
+        args.path,
+        csv_path=args.csv_path,
+        rds_path=args.rds_path,
+        sample_size=args.sample_size,
+        seed=args.seed,
+    )
+    print(
+        f"Processed {stats['games']} games with {stats['moves']} moves",
+        flush=True,
+    )
