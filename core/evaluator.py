@@ -144,6 +144,67 @@ class Evaluator:
         }
         return white_total, black_total
 
+    def criticality(self, board: chess.Board | None = None, color: bool | None = None):
+        """Return a list of opponent pieces ordered by their threat level.
+
+        Each opponent piece receives a score based on its proximity to our
+        king and, for knights, whether it can deliver a fork on the king and an
+        important piece (queen or rook) within two moves.  The result is a list
+        of ``(square, score)`` tuples sorted by descending ``score``.
+        """
+
+        board = board or self.board
+        color = board.turn if color is None else color
+        enemy = not color
+
+        king_sq = board.king(color)
+        # Squares of our most valuable pieces that we care about for forks
+        important: list[int] = [
+            sq
+            for sq, p in board.piece_map().items()
+            if p.color == color and p.piece_type in (chess.QUEEN, chess.ROOK)
+        ]
+
+        critical: list[tuple[int, int]] = []
+        for sq, piece in board.piece_map().items():
+            if piece.color != enemy:
+                continue
+
+            score = 0
+            if king_sq is not None:
+                dist = chess.square_distance(sq, king_sq)
+                score += max(0, 7 - dist)
+
+            # Detect potential knight forks up to two moves away
+            if (
+                piece.piece_type == chess.KNIGHT
+                and king_sq is not None
+                and important
+            ):
+                attacks1 = chess.SquareSet(chess.BB_KNIGHT_ATTACKS[sq])
+                fork_found = False
+                for inter in attacks1:
+                    attacks2 = chess.SquareSet(chess.BB_KNIGHT_ATTACKS[inter])
+                    for final in attacks2:
+                        attack_set = chess.SquareSet(
+                            chess.BB_KNIGHT_ATTACKS[final]
+                        )
+                        if king_sq in attack_set and any(
+                            imp in attack_set for imp in important
+                        ):
+                            fork_found = True
+                            break
+                    if fork_found:
+                        break
+                if fork_found:
+                    score += 10
+
+            if score > 0:
+                critical.append((sq, score))
+
+        critical.sort(key=lambda x: x[1], reverse=True)
+        return critical
+
     def compute_features(self, color):
         board = self.board
         features = {}

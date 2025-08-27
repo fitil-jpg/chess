@@ -10,6 +10,7 @@ from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
 from .fortify_bot import FortifyBot
 from .random_bot import RandomBot
+from .critical_bot import CriticalBot
 from core.evaluator import Evaluator
 from utils import GameContext
 
@@ -33,6 +34,7 @@ class DynamicBot:
         # Register default agents with provided weights (fallback → 1.0)
         self.register_agent(AggressiveBot(color), weights.get("aggressive", 1.0))
         self.register_agent(FortifyBot(color), weights.get("fortify", 1.0))
+        self.register_agent(CriticalBot(color), weights.get("critical", 1.0))
         self.register_agent(EndgameBot(color), weights.get("endgame", 1.0))
         self.register_agent(RandomBot(color), weights.get("random", 1.0))
         self.register_agent(ChessBot(color), weights.get("center", 1.0))

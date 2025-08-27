@@ -7,6 +7,8 @@ evaluator.py — будує feature map для ходу:
 
 import chess
 
+from core.evaluator import Evaluator as CoreEvaluator
+
 class Evaluator:
     def __init__(self, board):
         self.board = board
@@ -69,3 +71,10 @@ class Evaluator:
 
         # Можеш легко додати більше ознак (контроль центру, шах і тп)
         return features
+
+    def criticality(self, board=None, color: bool | None = None):
+        """Proxy to :class:`core.evaluator.Evaluator.criticality`."""
+
+        board = board or self.board
+        core = CoreEvaluator(board)
+        return core.criticality(board, color)
