@@ -91,12 +91,18 @@ class DynamicBot:
         # Deeper search engine used to break ties or provide a fallback.
         self.decision_engine = DecisionEngine()
 
-        # Register default agents with provided weights (fallback → 1.0)
+        # Register default agents with provided weights (fallback → 1.0).
+        # RandomBot is disabled by default and must be explicitly enabled via
+        # ``weights={'random': <value>}`` to avoid unnecessary randomness.
         self.register_agent(AggressiveBot(color), weights.get("aggressive", 1.0))
         self.register_agent(FortifyBot(color), weights.get("fortify", 1.0))
         self.register_agent(CriticalBot(color), weights.get("critical", 1.0))
         self.register_agent(EndgameBot(color), weights.get("endgame", 1.0))
-        self.register_agent(RandomBot(color), weights.get("random", 1.0))
+
+        rand_weight = weights.get("random", 0.0)
+        if rand_weight > 0.0:
+            self.register_agent(RandomBot(color), rand_weight)
+
         self.register_agent(ChessBot(color), weights.get("center", 1.0))
         self.register_agent(NeuralBot(color), weights.get("neural", 1.0))
         if use_r and _r_eval_board is not None:
