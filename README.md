@@ -70,6 +70,12 @@ Install required packages with:
 pip install -r requirements.txt
 ```
 
+R dependencies for the analysis scripts can be installed via:
+
+```r
+install.packages(c("jsonlite", "dplyr", "ggplot2"))
+```
+
 Run the dependency import test to verify optional libraries are available:
 
 ```bash
@@ -86,4 +92,16 @@ python scripts/bot_usage_stats.py --runs runs/
 ```
 
 The script outputs a JSON mapping of module names to their total usage counts.
+
+## Move heatmaps
+
+Convert recorded run JSON files into a flat move table and generate per-piece
+heatmaps:
+
+```bash
+python -m analysis.loader runs/ --csv analysis/heatmaps/moves.csv --rds analysis/heatmaps/moves.rds
+Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/moves.csv
+```
+
+Heatmap matrices are written as CSV and JSON files into `analysis/heatmaps/`.
 
