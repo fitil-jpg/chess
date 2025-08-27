@@ -33,6 +33,12 @@ The overall penalty can be scaled via an optional ``enemy_material`` argument, a
 mapping with ``"white"`` and ``"black"`` keys that reduces the impact of king
 attacks when the opponent has lost major pieces such as the queen.
 
+Set the environment variable ``CHESS_USE_R=1`` or pass ``use_r=True`` to
+``chess_ai.dynamic_bot.DynamicBot`` to activate the R evaluator.  When enabled,
+``DynamicBot`` registers an additional agent that scores moves via the R bridge
+and contributes its colour-adjusted numeric score alongside the existing
+sub‑bots.
+
 ## Pawn structure helpers
 
 - `is_isolated(board, square, files)` – checks whether a pawn has friendly pawns on adjacent files. An isolated pawn triggers `isolated_penalty` in [`pawn_structure_score`](../core/evaluator.py).
