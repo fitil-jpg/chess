@@ -17,6 +17,5 @@ def test_board_metrics():
     metrics.update_from_board(board, analyzer)
 
     result = metrics.get_metrics()
-    print("Оцінка метрик:", result)
     assert isinstance(result, dict)
     assert 'material_balance' in result
