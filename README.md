@@ -76,3 +76,14 @@ Run the dependency import test to verify optional libraries are available:
 pytest tests/test_vendor_imports.py -q
 ```
 
+
+## Bot usage statistics
+
+Summarise how often each bot module appears in recorded runs:
+
+```bash
+python scripts/bot_usage_stats.py --runs runs/
+```
+
+The script outputs a JSON mapping of module names to their total usage counts.
+
