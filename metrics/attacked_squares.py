@@ -1,7 +1,5 @@
-from typing import List
-
 import chess
-
+from typing import List
 
 def calculate_attacked_squares(board: chess.Board, square: int) -> List[int]:
     """Calculate squares a piece on ``square`` attacks on ``board``.
