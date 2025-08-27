@@ -1,6 +1,8 @@
 import pytest
 
-MODULES = ["chess", "torch", "rpy2", "matplotlib"]
+# Rely on the environment's installed packages without adjusting ``sys.path``.
+MODULES = ["chess", "torch", "matplotlib"]
+
 
 @pytest.mark.parametrize("module_name", MODULES)
 def test_dependency_imports(module_name):
