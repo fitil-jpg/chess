@@ -1,4 +1,4 @@
-torch
 matplotlib
-rpy2
 python-chess
+rpy2
+torch
