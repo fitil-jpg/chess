@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
 )
 from PySide6.QtGui import QPainter, QColor, QPen
 from PySide6.QtCore import QRect, Signal
@@ -29,10 +30,21 @@ class OverallUsageChart(QWidget):
         self.counts = {}
         self._bar_rects = []  # regions for click detection
         self._selected = None
-        self.setMinimumSize(280, 150)
+        self.pad = 8
+        self.bar_h = 14
+        self.legend_h = 20
+        self.setMinimumWidth(280)
+        self._update_height()
+
+    def _update_height(self) -> None:
+        total = len(self.counts)
+        height = self.pad + total * (self.bar_h + self.pad) + self.legend_h
+        self.setMinimumHeight(height)
+        self.updateGeometry()
 
     def set_data(self, counts):
         self.counts = dict(counts)
+        self._update_height()
         self.update()
 
     def set_selected(self, name: str | None) -> None:
@@ -48,21 +60,15 @@ class OverallUsageChart(QWidget):
             return
 
         w = self.width()
-        pad = 8
-        bar_h = 14
-        legend_h = 20
-
-        # Reserve space at the bottom for the legend so bars don't overlap it
-        y = pad
-        max_bar_height = self.height() - legend_h - pad
         max_count = max(self.counts.values())
         items = sorted(self.counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
+        y = self.pad
         for name, count in items:
-            if y + bar_h > max_bar_height:
-                break
-            bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
-            rect = QRect(pad, y, bar_w, bar_h)
+            bar_w = (
+                int((w - self.pad * 2) * (count / max_count)) if max_count else 0
+            )
+            rect = QRect(self.pad, y, bar_w, self.bar_h)
             self._bar_rects.append((rect, name))
             color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
             if self._selected and name != self._selected:
@@ -71,12 +77,16 @@ class OverallUsageChart(QWidget):
             pen_width = 2 if name == self._selected else 1
             painter.setPen(QPen(QColor(60, 60, 60), pen_width))
             painter.drawRect(rect)
-            painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
-            y += bar_h + pad
+            painter.drawText(
+                self.pad + bar_w + 4,
+                y + self.bar_h - 2,
+                f"{name} ({count})",
+            )
+            y += self.bar_h + self.pad
 
         # Draw legend mapping colours to modules
-        y_leg = self.height() - legend_h + 4
-        x_leg = pad
+        y_leg = y
+        x_leg = self.pad
         painter.setPen(QPen(QColor(80, 80, 80)))
         for name, _ in items:
             color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
@@ -87,7 +97,7 @@ class OverallUsageChart(QWidget):
             painter.drawRect(rect)
             painter.drawText(x_leg + 14, y_leg + 10, name)
             x_leg += 14 + painter.fontMetrics().horizontalAdvance(name) + 10
-            if x_leg > w - pad:
+            if x_leg > w - self.pad:
                 break
 
     def mousePressEvent(self, ev):  # pragma: no cover - GUI interaction
@@ -156,9 +166,13 @@ class RunViewer(QWidget):
         self.overall_chart.set_data(aggregate_module_usage(self.all_runs))
         self.overall_chart.moduleClicked.connect(self._on_overall_module_click)
 
+        chart_scroll = QScrollArea()
+        chart_scroll.setWidgetResizable(True)
+        chart_scroll.setWidget(self.overall_chart)
+
         layout = QVBoxLayout(self)
         layout.addLayout(top)
-        layout.addWidget(self.overall_chart)
+        layout.addWidget(chart_scroll)
 
         if self.runs:
             self.run_list.setCurrentRow(0)
