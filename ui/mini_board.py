@@ -66,6 +66,15 @@ class MiniBoard(QWidget):
                 piece_objects[square] = piece_class_factory(piece, pos)
 
         self.drawer_manager.collect_overlays(piece_objects, self.board)
+        last_move = self.board.move_stack[-1] if self.board.move_stack else None
+        highlights = set()
+        if last_move:
+            fr = 7 - chess.square_rank(last_move.from_square)
+            fc = chess.square_file(last_move.from_square)
+            tr = 7 - chess.square_rank(last_move.to_square)
+            tc = chess.square_file(last_move.to_square)
+            highlights.add((fr, fc))
+            highlights.add((tr, tc))
 
         for row in range(8):
             for col in range(8):
@@ -75,6 +84,6 @@ class MiniBoard(QWidget):
                 cell.set_piece(piece.symbol() if piece else None)
                 attackers = self.board.attackers(not self.board.turn, square)
                 cell.set_attack_count(len(attackers))
-                cell.set_highlight(False)
+                cell.set_highlight((row, col) in highlights)
                 cell.update()
 
