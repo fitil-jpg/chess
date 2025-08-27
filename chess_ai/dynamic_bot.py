@@ -6,6 +6,8 @@ from typing import Dict, List, Tuple
 import chess
 import os
 
+from .decision_engine import DecisionEngine
+
 from .aggressive_bot import AggressiveBot
 from .chess_bot import ChessBot
 from .endgame_bot import EndgameBot
@@ -69,6 +71,10 @@ class DynamicBot:
     move.  The move with the highest total score is returned.  The optional
     R-based evaluator can be enabled via the ``CHESS_USE_R`` environment
     variable or by passing ``use_r=True`` when constructing the bot.
+
+    A :class:`DecisionEngine` instance performs a deeper search to refine
+    ambiguous results or act as a fallback when the lightweight sub-agents do
+    not provide a confident choice.
     """
 
     def __init__(
@@ -82,6 +88,8 @@ class DynamicBot:
         self.agents: List[Tuple[object, float]] = []
         weights = weights or {}
         use_r = _USE_R if use_r is None else use_r
+        # Deeper search engine used to break ties or provide a fallback.
+        self.decision_engine = DecisionEngine()
 
         # Register default agents with provided weights (fallback → 1.0)
         self.register_agent(AggressiveBot(color), weights.get("aggressive", 1.0))
@@ -110,7 +118,9 @@ class DynamicBot:
 
         A single :class:`GameContext` and :class:`Evaluator` instance are
         constructed once and shared with all sub-agents to avoid duplicated
-        work.
+        work.  When the combined scores do not yield a clear favourite the
+        :class:`DecisionEngine` is invoked to perform a deeper variant search
+        and break ties.
         """
 
         global _SHARED_EVALUATOR
@@ -153,10 +163,24 @@ class DynamicBot:
                 )
 
         if not scores:
-            return None, 0.0
+            # No agent produced a move; fall back to a deeper search.
+            engine_move = self.decision_engine.choose_best_move(board)
+            return (engine_move, 0.0) if engine_move else (None, 0.0)
 
-        move = max(scores.items(), key=lambda kv: kv[1])[0]
-        total = scores[move]
+        # Pick the highest scoring move from sub-agents.
+        sorted_moves = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+        move, total = sorted_moves[0]
+
+        # If top candidates are too close, ask the decision engine to
+        # perform a deeper search to break the tie.
+        if len(sorted_moves) > 1:
+            second_score = sorted_moves[1][1]
+            if abs(total - second_score) < 1e-3:
+                engine_move = self.decision_engine.choose_best_move(board)
+                if engine_move is not None:
+                    move = engine_move
+                    total = scores.get(engine_move, total)
+
         if debug:
             print("DynamicBot contributions:")
             for mv, lines in debug_contrib.items():
