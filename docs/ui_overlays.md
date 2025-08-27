@@ -45,3 +45,26 @@ metrics = drawer.agent_metrics
 
 The `MiniBoard` automatically highlights the last move by colouring the
 origin and destination squares as well as the piece symbols.
+
+## Generating heatmaps from FEN strings
+
+The loader can convert a collection of FEN positions into the move table
+expected by the existing R heatmap script:
+
+```python
+from analysis.loader import export_fen_table
+
+fens = [
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+]
+export_fen_table(fens, csv_path="analysis/heatmaps/fens.csv")
+```
+
+Generate heatmaps by passing the resulting CSV to the R script:
+
+```bash
+Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/fens.csv
+```
+
+The heatmaps are written back into `analysis/heatmaps/` and can then be
+displayed by the viewer.
