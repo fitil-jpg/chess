@@ -1,6 +1,9 @@
 import json
 import os
 import tempfile
+
+import pytest
+
 from utils.load_runs import load_runs
 
 
@@ -17,8 +20,10 @@ def test_load_runs_valid():
             json.dump(sample, f)
 
         runs = load_runs(tmpdir)
+        assert isinstance(runs, list)
         assert len(runs) == 1
         run = runs[0]
+        assert isinstance(run, dict)
         assert run["game_id"] == "game1"
         assert run["moves"] == sample["moves"]
         assert run["fens"] == sample["fens"]
@@ -58,6 +63,13 @@ def test_load_runs_missing_result_defaults_star():
         runs = load_runs(tmpdir)
         assert len(runs) == 1
         assert runs[0]["result"] == "*"
+
+
+def test_load_runs_missing_directory():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        missing = os.path.join(tmpdir, "missing")
+        with pytest.raises(FileNotFoundError):
+            load_runs(missing)
 
 
 if __name__ == "__main__":
