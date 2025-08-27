@@ -114,3 +114,22 @@ class DrawerManager:
     # ------------------------------------------------------------------
     def get_cell_overlays(self, row, col):
         return self.overlays.get((row, col), [])
+
+    # ------------------------------------------------------------------
+    def export_ui_data(self):
+        """Return overlays, heatmaps and metrics for front-end consumers.
+
+        The overlays are returned as an 8×8 matrix where each entry is a list
+        of ``(type, colour)`` tuples.  Heatmap values are also included so a
+        web client can reconstruct the gradient if desired.  Agent metrics are
+        relayed verbatim from :mod:`analysis.agent_metrics.json`.
+        """
+
+        grid = [[[] for _ in range(8)] for _ in range(8)]
+        for (r, c), items in self.overlays.items():
+            grid[r][c] = items
+        return {
+            "overlays": grid,
+            "heatmaps": self.heatmaps,
+            "agent_metrics": self.agent_metrics,
+        }
