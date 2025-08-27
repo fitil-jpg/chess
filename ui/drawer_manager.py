@@ -1,9 +1,49 @@
+import json
+from pathlib import Path
+
 import chess
+
 
 class DrawerManager:
     def __init__(self):
         self.overlays = {}
+        self.heatmaps = self._load_heatmaps()
+        self.agent_metrics = self._load_agent_metrics()
 
+    # ------------------------------------------------------------------
+    def _load_heatmaps(self):
+        """Load all JSON heatmaps from :mod:`analysis.heatmaps`.
+
+        Each file is expected to contain an 8×8 matrix of values between
+        0 and 1.  The matrices are stored in a dict keyed by the file stem.
+        Missing directories result in an empty mapping.
+        """
+
+        heatmaps = {}
+        base = Path(__file__).resolve().parent.parent / "analysis" / "heatmaps"
+        if base.exists():
+            for file in base.glob("*.json"):
+                try:
+                    with file.open("r", encoding="utf-8") as fh:
+                        heatmaps[file.stem] = json.load(fh)
+                except Exception:
+                    continue
+        return heatmaps
+
+    # ------------------------------------------------------------------
+    def _load_agent_metrics(self):
+        """Read metrics from ``analysis/agent_metrics.json`` if present."""
+
+        path = Path(__file__).resolve().parent.parent / "analysis" / "agent_metrics.json"
+        if path.exists():
+            try:
+                with path.open("r", encoding="utf-8") as fh:
+                    return json.load(fh)
+            except Exception:
+                return {}
+        return {}
+
+    # ------------------------------------------------------------------
     def collect_overlays(self, piece_objects, board):
         self.overlays.clear()
         for sq, obj in piece_objects.items():
@@ -43,10 +83,34 @@ class DrawerManager:
                     col = chess.square_file(s)
                     self._add_overlay(row, col, "check", "yellow")
 
+        self._apply_heatmaps()
+
+    # ------------------------------------------------------------------
+    def _apply_heatmaps(self):
+        """Convert loaded heatmaps into gradient overlays."""
+
+        for grid in self.heatmaps.values():
+            for r, row in enumerate(grid):
+                for c, val in enumerate(row):
+                    try:
+                        v = float(val)
+                    except (TypeError, ValueError):
+                        continue
+                    self._add_gradient_overlay(r, c, v)
+
+    # ------------------------------------------------------------------
     def _add_overlay(self, row, col, overlay_type, color):
         if (row, col) not in self.overlays:
             self.overlays[(row, col)] = []
         self.overlays[(row, col)].append((overlay_type, color))
 
+    def _add_gradient_overlay(self, row, col, value):
+        value = max(0.0, min(1.0, value))
+        r = int(value * 255)
+        g = int((1 - value) * 255)
+        color = f"#{r:02x}{g:02x}00"
+        self._add_overlay(row, col, "gradient", color)
+
+    # ------------------------------------------------------------------
     def get_cell_overlays(self, row, col):
         return self.overlays.get((row, col), [])

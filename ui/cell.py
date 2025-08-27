@@ -28,6 +28,7 @@ class Cell(QLabel):
     def set_highlight(self, active):
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor("#ffcc00") if active else self.base_color)
+        palette.setColor(QPalette.WindowText, QColor("red") if active else QColor("black"))
         self.setPalette(palette)
 
     def set_attack_count(self, count):
@@ -89,3 +90,9 @@ class Cell(QLabel):
                 painter.setBrush(QColor("yellow"))
                 painter.setPen(Qt.NoPen)
                 painter.drawEllipse(int(42 * self.scale), int(4 * self.scale), int(10 * self.scale), int(10 * self.scale))
+            elif overlay_type == "gradient":
+                painter.setBrush(QColor(color))
+                painter.setPen(Qt.NoPen)
+                painter.setOpacity(0.4)
+                painter.drawRect(0, 0, self.width(), self.height())
+                painter.setOpacity(1.0)
