@@ -37,8 +37,6 @@ __all__ = [
     "RandomBot",
 ]
 
-# Shared evaluator instance used by DynamicBot to avoid re-initialisation
-_SHARED_EVALUATOR: Evaluator | None = None
 
 # ---------- Fallback-и на випадок відсутності реальних модулів ----------
 try:
@@ -722,6 +720,8 @@ class DynamicBot:
         self.cow      = CowOpeningPlanner(color)
         self.scout    = ThreatScout(color)
         self.color = color
+        # Lazily-created evaluator reused across choose_move calls.
+        self._evaluator: Evaluator | None = None
 
     def choose_move(
         self,
@@ -730,10 +730,11 @@ class DynamicBot:
         evaluator: Evaluator | None = None,
         debug: bool = False,
     ):
-        global _SHARED_EVALUATOR
-        evaluator = evaluator or _SHARED_EVALUATOR
+        evaluator = evaluator or self._evaluator
         if evaluator is None:
-            evaluator = _SHARED_EVALUATOR = Evaluator(board)
+            evaluator = self._evaluator = Evaluator(board)
+        else:
+            evaluator.board = board
 
         if context is None:
             material = evaluator.material_diff(self.color)

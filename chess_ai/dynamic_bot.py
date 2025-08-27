@@ -28,9 +28,6 @@ else:  # R evaluation disabled
     _r_eval_board = None  # type: ignore
 
 
-_SHARED_EVALUATOR: Evaluator | None = None
-
-
 class _RBoardEvaluator:
     """Lightweight wrapper around the optional R-based evaluator."""
 
@@ -92,6 +89,8 @@ class DynamicBot:
         use_r = _USE_R if use_r is None else use_r
         # Deeper search engine used to break ties or provide a fallback.
         self.decision_engine = DecisionEngine()
+        # Lazily-created evaluator shared across sub-bots for this instance.
+        self._evaluator: Evaluator | None = None
 
         # Register default agents with provided weights (fallback → 1.0).
         # RandomBot is disabled by default and must be explicitly enabled via
@@ -131,10 +130,11 @@ class DynamicBot:
         and break ties.
         """
 
-        global _SHARED_EVALUATOR
-        evaluator = evaluator or _SHARED_EVALUATOR
+        evaluator = evaluator or self._evaluator
         if evaluator is None:
-            evaluator = _SHARED_EVALUATOR = Evaluator(board)
+            evaluator = self._evaluator = Evaluator(board)
+        else:
+            evaluator.board = board
 
         if context is None:
             material = evaluator.material_diff(self.color)
