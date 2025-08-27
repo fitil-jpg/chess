@@ -87,3 +87,43 @@ Rscript analysis/heatmaps/generate_heatmaps.R \
 * `--resolution` – output image resolution in DPI (default `300`).
 
 Run the script with `--help` to see all available options and defaults.
+
+## Browser component
+
+The repository ships with a lightweight JavaScript helper located at
+`ui/fen_board.js`.  It renders a FEN position and applies the overlays and
+agent metrics exported by `DrawerManager`.
+
+### Exporting data
+
+```python
+import json
+import chess
+from ui.drawer_manager import DrawerManager
+
+board = chess.Board()
+drawer = DrawerManager()
+drawer.collect_overlays({}, board)
+data = drawer.export_ui_data()
+data["fen"] = board.fen()
+with open("output/ui_state.json", "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+```
+
+### Rendering in HTML
+
+```html
+<div id="board"></div>
+<div id="metrics"></div>
+<script type="module">
+import {renderFenBoard, renderAgentMetrics} from './ui/fen_board.js';
+
+fetch('output/ui_state.json').then(r => r.json()).then(data => {
+  renderFenBoard('board', data.fen, data.overlays);
+  renderAgentMetrics('metrics', data.agent_metrics);
+});
+</script>
+```
+
+The board is drawn using Unicode characters and each overlay entry is
+applied as a semi-transparent background colour to the respective cell.
