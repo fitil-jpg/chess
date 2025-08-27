@@ -28,37 +28,95 @@ class Evaluator:
         self.doubled_penalty = doubled_penalty
         self.passed_bonus = passed_bonus
 
-        # last recorded mobility stats: {'white': int, 'black': int, 'score': int}
-        self.mobility_stats = {"white": 0, "black": 0, "score": 0}
+        # last recorded mobility stats:
+        # {
+        #   'white': {'pieces': {sq: {'mobility': int,
+        #                             'blocked': bool,
+        #                             'capturable': bool,
+        #                             'status': str | None}},
+        #             'blocked': int, 'capturable': int, 'total': int},
+        #   'black': {...},
+        #   'score': int
+        # }
+        self.mobility_stats = {
+            "white": {"pieces": {}, "blocked": 0, "capturable": 0, "total": 0},
+            "black": {"pieces": {}, "blocked": 0, "capturable": 0, "total": 0},
+            "score": 0,
+        }
 
     def mobility(self, board=None):
-        """Return a tuple with number of legal moves for white and black.
+        """Return total mobility for white and black.
 
-        Counts moves via ``board.legal_moves.count()`` when available so the
-        generator is not materialized.  Falls back to ``sum(1 for _ in
-        board.legal_moves)`` if ``count()`` is unsupported (e.g. when tests
-        replace ``legal_moves`` with a plain iterator).  The board's ``turn``
-        attribute is temporarily flipped to count the opponent's moves, and
-        results are stored in ``self.mobility_stats`` for telemetry purposes.
+        Mobility is calculated per piece to determine whether a piece is
+        ``blocked`` (no legal moves) or ``capturable`` (attacked by the
+        opponent).  The king receives dedicated handling so that checkmate and
+        stalemate are labelled separately from ordinary blocking.  Totals are
+        adjusted by penalising blocked or capturable pieces to reflect reduced
+        mobility.  Detailed per-piece statistics are stored in
+        ``self.mobility_stats``.
         """
         board = board or self.board
         orig_turn = board.turn
 
-        def _move_count(moves):
-            """Count moves without materializing the generator."""
-            try:
-                return moves.count()
-            except (AttributeError, TypeError):
-                return sum(1 for _ in moves)
+        stats = {
+            chess.WHITE: {"pieces": {}, "blocked": 0, "capturable": 0, "total": 0},
+            chess.BLACK: {"pieces": {}, "blocked": 0, "capturable": 0, "total": 0},
+        }
 
-        # Count white's moves, then temporarily flip the turn to count black's.
-        white_moves = _move_count(board.legal_moves)
-        board.turn = not board.turn
-        black_moves = _move_count(board.legal_moves)
+        for color in (chess.WHITE, chess.BLACK):
+            board.turn = color
+            all_moves = list(board.legal_moves)
+            move_counts: dict[int, int] = {}
+            for mv in all_moves:
+                move_counts[mv.from_square] = move_counts.get(mv.from_square, 0) + 1
+
+            for sq, piece in board.piece_map().items():
+                if piece.color != color:
+                    continue
+
+                move_count = move_counts.get(sq, 0)
+                capturable = board.is_attacked_by(not color, sq)
+                blocked = move_count == 0
+                status = None
+
+                if piece.piece_type == chess.KING:
+                    if board.is_checkmate():
+                        status = "checkmated"
+                    elif board.is_stalemate():
+                        status = "stalemated"
+                    else:
+                        status = "blocked" if blocked else "mobile"
+
+                stats[color]["pieces"][sq] = {
+                    "mobility": move_count,
+                    "blocked": blocked,
+                    "capturable": capturable,
+                    "status": status,
+                }
+
+                if blocked:
+                    stats[color]["blocked"] += 1
+                if capturable:
+                    stats[color]["capturable"] += 1
+
+                contribution = move_count
+                if blocked:
+                    contribution -= 1
+                if capturable:
+                    contribution -= 1
+                stats[color]["total"] += max(contribution, 0)
+
         board.turn = orig_turn
-        score = white_moves - black_moves
-        self.mobility_stats = {"white": white_moves, "black": black_moves, "score": score}
-        return white_moves, black_moves
+
+        white_total = stats[chess.WHITE]["total"]
+        black_total = stats[chess.BLACK]["total"]
+        score = white_total - black_total
+        self.mobility_stats = {
+            "white": stats[chess.WHITE],
+            "black": stats[chess.BLACK],
+            "score": score,
+        }
+        return white_total, black_total
 
     def compute_features(self, color):
         board = self.board
@@ -140,6 +198,10 @@ class Evaluator:
         result['white_mobility'] = white_mob
         result['black_mobility'] = black_mob
         result['mobility_score'] = white_mob - black_mob
+        result['white_blocked'] = self.mobility_stats['white']['blocked']
+        result['black_blocked'] = self.mobility_stats['black']['blocked']
+        result['white_capturable'] = self.mobility_stats['white']['capturable']
+        result['black_capturable'] = self.mobility_stats['black']['capturable']
         result['position_score'] = self.position_score()
         result['is_checkmate'] = board.is_checkmate()
         result['winner'] = "white" if board.result() == "1-0" else "black" if board.result() == "0-1" else "draw"
