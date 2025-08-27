@@ -1,0 +1,6 @@
+python-chess==1.999
+torch==2.2.0
+PyYAML==6.0.1
+matplotlib==3.8.2
+rpy2==3.5.15
+pytest==7.4.4

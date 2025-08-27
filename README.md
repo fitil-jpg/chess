@@ -47,6 +47,26 @@ Example output::
 1. b2b4 | MCTS=0.000 AB=0.000 time=0.06s
 2. g7g5 | MCTS=0.000 AB=-0.000 time=0.57s
 ```
+## Dependencies
+
+The project relies on the following third-party libraries:
+
+- `python-chess` – core chess logic.
+- `PyYAML` – configuration file parsing.
+- `torch` – neural network evaluation (optional).
+- `matplotlib` – optional plotting for profiling stats.
+- `rpy2` – optional bridge to R for advanced evaluation.
+- `PySide6` – vendored GUI toolkit located in `vendors/`.
+- `pytest` – test runner.
+
+Install the main dependencies with:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Optional features such as plotting or the R evaluator require the corresponding packages above and, for `rpy2`, an R runtime.
+
 
 ## Running Tests
 
