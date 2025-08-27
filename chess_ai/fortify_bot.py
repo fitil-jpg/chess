@@ -15,7 +15,7 @@ import chess
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
-from core.evaluator import Evaluator, escape_squares
+from core.evaluator import Evaluator, escape_squares, is_piece_mated
 from core.constants import KING_SAFETY_THRESHOLD
 from utils import GameContext
 
@@ -38,6 +38,7 @@ class FortifyBot:
             "opp_thin_delta": 2.0,    # збільшення кількості "тонких" фігур у опонента
             "self_thin_delta": -2.0,  # штраф за появу нових "тонких" наших фігур
             "opp_escape_delta": 1.0,  # зменшення кількості втеч опонента
+            "opp_mated_delta": 5.0,   # зростання кількості атакованих фігур без втечі
         }
         if weights:
             self.W.update(weights)
@@ -102,6 +103,7 @@ class FortifyBot:
         before_thin_self = len(before_threat_self["thin_pieces"])
         before_thin_opp = len(before_threat_opp["thin_pieces"])
         before_opp_escape = self._total_escape_squares(board, opp)
+        before_opp_mated = self._count_mated_pieces(board, opp)
 
         best = None
         best_score = float("-inf")
@@ -116,6 +118,7 @@ class FortifyBot:
                 before_thin_opp,
                 before_thin_self,
                 before_opp_escape,
+                before_opp_mated,
                 evaluator,
             )
             if score > best_score:
@@ -129,7 +132,9 @@ class FortifyBot:
                 f"gain={best_info['capture_gain']} see={best_info['see_gain']} "
                 f"thinΔ={best_info['opp_thin_delta']} selfThinΔ={best_info['self_thin_delta']} "
                 f"doubledΔ={best_info['opp_doubled_delta']} "
-                f"shieldΔ={best_info['opp_shield_delta']} score={round(best_score,2)}"
+                f"shieldΔ={best_info['opp_shield_delta']} "
+                f"escΔ={best_info['opp_escape_delta']} mateΔ={best_info['opp_mated_delta']} "
+                f"score={round(best_score,2)}"
             )
             # Debug branch still returns numerical confidence as second value
             # but prints details for easier tracing.
@@ -147,6 +152,7 @@ class FortifyBot:
         before_thin_opp: int,
         before_thin_self: int,
         before_opp_escape: int,
+        before_opp_mated: int,
         evaluator: Evaluator,
     ) -> Tuple[float, Dict[str, Any]]:
         """Return the defensive score of ``m`` using ``evaluator``.
@@ -185,6 +191,8 @@ class FortifyBot:
                 "opp_shield_delta": 0,
                 "opp_thin_delta": 0,
                 "self_thin_delta": 0,
+                "opp_escape_delta": 0,
+                "opp_mated_delta": 0,
             }
 
         # Develop евристика
@@ -210,6 +218,10 @@ class FortifyBot:
         after_opp_escape = self._total_escape_squares(tmp, not self.color)
         opp_escape_delta = max(0, before_opp_escape - after_opp_escape)
 
+        # Δ атакованих беззахисних фігур опонента
+        after_opp_mated = self._count_mated_pieces(tmp, not self.color)
+        opp_mated_delta = max(0, after_opp_mated - before_opp_mated)
+
         score = (
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
@@ -220,6 +232,7 @@ class FortifyBot:
             self.W["opp_thin_delta"] * opp_thin_delta +
             self.W["self_thin_delta"] * self_thin_delta +
             self.W["opp_escape_delta"] * opp_escape_delta +
+            self.W["opp_mated_delta"] * opp_mated_delta +
             see_gain
         )
 
@@ -238,6 +251,7 @@ class FortifyBot:
             "opp_thin_delta": opp_thin_delta,
             "self_thin_delta": self_thin_delta,
             "opp_escape_delta": opp_escape_delta,
+            "opp_mated_delta": opp_mated_delta,
         }
         return score, info
 
@@ -296,6 +310,14 @@ class FortifyBot:
         for sq, piece in board.piece_map().items():
             if piece.color == color:
                 total += len(escape_squares(board, sq))
+        return total
+
+    def _count_mated_pieces(self, board: chess.Board, color: bool) -> int:
+        """Return number of pieces of ``color`` that are currently mated."""
+        total = 0
+        for sq, piece in board.piece_map().items():
+            if piece.color == color and is_piece_mated(board, sq):
+                total += 1
         return total
 
     def _king_pawn_shield_count(self, board: chess.Board, color: bool) -> int:
