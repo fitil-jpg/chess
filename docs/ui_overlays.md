@@ -68,3 +68,22 @@ Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/fens.csv
 
 The heatmaps are written back into `analysis/heatmaps/` and can then be
 displayed by the viewer.
+
+### Customising style
+
+The script accepts options to tune the appearance of the generated
+images.  For example:
+
+```bash
+Rscript analysis/heatmaps/generate_heatmaps.R \
+  --palette Blues --theme classic --resolution 150 \
+  analysis/heatmaps/fens.csv
+```
+
+* `--palette` – name of an RColorBrewer palette for the colour scale
+  (default `Reds`).
+* `--theme` – ggplot2 theme function such as `minimal` or `classic`
+  (default `minimal`).
+* `--resolution` – output image resolution in DPI (default `300`).
+
+Run the script with `--help` to see all available options and defaults.
