@@ -7,6 +7,32 @@ def piece_value(piece):
               chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
     return values.get(piece.piece_type, 0)
 
+
+def escape_squares(board: chess.Board, square: int) -> set[chess.Move]:
+    """Return the set of safe moves for the piece on ``square``.
+
+    A move is considered an "escape" if after making it the piece is not
+    attacked by the opponent.  The original ``board.turn`` is restored when
+    finished so the function is side-effect free for callers.
+    """
+
+    piece = board.piece_at(square)
+    if piece is None:
+        return set()
+
+    orig_turn = board.turn
+    board.turn = piece.color
+    escapes: set[chess.Move] = set()
+    for mv in board.legal_moves:
+        if mv.from_square != square:
+            continue
+        board.push(mv)
+        if not board.is_attacked_by(not piece.color, mv.to_square):
+            escapes.add(mv)
+        board.pop()
+    board.turn = orig_turn
+    return escapes
+
 class Evaluator:
     def __init__(
         self,

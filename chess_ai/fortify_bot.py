@@ -15,7 +15,7 @@ import chess
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
-from core.evaluator import Evaluator
+from core.evaluator import Evaluator, escape_squares
 from core.constants import KING_SAFETY_THRESHOLD
 from utils import GameContext
 
@@ -37,6 +37,7 @@ class FortifyBot:
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
             "opp_thin_delta": 2.0,    # збільшення кількості "тонких" фігур у опонента
             "self_thin_delta": -2.0,  # штраф за появу нових "тонких" наших фігур
+            "opp_escape_delta": 1.0,  # зменшення кількості втеч опонента
         }
         if weights:
             self.W.update(weights)
@@ -100,6 +101,7 @@ class FortifyBot:
         before_threat_opp = ThreatMap(opp).summary(board)
         before_thin_self = len(before_threat_self["thin_pieces"])
         before_thin_opp = len(before_threat_opp["thin_pieces"])
+        before_opp_escape = self._total_escape_squares(board, opp)
 
         best = None
         best_score = float("-inf")
@@ -113,6 +115,7 @@ class FortifyBot:
                 before_opp_shield,
                 before_thin_opp,
                 before_thin_self,
+                before_opp_escape,
                 evaluator,
             )
             if score > best_score:
@@ -143,6 +146,7 @@ class FortifyBot:
         before_opp_shield: int,
         before_thin_opp: int,
         before_thin_self: int,
+        before_opp_escape: int,
         evaluator: Evaluator,
     ) -> Tuple[float, Dict[str, Any]]:
         """Return the defensive score of ``m`` using ``evaluator``.
@@ -202,6 +206,10 @@ class FortifyBot:
         opp_thin_delta = max(0, after_thin_opp - before_thin_opp)
         self_thin_delta = max(0, after_thin_self - before_thin_self)
 
+        # Δ втеч опонента
+        after_opp_escape = self._total_escape_squares(tmp, not self.color)
+        opp_escape_delta = max(0, before_opp_escape - after_opp_escape)
+
         score = (
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
@@ -211,6 +219,7 @@ class FortifyBot:
             self.W["opp_shield_delta"] * opp_shield_delta +
             self.W["opp_thin_delta"] * opp_thin_delta +
             self.W["self_thin_delta"] * self_thin_delta +
+            self.W["opp_escape_delta"] * opp_escape_delta +
             see_gain
         )
 
@@ -228,6 +237,7 @@ class FortifyBot:
             "opp_shield_delta": opp_shield_delta,
             "opp_thin_delta": opp_thin_delta,
             "self_thin_delta": self_thin_delta,
+            "opp_escape_delta": opp_escape_delta,
         }
         return score, info
 
@@ -279,6 +289,14 @@ class FortifyBot:
             if piece.color == color and piece.piece_type == chess.PAWN:
                 files[chess.square_file(sq)] += 1
         return sum(1 for c in files if c >= 2)
+
+    def _total_escape_squares(self, board: chess.Board, color: bool) -> int:
+        """Total number of safe moves for all pieces of ``color``."""
+        total = 0
+        for sq, piece in board.piece_map().items():
+            if piece.color == color:
+                total += len(escape_squares(board, sq))
+        return total
 
     def _king_pawn_shield_count(self, board: chess.Board, color: bool) -> int:
         """
