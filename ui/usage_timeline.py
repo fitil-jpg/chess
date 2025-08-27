@@ -26,11 +26,22 @@ class UsageTimeline(QWidget):
         super().__init__(parent)
         self.w_keys: list[str] = []  # list of module keys per White move
         self.b_keys: list[str] = []  # list of module keys per Black move
+        self._selected: tuple[int, bool] | None = None
         self.setMinimumSize(280, 120)
 
     def set_data(self, w_keys: list[str], b_keys: list[str]) -> None:
         self.w_keys = list(w_keys)
         self.b_keys = list(b_keys)
+        self._selected = None
+        self.update()
+
+    def set_selected(self, idx: int | None, is_white: bool | None = None) -> None:
+        """Highlight ``(idx, is_white)`` or clear when ``idx`` is ``None``."""
+        if idx is None:
+            self._selected = None
+        else:
+            assert is_white is not None
+            self._selected = (idx, is_white)
         self.update()
 
     def mousePressEvent(self, ev: QMouseEvent) -> tuple[int, bool] | None:  # pragma: no cover - UI interaction
@@ -71,6 +82,7 @@ class UsageTimeline(QWidget):
 
         idx = int((x - pad) // seg_w)
         if 0 <= idx < len(keys):
+            self.set_selected(idx, is_white)
             self.moveClicked.emit(idx, is_white)
             return idx, is_white
         return None
@@ -99,15 +111,39 @@ class UsageTimeline(QWidget):
             return
         seg_w = max(1, (w - pad * 2) // max_len)
 
-        def draw_lane(keys, y):
+        painter.setPen(Qt.NoPen)
+
+        def draw_lane(keys, y, is_white):
             x = pad
-            for key in keys:
+            for i, key in enumerate(keys):
+                rect = QRect(x, y, seg_w, lane_h)
                 color = MODULE_COLORS.get(key, MODULE_COLORS["OTHER"])
-                painter.fillRect(QRect(x, y, seg_w, lane_h), color)
+                painter.fillRect(rect, color)
+                if self._selected == (i, is_white):
+                    painter.save()
+                    pen_sel = QPen(QColor(0, 0, 0))
+                    pen_sel.setWidth(2)
+                    painter.setPen(pen_sel)
+                    painter.drawRect(rect)
+                    painter.restore()
                 x += seg_w
 
-        draw_lane(self.w_keys, y_w)
-        draw_lane(self.b_keys, y_b)
+        draw_lane(self.w_keys, y_w, True)
+        draw_lane(self.b_keys, y_b, False)
+
+        # Move number labels between the two lanes
+        painter.setPen(QPen(QColor(60, 60, 60)))
+        num_font = QFont()
+        num_font.setPointSize(8)
+        painter.setFont(num_font)
+        fm = painter.fontMetrics()
+        y_num = y_w + lane_h + pad // 2 + fm.ascent() // 2
+        x = pad
+        for i in range(max_len):
+            label = str(i + 1)
+            text_x = x + seg_w // 2 - fm.horizontalAdvance(label) // 2
+            painter.drawText(text_x, y_num, label)
+            x += seg_w
 
         # Secondary bar showing per-move module usage
         bar_keys: list[str] = []

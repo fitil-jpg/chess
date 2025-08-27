@@ -222,6 +222,7 @@ class RunViewer(QWidget):
     def _on_timeline_click(self, idx: int, is_white: bool) -> None:
         if not self.current_run:
             return
+        self.timeline.set_selected(idx, is_white)
         fen_idx = idx * 2 + (0 if is_white else 1)
         fens = self.current_run.get("fens", [])
         if 0 <= fen_idx < len(fens):
