@@ -12,10 +12,23 @@ logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency
     from rpy2 import robjects
-except Exception:  # rpy2 may be missing in lightweight environments
+    _missing_rpy2 = False
+except ModuleNotFoundError as exc:  # rpy2 missing or partially installed
     robjects = None  # type: ignore
+    _missing_rpy2 = exc.name == "rpy2"
+    if _missing_rpy2:
+        logger.debug(
+            "R runtime or rpy2 is not available; install them to enable R evaluation."
+        )
+    else:
+        logger.debug(
+            "rpy2 is present but missing optional components; falling back to Python eval."
+        )
+except Exception:  # pragma: no cover - other initialisation errors
+    robjects = None  # type: ignore
+    _missing_rpy2 = False
     logger.debug(
-        "R runtime or rpy2 is not available; install them to enable R evaluation."
+        "rpy2 is present but cannot be initialised; falling back to Python eval."
     )
 
 
@@ -23,53 +36,57 @@ _FUNC_NAME = "eval_position_complex"
 _loaded = False
 
 
-def _ensure_loaded() -> None:
-    """Load the R evaluation function if available."""
+def _ensure_loaded() -> bool:
+    """Load the R evaluation function if available.
+
+    Returns ``True`` if the function was loaded successfully, ``False``
+    otherwise.  Errors are logged but not raised, allowing callers to fall back
+    to a Python implementation when R is missing.
+    """
     global _loaded
     if _loaded:
-        return
+        return True
     if robjects is None:
-        raise RuntimeError("rpy2 is not installed")
+        return False
     script = Path(__file__).with_name(f"{_FUNC_NAME}.R")
     if not script.exists():
         logger.warning(
             "R evaluation script '%s' is missing; R evaluation disabled.", script.name
         )
-        raise RuntimeError("missing R evaluation script")
-    try:
+        return False
+    try:  # pragma: no cover - heavy dependency
         robjects.r["source"](str(script))
     except Exception as exc:
         logger.warning("Failed to source R script: %s", exc)
-        raise RuntimeError("unable to source R evaluation script") from exc
+        return False
     if _FUNC_NAME not in robjects.globalenv:
         logger.warning(
             "R function '%s' not found; check eval_position_complex.R", _FUNC_NAME
         )
-        raise RuntimeError(
-            f"R function '{_FUNC_NAME}' not found after sourcing"
-        )
+        return False
     _loaded = True
+    return True
 
 
 def eval_board(
     board: chess.Board, enemy_material: Mapping[str, float] | None = None
 ) -> float:
-    """Return evaluation score for ``board`` using R's ``eval_position_complex``.
+    """Return evaluation score for ``board`` using R if possible.
 
-    Parameters
-    ----------
-    board:
-        Board to evaluate.
-    enemy_material:
-        Optional mapping with keys ``"white"`` and ``"black"`` to modulate king
-        safety based on remaining attacking material of each side. ``1``
-        corresponds to full material; lower values reduce the impact of attacks.
-
-    The function sources the accompanying R script and calls the R function,
-    returning its numeric result.  ``RuntimeError`` is raised if :mod:`rpy2` or
-    the R function is unavailable.
+    If :mod:`rpy2` or the R evaluation script is unavailable, a lightweight
+    Python evaluation is used as a fallback.  A ``RuntimeError`` is raised only
+    when :mod:`rpy2` itself cannot be imported.
     """
-    _ensure_loaded()
+    if robjects is None:
+        if _missing_rpy2:
+            raise RuntimeError("rpy2 is not installed")
+        from .evaluation import evaluate_position
+
+        return evaluate_position(board)
+    if not _ensure_loaded():
+        from .evaluation import evaluate_position
+
+        return evaluate_position(board)
     r_func = robjects.globalenv[_FUNC_NAME]
     if enemy_material is None:
         res = r_func(board.fen())
