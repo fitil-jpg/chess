@@ -50,11 +50,17 @@ class OverallUsageChart(QWidget):
         w = self.width()
         pad = 8
         bar_h = 14
+        legend_h = 20
+
+        # Reserve space at the bottom for the legend so bars don't overlap it
         y = pad
+        max_bar_height = self.height() - legend_h - pad
         max_count = max(self.counts.values())
         items = sorted(self.counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
         for name, count in items:
+            if y + bar_h > max_bar_height:
+                break
             bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
             rect = QRect(pad, y, bar_w, bar_h)
             self._bar_rects.append((rect, name))
@@ -67,7 +73,21 @@ class OverallUsageChart(QWidget):
             painter.drawRect(rect)
             painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
             y += bar_h + pad
-            if y + bar_h > self.height():
+
+        # Draw legend mapping colours to modules
+        y_leg = self.height() - legend_h + 4
+        x_leg = pad
+        painter.setPen(QPen(QColor(80, 80, 80)))
+        for name, _ in items:
+            color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
+            if self._selected and name != self._selected:
+                color = color.lighter(160)
+            rect = QRect(x_leg, y_leg, 10, 10)
+            painter.fillRect(rect, color)
+            painter.drawRect(rect)
+            painter.drawText(x_leg + 14, y_leg + 10, name)
+            x_leg += 14 + painter.fontMetrics().horizontalAdvance(name) + 10
+            if x_leg > w - pad:
                 break
 
     def mousePressEvent(self, ev):  # pragma: no cover - GUI interaction
