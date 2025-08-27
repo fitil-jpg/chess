@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  vendor-imports:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +16,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
-      - name: Run vendor import test
-        env:
-          PYTHONPATH: ${{ github.workspace }}/vendors:${PYTHONPATH}
-        run: pytest tests/test_vendor_imports.py -q
+          pip install pytest python-chess matplotlib rpy2 torch
+      - name: Run tests
+        run: pytest -q
