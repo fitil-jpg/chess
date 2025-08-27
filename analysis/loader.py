@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 import csv
-from typing import Any, Dict, List, Optional
+import random
+from collections import Counter
+from typing import Any, Dict, Iterator, List, Optional
 
 import chess
 
@@ -19,17 +21,40 @@ except Exception:  # pragma: no cover - rpy2 may be missing in tests
 REQUIRED_KEYS = {"moves", "fens", "modules_w", "modules_b"}
 
 
-def load_runs(path: str) -> List[Dict[str, Any]]:
-    """Load run JSON files from *path* and include save timestamps.
+def iter_runs(
+    path: str,
+    limit: Optional[int] = None,
+    seed: Optional[int] = None,
+) -> Iterator[Dict[str, Any]]:
+    """Yield run dictionaries from *path* one by one.
 
-    Each JSON file must contain the keys defined in :data:`REQUIRED_KEYS`.
-    The returned run dictionaries additionally include a ``date`` field with
-    the file's modification time encoded via :meth:`datetime.isoformat`.
+    Parameters
+    ----------
+    path:
+        Directory holding run ``.json`` files.
+    limit, seed:
+        Optional sampling parameters.  When *limit* is given, at most this many
+        runs are processed.  If *seed* is provided the file order is shuffled
+        deterministically before applying the limit.
+
+    Yields
+    ------
+    Dict[str, Any]
+        Run dictionaries with the required fields plus a ``date`` timestamp
+        derived from the file's modification time.
     """
-    runs: List[Dict[str, Any]] = []
-    base_path = Path(path)
 
-    for file in sorted(base_path.glob("*.json")):
+    base_path = Path(path)
+    files = sorted(base_path.glob("*.json"))
+
+    if seed is not None:
+        rng = random.Random(seed)
+        rng.shuffle(files)
+
+    if limit is not None:
+        files = files[:limit]
+
+    for file in files:
         with file.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
 
@@ -39,25 +64,50 @@ def load_runs(path: str) -> List[Dict[str, Any]]:
                 f"Missing keys in {file.name}: {', '.join(sorted(missing))}"
             )
 
-        runs.append(
-            {
-                "game_id": file.stem,
-                "moves": data["moves"],
-                "fens": data["fens"],
-                "modules_w": data["modules_w"],
-                "modules_b": data["modules_b"],
-                "result": data.get("result"),
-                "date": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
-            }
-        )
+        yield {
+            "game_id": file.stem,
+            "moves": data["moves"],
+            "fens": data["fens"],
+            "modules_w": data["modules_w"],
+            "modules_b": data["modules_b"],
+            "result": data.get("result"),
+            "date": datetime.fromtimestamp(file.stat().st_mtime).isoformat(),
+        }
 
-    return runs
+
+def aggregate_stats(
+    path: str, limit: Optional[int] = None, seed: Optional[int] = None
+) -> Dict[str, Any]:
+    """Aggregate basic statistics across run files in *path*.
+
+    The function processes run JSON files one at a time, keeping only the
+    accumulated statistics in memory.  It counts how many games and moves were
+    processed and aggregates module usage across both colours.
+    """
+
+    module_counts: Counter[str] = Counter()
+    total_moves = 0
+    total_games = 0
+
+    for run in iter_runs(path, limit=limit, seed=seed):
+        total_games += 1
+        total_moves += len(run["moves"])
+        module_counts.update(run.get("modules_w", []))
+        module_counts.update(run.get("modules_b", []))
+
+    return {
+        "games": total_games,
+        "moves": total_moves,
+        "module_usage": dict(module_counts),
+    }
 
 
 def export_move_table(
     path: str,
     csv_path: Optional[str] = None,
     rds_path: Optional[str] = None,
+    limit: Optional[int] = None,
+    seed: Optional[int] = None,
 ) -> List[Dict[str, str]]:
     """Extract per-move piece and destination square information.
 
@@ -69,6 +119,8 @@ def export_move_table(
         Optional output paths.  When provided the extracted table is written
         either as a CSV file or an RDS file.  Exporting to RDS requires
         :mod:`rpy2` to be installed.
+    limit, seed:
+        Optional sampling parameters forwarded to :func:`iter_runs`.
 
     Returns
     -------
@@ -77,10 +129,9 @@ def export_move_table(
         in *path*.
     """
 
-    runs = load_runs(path)
     records: List[Dict[str, str]] = []
 
-    for run in runs:
+    for run in iter_runs(path, limit=limit, seed=seed):
         board = chess.Board()
         for mv in run["moves"]:
             move = chess.Move.from_uci(mv)
@@ -128,6 +179,30 @@ if __name__ == "__main__":  # pragma: no cover - CLI utility
     parser.add_argument("path", help="Directory containing run JSON files")
     parser.add_argument("--csv", dest="csv_path", help="Output CSV path")
     parser.add_argument("--rds", dest="rds_path", help="Output RDS path")
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        dest="sample_size",
+        help="Randomly sample at most this many runs",
+    )
+    parser.add_argument(
+        "--seed", type=int, dest="seed", help="Seed for random sampling"
+    )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Print aggregated statistics instead of move table",
+    )
     args = parser.parse_args()
 
-    export_move_table(args.path, csv_path=args.csv_path, rds_path=args.rds_path)
+    if args.stats:
+        stats = aggregate_stats(args.path, limit=args.sample_size, seed=args.seed)
+        print(json.dumps(stats))
+    else:
+        export_move_table(
+            args.path,
+            csv_path=args.csv_path,
+            rds_path=args.rds_path,
+            limit=args.sample_size,
+            seed=args.seed,
+        )
