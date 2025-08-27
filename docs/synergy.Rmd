@@ -1,0 +1,26 @@
+---
+title: "Piece Synergy Analysis"
+output: html_document
+---
+
+## Methodology
+We analysed a small collection of chess positions to explore which white piece combinations most frequently lead to checkmate. Positions were sourced from repository test data and a few curated mating patterns. For each position we recorded whether it was a mate and the presence of major/minor pieces.
+
+A logistic regression model was built to estimate the probability of checkmate given the presence of queens, rooks, bishops, and knights. Due to the unavailable R runtime in the environment, coefficients were computed using a lightweight Python implementation of logistic regression. The final weights are stored in `analysis/synergy.json`.
+
+## Model summary
+```{r}
+library(jsonlite)
+synergy <- fromJSON("../analysis/synergy.json")
+synergy$pair_counts
+synergy$logistic_regression$predicted_probabilities
+```
+
+## Example checkmate scenario
+An example where coordinated pieces deliver checkmate:
+
+| FEN | Attacking pieces |
+|-----|-----------------|
+| `7k/5Q1R/6K1/8/8/8/8/8 b - - 0 1` | King, Queen, Rook |
+
+This position shows a typical mating net where the queen and rook restrict the opposing king's escape squares while the king provides support.
