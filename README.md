@@ -16,8 +16,15 @@ values when creating `DynamicBot`:
 from chess_ai.dynamic_bot import DynamicBot
 import chess
 
-bot = DynamicBot(chess.WHITE, weights={"aggressive": 1.5, "fortify": 0.5})
+# RandomBot is disabled by default; pass a positive weight to enable it.
+bot = DynamicBot(
+    chess.WHITE, weights={"aggressive": 1.5, "fortify": 0.5, "random": 0.5}
+)
 ```
+
+By default all deterministic sub-bots have a weight of `1.0` while
+`RandomBot` is assigned a weight of `0.0` and therefore excluded unless a
+positive weight is supplied.
 
 ### Example usage
 
