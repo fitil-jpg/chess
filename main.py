@@ -57,6 +57,8 @@ def _setup_logging():
     fmt = "%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s"
     logging.basicConfig(level=LOG_LEVEL, format=fmt)
 
+logger = logging.getLogger(__name__)
+
 # ---------- Утиліти ----------
 
 def moves_san_string(board: chess.Board) -> str:
@@ -115,7 +117,7 @@ def agent_usage_stats(agent) -> Optional[Dict[str,int]]:
         if hasattr(agent, "get_usage_stats"):
             return agent.get_usage_stats()
     except Exception:
-        pass
+        logger.warning("Failed to get usage stats from %s", getattr(agent, '__class__', type(agent)))
     return None
 
 def agent_reset_usage(agent) -> None:
@@ -124,7 +126,7 @@ def agent_reset_usage(agent) -> None:
         if hasattr(agent, "reset_usage_stats"):
             agent.reset_usage_stats()
     except Exception:
-        pass
+        logger.warning("Failed to reset usage stats for %s", getattr(agent, '__class__', type(agent)))
 
 # ---------- Виявлення подій ----------
 
@@ -241,6 +243,12 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                 board.push(move)
             except Exception:
                 # На всяк випадок, якщо агент повернув нелегальний Move
+                logger.exception(
+                    "Illegal move %s by %s (%s); ending game",
+                    move,
+                    "white" if color_to_move == chess.WHITE else "black",
+                    agent.__class__.__name__,
+                )
                 break
 
             moves_log.append(san_before)
