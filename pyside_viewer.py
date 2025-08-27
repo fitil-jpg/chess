@@ -10,7 +10,7 @@ from collections import defaultdict
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
-    QListWidget,
+    QListWidget, QScrollArea,
 )
 from PySide6.QtCore import QTimer, QRect, Qt
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
@@ -44,10 +44,21 @@ class OverallUsageChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.counts = {}
-        self.setMinimumSize(280, 150)
+        self.pad = 8
+        self.bar_h = 14
+        self.legend_h = 20
+        self.setMinimumWidth(280)
+        self._update_height()
+
+    def _update_height(self) -> None:
+        total = len(self.counts)
+        height = self.pad + total * (self.bar_h + self.pad) + self.legend_h
+        self.setMinimumHeight(height)
+        self.updateGeometry()
 
     def set_data(self, counts):
         self.counts = dict(counts)
+        self._update_height()
         self.update()
 
     def paintEvent(self, ev):  # pragma: no cover - GUI drawing
@@ -57,30 +68,26 @@ class OverallUsageChart(QWidget):
             return
 
         w = self.width()
-        pad = 8
-        bar_h = 14
-        legend_h = 20
-
-        # Reserve a band at the bottom for the legend so bars don't overlap
-        y = pad
-        max_bar_height = self.height() - legend_h - pad
         max_count = max(self.counts.values())
         items = sorted(self.counts.items(), key=lambda kv: (-kv[1], kv[0]))
 
+        y = self.pad
         for name, count in items:
-            if y + bar_h > max_bar_height:
-                break
-            bar_w = int((w - pad * 2) * (count / max_count)) if max_count else 0
+            bar_w = (
+                int((w - self.pad * 2) * (count / max_count)) if max_count else 0
+            )
             color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
-            painter.fillRect(QRect(pad, y, bar_w, bar_h), color)
+            painter.fillRect(QRect(self.pad, y, bar_w, self.bar_h), color)
             painter.setPen(QPen(QColor(60, 60, 60)))
-            painter.drawRect(QRect(pad, y, bar_w, bar_h))
-            painter.drawText(pad + bar_w + 4, y + bar_h - 2, f"{name} ({count})")
-            y += bar_h + pad
+            painter.drawRect(QRect(self.pad, y, bar_w, self.bar_h))
+            painter.drawText(
+                self.pad + bar_w + 4, y + self.bar_h - 2, f"{name} ({count})"
+            )
+            y += self.bar_h + self.pad
 
         # Legend mapping colours to modules
-        y_leg = self.height() - legend_h + 4
-        x_leg = pad
+        y_leg = y
+        x_leg = self.pad
         painter.setPen(QPen(QColor(80, 80, 80)))
         for name, _ in items:
             color = MODULE_COLORS.get(name, MODULE_COLORS["OTHER"])
@@ -89,7 +96,7 @@ class OverallUsageChart(QWidget):
             painter.drawRect(rect)
             painter.drawText(x_leg + 14, y_leg + 10, name)
             x_leg += 14 + painter.fontMetrics().horizontalAdvance(name) + 10
-            if x_leg > w - pad:
+            if x_leg > w - self.pad:
                 break
 
 class ChessViewer(QWidget):
@@ -195,7 +202,10 @@ class ChessViewer(QWidget):
         self.overall_chart = OverallUsageChart()
         runs = load_runs("runs")
         self.overall_chart.set_data(aggregate_module_usage(runs))
-        right_col.addWidget(self.overall_chart)
+        chart_scroll = QScrollArea()
+        chart_scroll.setWidgetResizable(True)
+        chart_scroll.setWidget(self.overall_chart)
+        right_col.addWidget(chart_scroll)
 
         right_col.addStretch(1)  # все тримаємо вгорі
 
