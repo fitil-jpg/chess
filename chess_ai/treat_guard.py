@@ -128,6 +128,53 @@ def _enemy_pawn_two_move_threat(board: chess.Board, our_color: bool) -> Tuple[bo
                 return True, r1, None, "P->K(next)"
     return False, None, None, ""
 
+def _en_passant_corridor_threat(board: chess.Board, our_color: bool) -> Tuple[bool, Optional[chess.Move], Optional[chess.Move], str]:
+    """Чи може ворог форсувати corridor з en passant проти нашої g-пешки?
+
+    Схема (для білого боку аналогічно дзеркально):
+    чорні пішаки стоять на f4 і h4, наша g2. Якщо один з них рушить
+    вперед, ми вимушені g2→g4, після чого другий забирає en passant.
+    """
+    enemy = not our_color
+    our_g = chess.G2 if our_color else chess.G7
+    # g-пішака немає — немає й загрози
+    pc = board.piece_at(our_g)
+    if not pc or pc.color != our_color or pc.piece_type != chess.PAWN:
+        return False, None, None, ""
+
+    if our_color:
+        flank_moves = [
+            (chess.Move(chess.F4, chess.F3), chess.Move(chess.F3, chess.G4)),
+            (chess.Move(chess.H4, chess.H3), chess.Move(chess.H3, chess.G4)),
+        ]
+        our_reply = chess.Move(chess.G2, chess.G4)
+    else:
+        flank_moves = [
+            (chess.Move(chess.F5, chess.F6), chess.Move(chess.F6, chess.G5)),
+            (chess.Move(chess.H5, chess.H6), chess.Move(chess.H6, chess.G5)),
+        ]
+        our_reply = chess.Move(chess.G7, chess.G5)
+
+    for r1, r2 in flank_moves:
+        # Перша умова — відповідний пішак ворога існує й хід легальний
+        pc = board.piece_at(r1.from_square)
+        if not pc or pc.color != enemy or pc.piece_type != chess.PAWN:
+            continue
+        if r1 not in board.legal_moves:
+            continue
+
+        tmp1 = board.copy(stack=False); tmp1.push(r1)
+        # Наша вимушена відповідь g-пішкою має бути легальною
+        if our_reply not in tmp1.legal_moves:
+            continue
+
+        tmp2 = tmp1.copy(stack=False); tmp2.push(our_reply)
+        # Після g2→g4 чи g7→g5 ворог має взяти en passant
+        if r2 in tmp2.legal_moves:
+            return True, r1, r2, "P:ep-corridor"
+
+    return False, None, None, ""
+
 def _find_piece(board: chess.Board, color: bool, ptype: int) -> Optional[int]:
     for sq, pc in board.piece_map().items():
         if pc.color == color and pc.piece_type == ptype:
@@ -148,8 +195,7 @@ def enemy_two_move_fork_risk(board: chess.Board, our_color: bool) -> Tuple[bool,
     ok, r1, r2, tag = _enemy_pawn_two_move_threat(board, our_color)
     if ok:
         return True, tag, r1, r2
+    ok, r1, r2, tag = _en_passant_corridor_threat(board, our_color)
+    if ok:
+        return True, tag, r1, r2
     return False, "", None, None
-
-# TODO (на пізніше): форсування «en passant corridor» проти королівського щита.
-# Ідея: наші пішаки займають клітини поруч/попереду «королівської пешки» ворога,
-# змушуючи її йти на крок через бите поле (або провокуючи слабкість). Це вимагає вже планера.
