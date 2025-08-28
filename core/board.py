@@ -111,17 +111,26 @@ if chess:
 
         # ---- Нижче — гачки під ваш GUI. Залишаються як TODO, якщо у вас інша реалізація. ----
         def _apply_border_highlight(self) -> None:
-            """
-            TODO: інтегруйте з вашим рендером:
-            - намалювати бордер для кожного квадрата з self.highlighted_squares
+            """Draw border highlights for ``self.highlighted_squares``.
+
+            Concrete GUI implementations must override this method to
+            integrate with their rendering system.
             """
             # приклад: self.view.draw_borders(self.highlighted_squares)
-            pass
+            raise NotImplementedError(
+                "GUI integration required for border highlighting"
+            )
 
         def _request_repaint(self) -> None:
-            """TODO: виклик перерисовки у вашому UI."""
+            """Request the GUI to repaint.
+
+            Concrete GUI implementations must override this method to trigger
+            a repaint in their framework.
+            """
             # приклад: self.view.update()
-            pass
+            raise NotImplementedError(
+                "GUI integration required to request a repaint"
+            )
 else:  # chess package not available
     CENTER_16 = set()
 
