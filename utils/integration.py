@@ -46,7 +46,14 @@ def generate_heatmaps(
     export_fen_table(fens, csv_path=str(csv_path))
 
     script = Path("analysis/heatmaps/generate_heatmaps.R")
-    subprocess.run(["Rscript", str(script), str(csv_path)], check=True)
+    try:
+        subprocess.run(["Rscript", str(script), str(csv_path)], check=True)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "Rscript not found; install R to generate heatmaps"
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"Rscript failed: {exc}") from exc
 
     heatmaps: Dict[str, List[List[int]]] = {}
     for json_file in out_path.glob("heatmap_*.json"):
