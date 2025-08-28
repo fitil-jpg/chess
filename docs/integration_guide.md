@@ -56,3 +56,19 @@ metrics = compute_metrics(fen)
 
 The ``heatmaps`` dictionary maps FEN identifiers to 8×8 matrices, while
 ``metrics`` contains the derived evaluation numbers for the position.
+
+### Generating heatmaps in R
+
+You can render heatmaps in R using ``ggplot2``. First convert the JSON
+matrix produced by ``generate_heatmaps`` into a data frame with columns
+``x`` and ``y``. Then plot it with:
+
+```r
+ggplot(queen_moves, aes(x, y)) +
+  geom_bin2d(bins = 8) +
+  scale_fill_gradient(low = "white", high = "red") +
+  coord_fixed()
+```
+
+Replace ``queen_moves`` with your own move data derived from the JSON
+heatmap. Output files are saved to ``analysis/heatmaps/`` by default.
