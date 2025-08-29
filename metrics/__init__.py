@@ -10,6 +10,14 @@ the same implementation.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Ensure vendored dependencies are importable when this package is used
+VENDOR_PATH = Path(__file__).resolve().parents[1] / "vendors"
+if str(VENDOR_PATH) not in sys.path:
+    sys.path.append(str(VENDOR_PATH))
+
 import chess
 
 from metrics_common import (
@@ -18,6 +26,7 @@ from metrics_common import (
     evaluate_center_control as _evaluate_center_control,
     evaluate_king_safety as _evaluate_king_safety,
     evaluate_pawn_structure as _evaluate_pawn_structure,
+    evaluate_survivability as _evaluate_survivability,
 )
 
 
@@ -34,6 +43,7 @@ class MetricsManager:
     def update_all_metrics(self) -> None:  # pragma: no cover - simple wrapper
         self.metrics["short_term"]["attacked_squares"] = self.count_attacked_squares()
         self.metrics["short_term"]["defended_pieces"] = self.count_defended_pieces()
+        self.metrics["short_term"]["survivability"] = self.evaluate_survivability()
         self.metrics["long_term"]["center_control"] = self.evaluate_center_control()
         self.metrics["long_term"]["king_safety"] = self.evaluate_king_safety()
         self.metrics["long_term"]["pawn_structure_stability"] = self.evaluate_pawn_structure()
@@ -52,6 +62,9 @@ class MetricsManager:
 
     def evaluate_pawn_structure(self) -> int:
         return _evaluate_pawn_structure(self.board_state)
+
+    def evaluate_survivability(self):
+        return _evaluate_survivability(self.board_state)
 
     def get_metrics(self):  # pragma: no cover - trivial accessor
         return self.metrics
