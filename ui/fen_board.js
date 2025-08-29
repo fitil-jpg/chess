@@ -64,14 +64,25 @@ export function renderAgentMetrics(target, metrics) {
   const el = typeof target === 'string' ? document.getElementById(target) : target;
   if (!el || !metrics) return;
   el.innerHTML = '';
-  for (const side of ['white', 'black']) {
-    const box = document.createElement('div');
-    box.innerHTML = `<h3>${side}</h3>`;
-    const data = metrics[side] || {};
-    for (const [key, value] of Object.entries(data)) {
-      box.innerHTML += `<div>${key}: ${value}</div>`;
+
+  // Support both a nested ``{white: {}, black: {}}`` structure and a flat
+  // ``{metric: value}`` mapping as used by analysis/agent_metrics.json.
+  if ('white' in metrics || 'black' in metrics) {
+    for (const side of ['white', 'black']) {
+      const box = document.createElement('div');
+      box.innerHTML = `<h3>${side}</h3>`;
+      const data = metrics[side] || {};
+      for (const [key, value] of Object.entries(data)) {
+        box.innerHTML += `<div>${key}: ${value}</div>`;
+      }
+      el.appendChild(box);
     }
-    el.appendChild(box);
+  } else {
+    for (const [key, value] of Object.entries(metrics)) {
+      const div = document.createElement('div');
+      div.textContent = `${key}: ${value}`;
+      el.appendChild(div);
+    }
   }
 }
 

@@ -129,6 +129,23 @@ def evaluate_synergy(board: chess.Board) -> int:
     return synergy[chess.WHITE] - synergy[chess.BLACK]
 
 
+def evaluate_survivability(board: chess.Board, color: bool) -> int:
+    """Return the number of legal king moves for ``color``.
+
+    This tiny heuristic approximates how many safe squares the king has
+    available.  The board state is copied so the side to move can be
+    adjusted without mutating the original board.
+    """
+
+    king_sq = board.king(color)
+    if king_sq is None:
+        return 0
+
+    tmp = board.copy()
+    tmp.turn = color
+    return sum(1 for mv in tmp.legal_moves if mv.from_square == king_sq)
+
+
 __all__ = [
     "count_attacked_squares",
     "count_defended_pieces",
@@ -137,4 +154,5 @@ __all__ = [
     "evaluate_pawn_structure",
     "evaluate_pressure",
     "evaluate_synergy",
+    "evaluate_survivability",
 ]
