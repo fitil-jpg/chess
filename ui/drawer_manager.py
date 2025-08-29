@@ -3,6 +3,9 @@ from pathlib import Path
 
 import chess
 
+from fen_handler import fen_to_board_state
+from scenarios import detect_scenarios
+
 
 class DrawerManager:
     def __init__(self):
@@ -82,6 +85,16 @@ class DrawerManager:
                     row = 7 - chess.square_rank(s)
                     col = chess.square_file(s)
                     self._add_overlay(row, col, "check", "yellow")
+        # scenario detection on current board
+        try:
+            board_state = fen_to_board_state(board.fen())
+            for sc in detect_scenarios(board_state):
+                sq = chess.parse_square(sc.get("square"))
+                row = 7 - chess.square_rank(sq)
+                col = chess.square_file(sq)
+                self._add_overlay(row, col, "scenario", "purple")
+        except Exception:
+            pass
 
         self._apply_heatmaps()
 
