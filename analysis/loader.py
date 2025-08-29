@@ -8,7 +8,6 @@ import random
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 import chess
-from fen_handler import fen_to_board_state
 from scenarios import detect_scenarios
 
 try:
@@ -274,8 +273,7 @@ def export_scenarios(
 
     records: List[Dict[str, Any]] = []
     for idx, fen in enumerate(fens):
-        board_state = fen_to_board_state(fen)
-        for sc in detect_scenarios(board_state):
+        for sc in detect_scenarios(fen):
             rec: Dict[str, Any] = {"fen_id": str(idx)}
             rec.update(sc)
             records.append(rec)
@@ -295,7 +293,7 @@ def export_scenarios(
         # Write an empty file with standard headers if no scenarios were found
         with open(csv_path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.writer(fh)
-            writer.writerow(["fen_id", "id", "square", "color", "targets"])
+            writer.writerow(["fen_id", "id", "square", "color", "side", "targets"])
 
     if json_path:
         with open(json_path, "w", encoding="utf-8") as fh:

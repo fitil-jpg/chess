@@ -1,7 +1,7 @@
 # UI Overlays
 
 The viewer can render additional overlays on top of board cells using
-`DrawerManager`.  It now understands two sources of analysis data:
+`DrawerManager`.  It now understands three sources of analysis data:
 
 * **Heatmaps** – JSON files in `analysis/heatmaps/` containing 8×8
   matrices of numbers in the range 0–1.  Each value is rendered as a
@@ -11,6 +11,9 @@ The viewer can render additional overlays on top of board cells using
   `analysis/agent_metrics.json`.  The file is loaded on start and the
   data is available through `DrawerManager.agent_metrics` for debugging
   or displaying aggregate numbers.
+* **Scenarios** – patterns detected by :func:`scenarios.detect_scenarios`
+  and exposed via ``DrawerManager.scenarios``.  Scenario markers are
+  included in :meth:`export_ui_data` and highlighted by the front-end.
 
 ## Heatmap format
 
@@ -41,6 +44,7 @@ drawer = DrawerManager()
 drawer.collect_overlays({}, board)
 # Access gradient overlays via drawer.overlays
 metrics = drawer.agent_metrics
+scenarios = drawer.scenarios
 ```
 
 The `MiniBoard` automatically highlights the last move by colouring the
@@ -133,7 +137,7 @@ with open("output/ui_state.json", "w", encoding="utf-8") as fh:
 import {renderFenBoard, renderAgentMetrics} from './ui/fen_board.js';
 
 fetch('output/ui_state.json').then(r => r.json()).then(data => {
-  renderFenBoard('board', data.fen, data.overlays);
+  renderFenBoard('board', data.fen, data.overlays, {scenarios: data.scenarios});
   renderAgentMetrics('metrics', data.agent_metrics);
 });
 </script>

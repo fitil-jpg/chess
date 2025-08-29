@@ -3,13 +3,13 @@ from pathlib import Path
 
 import chess
 
-from fen_handler import fen_to_board_state
 from scenarios import detect_scenarios
 
 
 class DrawerManager:
     def __init__(self):
         self.overlays = {}
+        self.scenarios = []
         self.heatmaps = self._load_heatmaps()
         self.agent_metrics = self._load_agent_metrics()
 
@@ -49,6 +49,7 @@ class DrawerManager:
     # ------------------------------------------------------------------
     def collect_overlays(self, piece_objects, board):
         self.overlays.clear()
+        self.scenarios.clear()
         for sq, obj in piece_objects.items():
             if hasattr(obj, "safe_moves"):
                 for s in obj.safe_moves:
@@ -87,12 +88,13 @@ class DrawerManager:
                     self._add_overlay(row, col, "check", "yellow")
         # scenario detection on current board
         try:
-            board_state = fen_to_board_state(board.fen())
-            for sc in detect_scenarios(board_state):
+            for sc in detect_scenarios(board.fen()):
                 sq = chess.parse_square(sc.get("square"))
                 row = 7 - chess.square_rank(sq)
                 col = chess.square_file(sq)
-                self._add_overlay(row, col, "scenario", "purple")
+                color = sc.get("color", "purple")
+                self._add_overlay(row, col, "scenario", color)
+                self.scenarios.append({"row": row, "col": col, **sc})
         except Exception:
             pass
 
@@ -145,4 +147,5 @@ class DrawerManager:
             "overlays": grid,
             "heatmaps": self.heatmaps,
             "agent_metrics": self.agent_metrics,
+            "scenarios": self.scenarios,
         }
