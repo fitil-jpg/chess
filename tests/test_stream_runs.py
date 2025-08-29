@@ -2,6 +2,8 @@ import json
 import os
 import tempfile
 
+import pytest
+
 from analysis.loader import aggregate_run_stats, stream_runs
 
 
@@ -33,3 +35,13 @@ def test_aggregate_run_stats():
         stats = aggregate_run_stats(tmpdir)
         assert stats["games"] == 3
         assert stats["moves"] == 6
+
+
+def test_stream_runs_missing_key():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sample = {"moves": [], "fens": [], "modules_w": []}
+        with open(os.path.join(tmpdir, "bad.json"), "w", encoding="utf-8") as fh:
+            json.dump(sample, fh)
+        with pytest.raises(ValueError) as exc:
+            list(stream_runs(tmpdir))
+        assert "modules_b" in str(exc.value)
