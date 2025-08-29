@@ -8,6 +8,8 @@ import random
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 import chess
+from fen_handler import fen_to_board_state
+from scenarios import detect_scenarios
 
 try:
     # rpy2 is optional; only needed for RDS export
@@ -207,6 +209,97 @@ def export_fen_table(
             writer = csv.DictWriter(fh, fieldnames=["fen_id", "piece", "to"])
             writer.writeheader()
             writer.writerows(records)
+
+    return records
+
+
+def export_agent_metrics(
+    metrics: Dict[str, Any],
+    csv_path: Optional[str] = None,
+    json_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Write agent metrics to CSV and/or JSON files.
+
+    Parameters
+    ----------
+    metrics:
+        Mapping of metric names to their values.
+    csv_path, json_path:
+        Optional paths for CSV or JSON output. When provided the mapping is
+        written to the respective format.
+
+    Returns
+    -------
+    Dict[str, Any]
+        The *metrics* mapping for convenience.
+    """
+
+    if csv_path:
+        with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["metric", "value"])
+            for key, value in metrics.items():
+                writer.writerow([key, value])
+
+    if json_path:
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(metrics, fh)
+
+    return metrics
+
+
+def export_scenarios(
+    fens: Iterable[str],
+    csv_path: Optional[str] = None,
+    json_path: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Detect scenarios for a sequence of FEN strings.
+
+    Each FEN is analysed using :func:`scenarios.detect_scenarios`.  The
+    returned scenarios are augmented with a ``fen_id`` field referencing the
+    original position.  Results can be written to CSV or JSON files.
+
+    Parameters
+    ----------
+    fens:
+        Iterable of FEN strings to analyse.
+    csv_path, json_path:
+        Optional paths for CSV or JSON output.
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        Detected scenarios with the originating ``fen_id``.
+    """
+
+    records: List[Dict[str, Any]] = []
+    for idx, fen in enumerate(fens):
+        board_state = fen_to_board_state(fen)
+        for sc in detect_scenarios(board_state):
+            rec: Dict[str, Any] = {"fen_id": str(idx)}
+            rec.update(sc)
+            records.append(rec)
+
+    if csv_path and records:
+        fieldnames = sorted({k for r in records for k in r.keys()})
+        with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            for r in records:
+                row = {
+                    k: json.dumps(v) if isinstance(v, (list, dict)) else v
+                    for k, v in r.items()
+                }
+                writer.writerow(row)
+    elif csv_path:
+        # Write an empty file with standard headers if no scenarios were found
+        with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(["fen_id", "id", "square", "color", "targets"])
+
+    if json_path:
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(records, fh)
 
     return records
 
