@@ -31,11 +31,15 @@ def parse_fen(fen: str) -> List[List[str | None]]:
 def generate_heatmaps(
     fens: Iterable[str],
     out_dir: str = "analysis/heatmaps",
+    use_wolfram: bool = False,
 ) -> Dict[str, List[List[int]]]:
     """Generate heatmaps for *fens* and return them as dictionaries.
 
-    This function serialises ``fens`` into a CSV file and invokes the
-    :mod:`analysis.heatmaps.generate_heatmaps.R` script via ``Rscript``.
+    This function serialises ``fens`` into a CSV file and invokes either the
+    R or Wolfram heatmap scripts.  When ``use_wolfram`` is ``False`` (the
+    default) ``analysis/heatmaps/generate_heatmaps.R`` is executed via
+    ``Rscript``.  When ``True`` the Wolfram Language implementation
+    ``analysis/heatmaps/generate_heatmaps.wl`` is run via ``wolframscript``.
     The resulting JSON heatmaps are loaded and returned as a mapping from
     ``fen_id`` to 8×8 integer matrices.
     """
@@ -45,15 +49,23 @@ def generate_heatmaps(
     csv_path = out_path / "fens.csv"
     export_fen_table(fens, csv_path=str(csv_path))
 
-    script = Path("analysis/heatmaps/generate_heatmaps.R")
+    if use_wolfram:
+        script = Path("analysis/heatmaps/generate_heatmaps.wl")
+        cmd = ["wolframscript", "-file", str(script), str(csv_path)]
+        missing = "wolframscript not found; install Wolfram Engine to generate heatmaps"
+        fail_msg = "wolframscript failed"
+    else:
+        script = Path("analysis/heatmaps/generate_heatmaps.R")
+        cmd = ["Rscript", str(script), str(csv_path)]
+        missing = "Rscript not found; install R to generate heatmaps"
+        fail_msg = "Rscript failed"
+
     try:
-        subprocess.run(["Rscript", str(script), str(csv_path)], check=True)
+        subprocess.run(cmd, check=True)
     except FileNotFoundError as exc:
-        raise RuntimeError(
-            "Rscript not found; install R to generate heatmaps"
-        ) from exc
+        raise RuntimeError(missing) from exc
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(f"Rscript failed: {exc}") from exc
+        raise RuntimeError(f"{fail_msg}: {exc}") from exc
 
     heatmaps: Dict[str, List[List[int]]] = {}
     for json_file in out_path.glob("heatmap_*.json"):
