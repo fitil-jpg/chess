@@ -1,0 +1,3 @@
+agent,wins,losses,draws
+random,10,5,1
+greedy,8,7,3

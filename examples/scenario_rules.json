@@ -1,0 +1,5 @@
+{
+  "max_moves": 40,
+  "allow_castling": true,
+  "time_control": "5+0"
+}
