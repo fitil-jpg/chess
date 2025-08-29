@@ -2,7 +2,8 @@
 // The module exports a single function `renderFenBoard` that accepts a
 // DOM element (or its id), a FEN string and an optional 8x8 overlay grid.
 // Each overlay entry is a list of `{type, color}` objects.  The colour is
-// applied as a semi-transparent background to the cell.
+// applied as a semi-transparent background to the cell.  ``renderFenBoard``
+// additionally supports optional *heatmap* overlays and scenario markers.
 
 const PIECE_UNICODE = {
   'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
@@ -28,14 +29,34 @@ function parseFEN(fen) {
   return board;
 }
 
-export function renderFenBoard(target, fen, overlays = []) {
+function valueToColor(val) {
+  const v = Math.max(0, Math.min(1, Number(val)));
+  const r = Math.round(v * 255);
+  const g = Math.round((1 - v) * 255);
+  return `#${r.toString(16).padStart(2, '0')}${g
+    .toString(16)
+    .padStart(2, '0')}00`;
+}
+
+export function renderFenBoard(target, fen, overlays = [], options = {}) {
   const el = typeof target === 'string' ? document.getElementById(target) : target;
   if (!el) return;
+  const { heatmaps = {}, piece = null, scenarios = [] } = options;
+
   const board = parseFEN(fen);
   el.innerHTML = '';
   el.style.display = 'grid';
   el.style.gridTemplateColumns = 'repeat(8, 60px)';
   el.style.gridTemplateRows = 'repeat(8, 60px)';
+
+  const scenarioMap = {};
+  for (const sc of scenarios) {
+    if (!scenarioMap[sc.row]) scenarioMap[sc.row] = {};
+    scenarioMap[sc.row][sc.col] = sc;
+  }
+
+  const heatmapGrid = piece && heatmaps[piece] ? heatmaps[piece] : null;
+
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       const cell = document.createElement('div');
@@ -46,15 +67,41 @@ export function renderFenBoard(target, fen, overlays = []) {
       cell.style.alignItems = 'center';
       cell.style.justifyContent = 'center';
       cell.style.fontSize = '36px';
-      const piece = board[r][c];
-      if (piece) cell.textContent = PIECE_UNICODE[piece] || '';
+      cell.style.position = 'relative';
+
+      const pieceCh = board[r][c];
+      if (pieceCh) cell.textContent = PIECE_UNICODE[pieceCh] || '';
+
+      if (heatmapGrid) {
+        const val = heatmapGrid[r] && heatmapGrid[r][c];
+        if (val !== null && val !== undefined) {
+          cell.style.backgroundColor = valueToColor(val);
+          cell.style.opacity = '0.7';
+        }
+      }
+
       const overlay = overlays[r] && overlays[r][c];
-      if (overlay) {
+      if (overlay && overlay.length) {
         // Apply the colour of the last overlay entry.
         const last = overlay[overlay.length - 1];
         cell.style.backgroundColor = last.color;
         cell.style.opacity = '0.7';
       }
+
+      if (scenarioMap[r] && scenarioMap[r][c]) {
+        const sc = scenarioMap[r][c];
+        const marker = document.createElement('div');
+        marker.style.position = 'absolute';
+        marker.style.width = '12px';
+        marker.style.height = '12px';
+        marker.style.borderRadius = '50%';
+        marker.style.backgroundColor = sc.color || 'red';
+        marker.style.top = '50%';
+        marker.style.left = '50%';
+        marker.style.transform = 'translate(-50%, -50%)';
+        cell.appendChild(marker);
+      }
+
       el.appendChild(cell);
     }
   }
