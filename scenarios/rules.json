@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "id": "isolated_pawn",
+      "description": "Pawn without friendly pawns on adjacent files.",
+      "category": "structure"
+    },
+    {
+      "id": "knight_fork",
+      "description": "Knight attacking two or more enemy pieces.",
+      "category": "tactic"
+    }
+  ]
+}
