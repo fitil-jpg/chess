@@ -1,6 +1,6 @@
 import chess
 
-from metrics_common import evaluate_pressure, evaluate_survivability, evaluate_synergy
+from metrics_common import evaluate_pressure, evaluate_synergy
 
 
 def test_evaluate_pressure() -> None:
@@ -23,18 +23,3 @@ def test_evaluate_synergy() -> None:
     assert evaluate_synergy(board) == 2
 
 
-def test_evaluate_survivability() -> None:
-    """Survivability counts legal king moves for each colour."""
-    board = chess.Board()
-    board.clear()
-    board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
-    board.set_piece_at(chess.E8, chess.Piece(chess.KING, chess.BLACK))
-    assert evaluate_survivability(board, chess.WHITE) == 5
-    assert evaluate_survivability(board, chess.BLACK) == 5
-
-
-def test_evaluate_survivability_no_king() -> None:
-    board = chess.Board()
-    board.clear()
-    board.set_piece_at(chess.E8, chess.Piece(chess.KING, chess.BLACK))
-    assert evaluate_survivability(board, chess.WHITE) == 0

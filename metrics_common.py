@@ -129,21 +129,29 @@ def evaluate_synergy(board: chess.Board) -> int:
     return synergy[chess.WHITE] - synergy[chess.BLACK]
 
 
-def evaluate_survivability(board: chess.Board, color: bool) -> int:
-    """Return the number of legal king moves for ``color``.
+def evaluate_survivability(board: chess.Board) -> dict[bool, int]:
+    """Return the capture risk for each side.
 
-    This tiny heuristic approximates how many safe squares the king has
-    available.  The board state is copied so the side to move can be
-    adjusted without mutating the original board.
+    A piece contributes to its colour's risk score when it is attacked by
+    the opposing side and lacks any defenders of its own colour.  The score
+    sums the standard piece values of all such vulnerable pieces.  Kings are
+    ignored because they cannot be captured.
     """
 
-    king_sq = board.king(color)
-    if king_sq is None:
-        return 0
-
-    tmp = board.copy()
-    tmp.turn = color
-    return sum(1 for mv in tmp.legal_moves if mv.from_square == king_sq)
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0,
+    }
+    risk = {chess.WHITE: 0, chess.BLACK: 0}
+    for square, piece in board.piece_map().items():
+        color = piece.color
+        if board.is_attacked_by(not color, square) and not board.is_attacked_by(color, square):
+            risk[color] += piece_values[piece.piece_type]
+    return risk
 
 
 __all__ = [
