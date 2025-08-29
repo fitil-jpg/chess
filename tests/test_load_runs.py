@@ -1,10 +1,17 @@
+import importlib.util
 import json
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
 
-from utils.load_runs import load_runs
+spec = importlib.util.spec_from_file_location(
+    "_load_runs", Path(__file__).resolve().parents[1] / "utils" / "load_runs.py"
+)
+load_runs_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(load_runs_module)
+load_runs = load_runs_module.load_runs
 
 
 def test_load_runs_valid():
@@ -70,6 +77,45 @@ def test_load_runs_missing_directory():
         missing = os.path.join(tmpdir, "missing")
         with pytest.raises(FileNotFoundError):
             load_runs(missing)
+
+
+def test_filter_by_player_color_and_phase():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fen_opening = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+        fen_middle = "rnbqkbnr/8/8/8/8/8/8/RNBQKBNR b KQkq - 0 1"
+
+        sample = {
+            "moves": ["e4", "e5"],
+            "fens": [fen_opening, fen_middle],
+            "modules_w": ["module1"],
+            "modules_b": ["module2"],
+        }
+        with open(os.path.join(tmpdir, "game.json"), "w", encoding="utf-8") as f:
+            json.dump(sample, f)
+
+        run = load_runs(tmpdir)[0]
+
+        white_fens = [
+            fen for fen in run["fens"] if fen.split()[1] == "w"
+        ]
+        black_fens = [
+            fen for fen in run["fens"] if fen.split()[1] == "b"
+        ]
+        assert white_fens == [fen_opening]
+        assert black_fens == [fen_middle]
+
+        def classify(fen: str) -> str:
+            pieces = sum(ch.isalpha() for ch in fen.split()[0])
+            if pieces > 20:
+                return "opening"
+            if pieces > 10:
+                return "middlegame"
+            return "endgame"
+
+        openings = [fen for fen in run["fens"] if classify(fen) == "opening"]
+        middles = [fen for fen in run["fens"] if classify(fen) == "middlegame"]
+        assert openings == [fen_opening]
+        assert middles == [fen_middle]
 
 
 if __name__ == "__main__":
