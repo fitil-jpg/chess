@@ -29,12 +29,15 @@ class UsageTimeline(QWidget):
         self.w_keys: list[str] = []  # list of module keys per White move
         self.b_keys: list[str] = []  # list of module keys per Black move
         self._selected: tuple[int, bool] | None = None
+        self._hover: tuple[int, bool] | None = None
+        self.setMouseTracking(True)
         self.setMinimumSize(280, 120)
 
     def set_data(self, w_keys: list[str], b_keys: list[str]) -> None:
         self.w_keys = list(w_keys)
         self.b_keys = list(b_keys)
         self._selected = None
+        self._hover = None
         self.update()
 
     def set_selected(self, idx: int | None, is_white: bool | None = None) -> None:
@@ -89,6 +92,46 @@ class UsageTimeline(QWidget):
             return idx, is_white
         return None
 
+    def mouseMoveEvent(self, ev: QMouseEvent) -> None:  # pragma: no cover - UI interaction
+        """Track which tile is under the cursor and trigger a repaint."""
+
+        # Geometry of the two lanes (same as ``mousePressEvent``)
+        w = self.width()
+        h = self.height()
+        pad = 8
+        lane_h = (h - pad * 3) // 3
+        y_w = pad
+        y_b = pad + lane_h + pad
+        max_len = max(len(self.w_keys), len(self.b_keys), 1)
+        seg_w = max(1, (w - pad * 2) // max_len)
+
+        pos = ev.position() if hasattr(ev, "position") else ev.pos()
+        x, y = pos.x(), pos.y()
+
+        is_white: bool | None
+        keys: list[str]
+        if y_w <= y < y_w + lane_h:
+            is_white, keys = True, self.w_keys
+        elif y_b <= y < y_b + lane_h:
+            is_white, keys = False, self.b_keys
+        else:
+            if self._hover is not None:
+                self._hover = None
+                self.update()
+            return
+
+        idx = int((x - pad) // seg_w)
+        new_hover = (idx, is_white) if 0 <= idx < len(keys) else None
+        if new_hover != self._hover:
+            self._hover = new_hover
+            self.update()
+
+    def leaveEvent(self, ev):  # pragma: no cover - UI interaction
+        if self._hover is not None:
+            self._hover = None
+            self.update()
+        super().leaveEvent(ev)
+
     def paintEvent(self, ev):  # pragma: no cover - GUI drawing
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(250, 250, 250))
@@ -121,6 +164,14 @@ class UsageTimeline(QWidget):
                 rect = QRect(x, y, seg_w, lane_h)
                 color = MODULE_COLORS.get(key, MODULE_COLORS["OTHER"])
                 painter.fillRect(rect, color)
+                if self._hover == (i, is_white):
+                    painter.save()
+                    painter.setPen(Qt.NoPen)
+                    painter.fillRect(rect, QColor(0, 0, 0, 40))
+                    painter.restore()
+                painter.setPen(QPen(QColor(200, 200, 200)))
+                painter.drawLine(x + seg_w, y, x + seg_w, y + lane_h)
+                painter.setPen(Qt.NoPen)
                 if self._selected == (i, is_white):
                     painter.save()
                     pen_sel = QPen(QColor(0, 0, 0))
