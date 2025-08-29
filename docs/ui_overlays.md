@@ -88,6 +88,20 @@ Rscript analysis/heatmaps/generate_heatmaps.R \
 
 Run the script with `--help` to see all available options and defaults.
 
+## Shiny heatmap explorer
+
+A minimal Shiny application is provided in `analysis/shiny_app/app.R` for
+interactive exploration of heatmaps and detected scenarios.  Start the app
+from the repository root with:
+
+```bash
+R -e "shiny::runApp('analysis/shiny_app', host='0.0.0.0', port=8000)"
+```
+
+The interface lets you pick the piece heatmap to display and filter scenario
+markers.  The board visualisation updates automatically to reflect the current
+selection.
+
 ## Browser component
 
 The repository ships with a lightweight JavaScript helper located at
