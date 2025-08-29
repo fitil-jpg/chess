@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 
-def test_generate_heatmaps_rscript_missing(monkeypatch, tmp_path):
+@pytest.mark.parametrize(
+    "use_wolfram,missing",
+    [(False, "Rscript"), (True, "wolframscript")],
+)
+def test_generate_heatmaps_script_missing(monkeypatch, tmp_path, use_wolfram, missing):
     dummy_chess = types.SimpleNamespace(Board=object)
     monkeypatch.setitem(sys.modules, "chess", dummy_chess)
 
@@ -21,6 +25,6 @@ def test_generate_heatmaps_rscript_missing(monkeypatch, tmp_path):
 
     monkeypatch.setattr(integration.subprocess, "run", fake_run)
 
-    with pytest.raises(RuntimeError, match="Rscript not found; install R to generate heatmaps"):
-        integration.generate_heatmaps([], out_dir=str(tmp_path))
+    with pytest.raises(RuntimeError, match=f"{missing} not found"):
+        integration.generate_heatmaps([], out_dir=str(tmp_path), use_wolfram=use_wolfram)
 

@@ -122,9 +122,16 @@ heatmaps:
 ```bash
 python -m analysis.loader runs/ --csv analysis/heatmaps/moves.csv --rds analysis/heatmaps/moves.rds
 Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/moves.csv
+# or using the Wolfram Language
+wolframscript -file analysis/heatmaps/generate_heatmaps.wl \
+  --palette Reds --bins 8 --resolution 300 analysis/heatmaps/moves.csv
 ```
 
 Heatmap matrices are written as CSV and JSON files into `analysis/heatmaps/`.
+The Wolfram variant requires the Wolfram Engine and exposes the same
+`--palette`, `--bins` and `--resolution` options. From Python set
+`use_wolfram=True` when calling `utils.integration.generate_heatmaps` to use
+this script.
 
 ## Piece positions from FEN
 
