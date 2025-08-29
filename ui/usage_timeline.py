@@ -8,6 +8,8 @@ move index and colour side.
 
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import Qt, Signal, QRect
 from PySide6.QtGui import QPainter, QPen, QFont, QColor, QMouseEvent
 from PySide6.QtWidgets import QWidget
@@ -138,12 +140,13 @@ class UsageTimeline(QWidget):
         painter.setFont(num_font)
         fm = painter.fontMetrics()
         y_num = y_w + lane_h + pad // 2 + fm.ascent() // 2
-        x = pad
-        for i in range(max_len):
+        min_width = fm.horizontalAdvance(str(max_len)) + 2
+        step = max(1, math.ceil(min_width / seg_w))
+        for i in range(0, max_len, step):
             label = str(i + 1)
+            x = pad + seg_w * i
             text_x = x + seg_w // 2 - fm.horizontalAdvance(label) // 2
             painter.drawText(text_x, y_num, label)
-            x += seg_w
 
         # Secondary bar showing per-move module usage
         bar_keys: list[str] = []
