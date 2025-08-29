@@ -1,11 +1,13 @@
-"""Detect tactical and structural scenarios on a simple board matrix."""
+"""Detect tactical and structural scenarios from FEN strings."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Dict, Sequence, Optional
+from typing import Dict, List, Optional, Sequence
 
-RULES_PATH = Path(__file__).with_name("rules.json")
+from fen_handler import fen_to_board_state
+
+RULES_PATH = Path(__file__).with_name("scenario_rules.json")
 
 with open(RULES_PATH, "r", encoding="utf-8") as fh:
     RULES = {rule["id"]: rule for rule in json.load(fh)["rules"]}
@@ -13,17 +15,30 @@ with open(RULES_PATH, "r", encoding="utf-8") as fh:
 FILES = "abcdefgh"
 
 
-def detect_scenarios(board: Sequence[Sequence[Optional[str]]]) -> List[Dict]:
-    """Return detected scenarios for a given board state.
+def detect_scenarios(fen: str) -> List[Dict]:
+    """Return detected scenarios for a given FEN string.
 
-    The ``board`` is expected to be an 8x8 matrix of piece identifiers such as
-    ``"white-pawn"`` or ``"black-knight"`` with ``None`` for empty squares.
-    Coordinates use ``board[rank][file]`` with ``rank`` 0 being the top (rank 8)
-    and ``file`` 0 the ``a``-file.
+    Parameters
+    ----------
+    fen:
+        Forsyth-Edwards Notation describing the board position.
+
+    Returns
+    -------
+    list of dict
+        Detected scenarios with metadata such as ``id`` and ``square``.  The
+        ``color`` field is populated from :data:`scenario_rules.json` when
+        available.
     """
+
+    board = fen_to_board_state(fen)
     scenarios: List[Dict] = []
     scenarios.extend(_detect_isolated_pawns(board))
     scenarios.extend(_detect_knight_forks(board))
+    for sc in scenarios:
+        rule = RULES.get(sc["id"])
+        if rule and "color" in rule:
+            sc.setdefault("color", rule["color"])
     return scenarios
 
 
@@ -57,7 +72,7 @@ def _detect_isolated_pawns(board: Sequence[Sequence[Optional[str]]]) -> List[Dic
                 results.append({
                     "id": "isolated_pawn",
                     "square": _square_name(f, 8 - r),
-                    "color": color,
+                    "side": color,
                 })
     return results
 
@@ -84,6 +99,6 @@ def _detect_knight_forks(board: Sequence[Sequence[Optional[str]]]) -> List[Dict]
                     "id": "knight_fork",
                     "square": _square_name(f, 8 - r),
                     "targets": targets,
-                    "color": color,
+                    "side": color,
                 })
     return results

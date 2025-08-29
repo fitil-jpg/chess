@@ -3,12 +3,14 @@
     {
       "id": "isolated_pawn",
       "description": "Pawn without friendly pawns on adjacent files.",
-      "category": "structure"
+      "category": "structure",
+      "color": "purple"
     },
     {
       "id": "knight_fork",
       "description": "Knight attacking two or more enemy pieces.",
-      "category": "tactic"
+      "category": "tactic",
+      "color": "orange"
     }
   ]
 }
