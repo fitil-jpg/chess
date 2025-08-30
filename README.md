@@ -153,3 +153,22 @@ extract_positions(fens, "positions.csv")
 The resulting CSV contains `file`, `rank`, and `piece` columns for each board
 entry.
 
+
+## FEN positions from PGN
+
+Extract positions from PGN files directly as FEN strings:
+
+```bash
+python analysis/pgn_to_fen.py games.pgn > fens.txt
+```
+
+Filters allow narrowing down the output.  For example, only keep opening
+positions where White is to move and the game is at move 10:
+
+```bash
+python analysis/pgn_to_fen.py games.pgn --player white --move 10 --phase opening
+```
+
+Each printed line is a FEN describing the board state before the corresponding
+move.
+
