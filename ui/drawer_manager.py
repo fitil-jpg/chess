@@ -12,6 +12,8 @@ class DrawerManager:
         self.scenarios = []
         self.heatmaps = self._load_heatmaps()
         self.agent_metrics = self._load_agent_metrics()
+        # Currently selected heatmap piece name (e.g. "knight" or None)
+        self.active_heatmap_piece = None
 
     # ------------------------------------------------------------------
     def _load_heatmaps(self):
@@ -102,16 +104,25 @@ class DrawerManager:
 
     # ------------------------------------------------------------------
     def _apply_heatmaps(self):
-        """Convert loaded heatmaps into gradient overlays."""
+        """Convert selected heatmap into gradient overlays.
 
-        for grid in self.heatmaps.values():
-            for r, row in enumerate(grid):
-                for c, val in enumerate(row):
-                    try:
-                        v = float(val)
-                    except (TypeError, ValueError):
-                        continue
-                    self._add_gradient_overlay(r, c, v)
+        Only the grid corresponding to ``active_heatmap_piece`` is applied.
+        """
+
+        if not self.active_heatmap_piece:
+            return
+
+        grid = self.heatmaps.get(self.active_heatmap_piece)
+        if not grid:
+            return
+
+        for r, row in enumerate(grid):
+            for c, val in enumerate(row):
+                try:
+                    v = float(val)
+                except (TypeError, ValueError):
+                    continue
+                self._add_gradient_overlay(r, c, v)
 
     # ------------------------------------------------------------------
     def _add_overlay(self, row, col, overlay_type, color):

@@ -24,6 +24,7 @@ from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
+from ui.panels import create_heatmap_panel
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
@@ -196,6 +197,10 @@ class ChessViewer(QWidget):
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
         right_col.addWidget(self.timeline)
+
+        # Heatmap selection panel
+        heatmap_layout, _ = create_heatmap_panel(self._on_heatmap_piece)
+        right_col.addLayout(heatmap_layout)
 
         # Загальна діаграма використання модулів (нижня панель)
         right_col.addWidget(QLabel("Overall module usage:"))
@@ -506,6 +511,11 @@ class ChessViewer(QWidget):
     def _update_usage_labels(self):
         self.lbl_usage_w.setText(f"Dynamic usage (W): {self._usage_labels_text(self.usage_w)}")
         self.lbl_usage_b.setText(f"Dynamic usage (B): {self._usage_labels_text(self.usage_b)}")
+
+    def _on_heatmap_piece(self, piece: str | None) -> None:
+        """Callback for heatmap piece selection."""
+        self.drawer_manager.active_heatmap_piece = piece
+        self._refresh_board()
 
     def _on_timeline_click(self, index: int, is_white: bool) -> None:
         """Handle click on the usage timeline by reporting the move index."""
