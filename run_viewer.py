@@ -1,3 +1,6 @@
+from utils.usage_logger import record_usage
+record_usage(__file__)
+
 import sys
 import chess
 from PySide6.QtWidgets import (

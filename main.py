@@ -11,6 +11,9 @@ arena_threaded.py — багатопотокова арена між двома 
 """
 
 from __future__ import annotations
+from utils.usage_logger import record_usage
+record_usage(__file__)
+
 import time
 import threading
 import logging

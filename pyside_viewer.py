@@ -3,6 +3,9 @@
 # Додано: Usage таймлайн (два ряди кольорових прямокутників для W/B).
 # Боти задаються тут у коді.
 
+from utils.usage_logger import record_usage
+record_usage(__file__)
+
 import sys
 import re
 import chess
