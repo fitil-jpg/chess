@@ -4,6 +4,9 @@ Usage:
     python run_selector.py --runs path/to/dir
 """
 
+from utils.usage_logger import record_usage
+record_usage(__file__)
+
 import argparse
 import sys
 
