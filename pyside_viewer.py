@@ -173,10 +173,6 @@ class ChessViewer(QWidget):
         self.lbl_leaders  = QLabel("Attack leaders: —")
         self.lbl_king     = QLabel("King coeff: —")
 
-        # Usage — два окремі рядки (як ти просив)
-        self.lbl_usage_w  = QLabel("Dynamic usage (W): —")
-        self.lbl_usage_b  = QLabel("Dynamic usage (B): —")
-
         for lab in (
             self.lbl_module,
             self.lbl_features,
@@ -184,11 +180,17 @@ class ChessViewer(QWidget):
             self.lbl_attacks,
             self.lbl_leaders,
             self.lbl_king,
-            self.lbl_usage_w,
-            self.lbl_usage_b,
         ):
             lab.setWordWrap(True)
             right_col.addWidget(lab)
+
+        right_col.addWidget(QLabel("Dynamic usage (W):"))
+        self.chart_usage_w = OverallUsageChart()
+        right_col.addWidget(self.chart_usage_w)
+
+        right_col.addWidget(QLabel("Dynamic usage (B):"))
+        self.chart_usage_b = OverallUsageChart()
+        right_col.addWidget(self.chart_usage_b)
 
         # Список ходів SAN
         right_col.addWidget(QLabel("Moves:"))
@@ -293,7 +295,7 @@ class ChessViewer(QWidget):
             self.timeline_w.clear()
             self.timeline_b.clear()
             self.timeline.set_data(self.timeline_w, self.timeline_b)
-            self._update_usage_labels()
+            self._update_usage_charts()
             self.moves_list.clear()
 
         if not self.auto_running:
@@ -505,15 +507,10 @@ class ChessViewer(QWidget):
 
         return "OTHER"
 
-    def _usage_labels_text(self, dd: dict) -> str:
-        if not dd:
-            return "—"
-        items = sorted(dd.items(), key=lambda kv: (-kv[1], kv[0]))
-        return ", ".join(f"{k}={v}" for k, v in items)
-
-    def _update_usage_labels(self):
-        self.lbl_usage_w.setText(f"Dynamic usage (W): {self._usage_labels_text(self.usage_w)}")
-        self.lbl_usage_b.setText(f"Dynamic usage (B): {self._usage_labels_text(self.usage_b)}")
+    def _update_usage_charts(self) -> None:
+        """Refresh per-side usage charts with current counts."""
+        self.chart_usage_w.set_data(self.usage_w)
+        self.chart_usage_b.set_data(self.usage_b)
 
     def _on_heatmap_piece(self, piece: str | None) -> None:
         """Callback for heatmap piece selection."""
@@ -553,8 +550,8 @@ class ChessViewer(QWidget):
         self.lbl_leaders.setText(self._attack_leaders_text())
         self.lbl_king.setText(self._king_coeff_text())
 
-        # Оновити usage-лейбли і графік
-        self._update_usage_labels()
+        # Оновити usage-діаграми і графік
+        self._update_usage_charts()
         self.timeline.set_data(self.timeline_w, self.timeline_b)
 
     def _show_game_over(self):
