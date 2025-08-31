@@ -168,8 +168,11 @@ class UsageTimeline(QWidget):
                     painter.save()
                     painter.setPen(Qt.NoPen)
                     painter.fillRect(rect, QColor(0, 0, 0, 40))
+                    hover_pen = QPen(QColor(80, 80, 80), 1, Qt.DotLine)
+                    painter.setPen(hover_pen)
+                    painter.drawRect(rect)
                     painter.restore()
-                painter.setPen(QPen(QColor(200, 200, 200)))
+                painter.setPen(QPen(QColor(200, 200, 200), 1, Qt.DotLine))
                 painter.drawLine(x + seg_w, y, x + seg_w, y + lane_h)
                 painter.setPen(Qt.NoPen)
                 if self._selected == (i, is_white):
