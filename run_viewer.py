@@ -13,8 +13,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
-    QTableWidget,
-    QTableWidgetItem,
 )
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtCore import Signal, Qt
@@ -91,23 +89,43 @@ class OverallUsageChart(QChartView):
                 bar.setColor(color)
 
 
-class UsageTable(QTableWidget):
-    """Table listing file usage counts."""
+class UsageBarChart(QChartView):
+    """Bar chart visualising script run frequencies."""
 
     def __init__(self, parent=None):
-        super().__init__(0, 2, parent)
-        self.setHorizontalHeaderLabels(["File", "Count"])
-        self.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.setSelectionMode(QTableWidget.NoSelection)
+        super().__init__(parent)
+        self._series = QBarSeries()
+        chart = QChart()
+        chart.addSeries(self._series)
+        chart.legend().setVisible(True)
+        chart.legend().setAlignment(Qt.AlignBottom)
+        self.setChart(chart)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setMinimumHeight(220)
 
     def set_data(self, usage: dict[str, int]) -> None:
-        self.setRowCount(len(usage))
-        for row, (path, count) in enumerate(
-            sorted(usage.items(), key=lambda kv: (-kv[1], kv[0]))
-        ):
-            self.setItem(row, 0, QTableWidgetItem(os.path.basename(path)))
-            self.setItem(row, 1, QTableWidgetItem(str(count)))
-        self.resizeColumnsToContents()
+        """Populate the chart with usage counts for files."""
+        chart = self.chart()
+        chart.removeSeries(self._series)
+        self._series = QBarSeries()
+
+        for path, count in sorted(usage.items(), key=lambda kv: (-kv[1], kv[0])):
+            name = os.path.basename(path)
+            bar = QBarSet(f"{name} ({count})")
+            bar.append(count)
+            bar.setColor(MODULE_COLORS["OTHER"])
+            self._series.append(bar)
+
+        chart.addSeries(self._series)
+        axis_x = QBarCategoryAxis()
+        axis_x.append([""])
+        chart.addAxis(axis_x, Qt.AlignBottom)
+        self._series.attachAxis(axis_x)
+
+        axis_y = QValueAxis()
+        chart.addAxis(axis_y, Qt.AlignLeft)
+        self._series.attachAxis(axis_y)
+        axis_y.applyNiceNumbers()
 
 
 class RunViewer(QWidget):
@@ -172,12 +190,16 @@ class RunViewer(QWidget):
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
 
-        self.usage_table = UsageTable()
-        self.usage_table.set_data(read_usage())
+        self.usage_chart = UsageBarChart()
+        self.usage_chart.set_data(read_usage())
+
+        usage_scroll = QScrollArea()
+        usage_scroll.setWidgetResizable(True)
+        usage_scroll.setWidget(self.usage_chart)
 
         bottom = QHBoxLayout()
         bottom.addWidget(chart_scroll)
-        bottom.addWidget(self.usage_table)
+        bottom.addWidget(usage_scroll)
 
         layout = QVBoxLayout(self)
         layout.addLayout(top)
@@ -230,7 +252,7 @@ class RunViewer(QWidget):
 
         self.all_runs = load_runs("runs")
         self.overall_chart.set_data(aggregate_module_usage(self.all_runs))
-        self.usage_table.set_data(read_usage())
+        self.usage_chart.set_data(read_usage())
         self._apply_run_filter(selected_id)
 
     # --------------------------------------------------------------
