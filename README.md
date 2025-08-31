@@ -114,6 +114,16 @@ python scripts/bot_usage_stats.py --runs runs/
 
 The script outputs a JSON mapping of module names to their total usage counts.
 
+## Usage log viewer
+
+Inspect the recorded usage counters without launching the full GUI viewer:
+
+```bash
+python scripts/usage_log_viewer.py
+```
+
+The script prints a table showing each path and how often it has been used.
+
 ## Move heatmaps
 
 Convert recorded run JSON files into a flat move table and generate per-piece
