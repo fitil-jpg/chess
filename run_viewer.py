@@ -1,6 +1,7 @@
-from utils.usage_logger import record_usage
+from utils.usage_logger import record_usage, read_usage
 record_usage(__file__)
 
+import os
 import sys
 import chess
 from PySide6.QtWidgets import (
@@ -12,6 +13,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
+    QTableWidget,
+    QTableWidgetItem,
 )
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtCore import Signal, Qt
@@ -88,6 +91,25 @@ class OverallUsageChart(QChartView):
                 bar.setColor(color)
 
 
+class UsageTable(QTableWidget):
+    """Table listing file usage counts."""
+
+    def __init__(self, parent=None):
+        super().__init__(0, 2, parent)
+        self.setHorizontalHeaderLabels(["File", "Count"])
+        self.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.setSelectionMode(QTableWidget.NoSelection)
+
+    def set_data(self, usage: dict[str, int]) -> None:
+        self.setRowCount(len(usage))
+        for row, (path, count) in enumerate(
+            sorted(usage.items(), key=lambda kv: (-kv[1], kv[0]))
+        ):
+            self.setItem(row, 0, QTableWidgetItem(os.path.basename(path)))
+            self.setItem(row, 1, QTableWidgetItem(str(count)))
+        self.resizeColumnsToContents()
+
+
 class RunViewer(QWidget):
     """Simple dashboard for inspecting recorded bot runs."""
 
@@ -150,9 +172,16 @@ class RunViewer(QWidget):
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
 
+        self.usage_table = UsageTable()
+        self.usage_table.set_data(read_usage())
+
+        bottom = QHBoxLayout()
+        bottom.addWidget(chart_scroll)
+        bottom.addWidget(self.usage_table)
+
         layout = QVBoxLayout(self)
         layout.addLayout(top)
-        layout.addWidget(chart_scroll)
+        layout.addLayout(bottom)
 
         if self.runs:
             self.run_list.setCurrentRow(0)
@@ -201,6 +230,7 @@ class RunViewer(QWidget):
 
         self.all_runs = load_runs("runs")
         self.overall_chart.set_data(aggregate_module_usage(self.all_runs))
+        self.usage_table.set_data(read_usage())
         self._apply_run_filter(selected_id)
 
     # --------------------------------------------------------------
