@@ -5,6 +5,8 @@ of the unit tests in this kata we only need an object that exposes a
 ``tune`` method returning a numeric score.
 """
 
+import logging
+logger = logging.getLogger(__name__)
 
 class EvaluationTuner:
     def tune(self, board, analyzer):  # pragma: no cover - placeholder logic
@@ -16,4 +18,3 @@ class EvaluationTuner:
         """
 
         return 0
-

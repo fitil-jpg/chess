@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import json
 from pathlib import Path
 from datetime import datetime
@@ -329,7 +332,6 @@ if __name__ == "__main__":  # pragma: no cover - CLI utility
         sample_size=args.sample_size,
         seed=args.seed,
     )
-    print(
-        f"Processed {stats['games']} games with {stats['moves']} moves",
-        flush=True,
+    logger.info(
+        f"Processed {stats['games']} games with {stats['moves']} moves"
     )

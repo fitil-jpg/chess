@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from typing import Dict
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 import matplotlib.pyplot as plt
 import torch

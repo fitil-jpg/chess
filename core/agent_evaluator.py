@@ -5,6 +5,8 @@ provided tuner.  This keeps the focus of the tests on integration rather than
 chess logic.
 """
 
+import logging
+logger = logging.getLogger(__name__)
 
 class AgentEvaluator:
     def __init__(self, tuner):
@@ -14,4 +16,3 @@ class AgentEvaluator:
         """Return a numeric evaluation score for ``board``."""
 
         return float(self.tuner.tune(board, analyzer))
-

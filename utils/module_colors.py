@@ -1,5 +1,8 @@
 """Colour definitions for module usage visualisations."""
 
+import logging
+logger = logging.getLogger(__name__)
+
 from PySide6.QtGui import QColor
 
 # Order of priority used when extracting a module key from a reason string.
@@ -25,4 +28,3 @@ MODULE_COLORS = {
     "THREAT":     QColor(255, 205, 86),   # yellow
     "OTHER":      QColor(201, 203, 207),  # light grey
 }
-

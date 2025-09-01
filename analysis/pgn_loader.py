@@ -31,6 +31,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 import chess.pgn
 

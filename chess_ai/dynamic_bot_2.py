@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 from core.evaluator import Evaluator
 from chess_ai.utility_bot import UtilityBot
 from chess_ai.chess_bot import ChessBot   # твій основний бот

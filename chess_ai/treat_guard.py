@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Optional, Tuple, List, Dict
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Які пари вважаємо «небезпечними» для 2-ходової загрози.
 # Формат — unordered пара типів у буквах: {"K","Q"} == {"Q","K"}.
 DANGEROUS_PAIRS: List[frozenset[str]] = [

@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 class MoveExplorer:
     def __init__(self, board):
         self.board = board

@@ -12,6 +12,9 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from .utility_bot import piece_value
 from .threat_map import ThreatMap
 from .see import static_exchange_eval
@@ -73,12 +76,12 @@ class FortifyBot:
 
         if context and context.king_safety >= king_safety_threshold:
             if debug:
-                print(
+                logger.debug(
                     f"FortifyBot: king safety {context.king_safety} ≥ {king_safety_threshold} – skipping fortification"
                 )
             return None, 0.0
         elif debug and context:
-            print(
+            logger.debug(
                 f"FortifyBot: king safety {context.king_safety} < {king_safety_threshold} – evaluating moves"
             )
 
@@ -138,7 +141,7 @@ class FortifyBot:
             )
             # Debug branch still returns numerical confidence as second value
             # but prints details for easier tracing.
-            print(f"FortifyBot: {details}")
+            logger.debug(f"FortifyBot: {details}")
 
         return best, float(best_score if best is not None else 0.0)
 

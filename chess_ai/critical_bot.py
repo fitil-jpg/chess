@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 
 from core.evaluator import Evaluator
@@ -46,5 +49,7 @@ class CriticalBot:
         if best_move is None or best_score <= 0.0:
             return None, 0.0
         if debug:
-            print(f"CriticalBot selects {best_move} with score {best_score}")
+            logger.debug(
+                f"CriticalBot selects {best_move} with score {best_score}"
+            )
         return best_move, best_score

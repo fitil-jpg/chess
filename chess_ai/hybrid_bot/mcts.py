@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import math
 import random
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 from .evaluation import evaluate_positions
 from ..utils.profile_stats import STATS, plot_profile_stats
@@ -122,7 +125,6 @@ class BatchMCTS:
             probs = [v / s for v in visits]
             move = random.choices(list(root.children.keys()), weights=probs, k=1)[0]
         STATS.stop()
-        print("MCTS:", STATS.summary())
+        logger.info("MCTS: %s", STATS.summary())
         plot_profile_stats(STATS, filename="mcts_profile.png")
         return move, root
-

@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 class MoveHistory:
     def __init__(self):
         self.history = []

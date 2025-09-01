@@ -15,6 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from .piece_values import PIECE_VALUES
 
 
@@ -169,4 +172,3 @@ class RiskAnalyzer:
         board.pop()
 
         return worst < before
-
