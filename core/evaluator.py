@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 from .pst_trainer import PST
 from .phase import GamePhaseDetector

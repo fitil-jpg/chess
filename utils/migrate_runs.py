@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 """Add missing results to run JSON files.
 
 The script scans a directory for ``*.json`` files produced by ``main.py`` and
@@ -53,13 +56,13 @@ def migrate_runs(path: str) -> None:
         try:
             data["result"] = _derive_result(data)
         except ValueError as exc:
-            print(f"Skipping {file.name}: {exc}")
+            logger.warning(f"Skipping {file.name}: {exc}")
             continue
 
         with file.open("w", encoding="utf-8") as fh:
             json.dump(data, fh, ensure_ascii=False, indent=2)
             fh.write("\n")
-        print(f"Updated {file.name} -> {data['result']}")
+        logger.info(f"Updated {file.name} -> {data['result']}")
 
 
 def main(argv: list[str] | None = None) -> int:

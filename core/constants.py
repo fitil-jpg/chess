@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 # core/constants.py
 SYMBOLS = {
     "P": "♙", "R": "♖", "N": "♘", "B": "♗", "Q": "♕", "K": "♔",

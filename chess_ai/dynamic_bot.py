@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
@@ -190,9 +193,9 @@ class DynamicBot:
                     total = scores.get(engine_move, total)
 
         if debug:
-            print("DynamicBot contributions:")
+            logger.debug("DynamicBot contributions:")
             for mv, lines in debug_contrib.items():
                 for line in lines:
-                    print(f"  {mv}: {line}")
-            print(f"DynamicBot selected {move} with score {total:.3f}")
+                    logger.debug(f"  {mv}: {line}")
+            logger.debug(f"DynamicBot selected {move} with score {total:.3f}")
         return move, total

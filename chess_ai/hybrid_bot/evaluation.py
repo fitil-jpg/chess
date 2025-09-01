@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from ..chess_bot import calculate_king_value
 
 # Basic piece values in centipawns.  The king's base value is determined
@@ -49,4 +52,3 @@ def evaluate_positions(boards: list[chess.Board]) -> list[float]:
 # Backwards compatibility
 evaluate_board = evaluate_position
 evaluate_boards = evaluate_positions
-

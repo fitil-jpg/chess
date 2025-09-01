@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from core.evaluator import Evaluator
 from utils import GameContext
 from .utility_bot import piece_value
@@ -73,9 +76,8 @@ class AggressiveBot:
                     if context and context.material_diff < 0:
                         gain *= self.capture_gain_factor
                         if debug:
-                            print(
-                                f"AggressiveBot: material deficit, "
-                                f"scaled capture gain to {gain:.1f}"
+                            logger.debug(
+                                f"AggressiveBot: material deficit, scaled capture gain to {gain:.1f}"
                             )
 
             tmp = board.copy(stack=False)
@@ -87,4 +89,3 @@ class AggressiveBot:
                 best_move = move
 
         return best_move, float(best_score)
-

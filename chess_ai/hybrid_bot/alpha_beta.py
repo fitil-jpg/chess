@@ -20,6 +20,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import cProfile
+import logging
+logger = logging.getLogger(__name__)
+
 import io
 import pstats
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -240,7 +243,7 @@ def ab_search(
     TT[key] = TTEntry(depth, flag, best_val, best_move)
     if ply == 0:
         STATS.stop()
-        print("Alpha-beta:", STATS.summary())
+        logger.info("Alpha-beta: %s", STATS.summary())
         plot_profile_stats(STATS, filename="ab_profile.png")
 
     return best_val, best_move
@@ -274,7 +277,7 @@ def search(board: chess.Board, depth: int) -> Tuple[float, Optional[chess.Move]]
             alpha = score
 
     STATS.stop()
-    print("Alpha-beta:", STATS.summary())
+    logger.info("Alpha-beta: %s", STATS.summary())
     plot_profile_stats(STATS, filename="ab_profile.png")
 
     return best_score, best_move
@@ -308,4 +311,3 @@ __all__ = [
     "generate_moves",
     "order_moves",
 ]
-

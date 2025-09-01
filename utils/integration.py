@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import json
 import subprocess
+import logging
+logger = logging.getLogger(__name__)
+
 from pathlib import Path
 from typing import Iterable, List, Dict, Any
 

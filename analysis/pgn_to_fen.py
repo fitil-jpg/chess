@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 """Convert PGN games into FEN positions.
 
 This script reads one or more games from a PGN file and prints the FEN string
@@ -100,7 +103,7 @@ def main() -> None:
         player = None
 
     for fen in iter_fens(args.pgn, move=args.move, player=player, phase=args.phase):
-        print(fen)
+        logger.info(fen)
 
 
 if __name__ == "__main__":

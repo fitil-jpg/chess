@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any, Mapping, Sequence, Tuple
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def plot_orchestrator_diag(
     diag: Mapping[str, Any],
     title: str | None = None,
@@ -71,4 +74,3 @@ def plot_orchestrator_diag(
 
 
 __all__ = ["plot_orchestrator_diag"]
-

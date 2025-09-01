@@ -1,5 +1,8 @@
 """Utility helpers and shared data structures for the core package."""
 
+import logging
+logger = logging.getLogger(__name__)
+
 from dataclasses import dataclass
 
 from core.piece import Piece, Pawn, Rook, Knight, Bishop, Queen, King

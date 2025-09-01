@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 class ChessMovement:
     def __init__(self, board):
         self.board = board
@@ -8,12 +11,12 @@ class ChessMovement:
         col = event.x // 50
         row = event.y // 50
         piece = self.board.board_state[row][col]
-        print(f"Clicked piece is {piece}")
+        logger.debug(f"Clicked piece is {piece}")
 
         if piece and self.selected_coords is None:
             self.selected_piece = piece
             self.selected_coords = (col, row)
-            print(f"Selected {piece} at ({col}, {row})")
+            logger.debug(f"Selected {piece} at ({col}, {row})")
             self.board.set_selected_square(col, row)
             self.highlight_possible_moves(piece, col, row)
 
@@ -54,7 +57,9 @@ class ChessMovement:
             self.board.place_piece(piece, end_col, end_row)
             self.board.board_state[start_row][start_col] = None
             self.board.board_state[end_row][end_col] = piece
-            print(f"Moved {piece} from ({start_col}, {start_row}) to ({end_col}, {end_row})")
+            logger.debug(
+                f"Moved {piece} from ({start_col}, {start_row}) to ({end_col}, {end_row})"
+            )
 
     def highlight_possible_moves(self, piece, start_col, start_row):
         self.board.clear_highlight()

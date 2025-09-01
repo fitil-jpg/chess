@@ -13,6 +13,9 @@ from typing import Optional, Tuple, Dict, Any, List, Callable, Set
 import random
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from core.evaluator import Evaluator
 from utils import GameContext
 

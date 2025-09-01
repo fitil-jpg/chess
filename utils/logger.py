@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import json
 from datetime import datetime
 
@@ -20,5 +23,6 @@ class GameLogger:
 
     def print_log(self):
         for entry in self.log:
-            print(f"{entry['by']} played {entry['move']} | eval: {entry['evaluation']} | {entry['phase']}")
-
+            logger.info(
+                f"{entry['by']} played {entry['move']} | eval: {entry['evaluation']} | {entry['phase']}"
+            )

@@ -14,6 +14,9 @@ from typing import Dict, Any
 import chess
 from core.constants import PIECE_PRIORITY, fork_pair_priority, sigmoid_multiplier
 
+import logging
+logger = logging.getLogger(__name__)
+
 class Scorer:
     """
     Легко тюниться через PRIORITY_SCALE та ваги нижче.

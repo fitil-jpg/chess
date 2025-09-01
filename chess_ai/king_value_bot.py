@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 
 from .chess_bot import ChessBot, calculate_king_value

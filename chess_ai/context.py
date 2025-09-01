@@ -4,6 +4,9 @@ context.py — зберігає додатковий контекст AI: фаз
 Мінімальна версія: зберігає тільки фазу гри ("opening", "middlegame", "endgame").
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 class Context:
     def __init__(self):
         self.phase = "opening"

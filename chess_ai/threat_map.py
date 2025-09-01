@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import List, Tuple, Dict, Any
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ThreatMap:
     """
     Сенсор загроз для color:

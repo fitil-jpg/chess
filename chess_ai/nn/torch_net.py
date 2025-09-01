@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Tuple
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 import torch
 import yaml
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     net = TorchNet.from_config(args.config)
     board = chess.Board()
     policy, value = net.predict_many([board])[0]
-    print(f"Value: {value:.3f}, policy moves: {len(policy)}")
+    logger.info(f"Value: {value:.3f}, policy moves: {len(policy)}")
     if args.policy_heatmap:
         plot_policy_heatmap(board, policy, save_path=args.policy_heatmap)
     if args.value_heatmap:

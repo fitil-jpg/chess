@@ -15,6 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 import os
 

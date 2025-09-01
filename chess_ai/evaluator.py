@@ -5,6 +5,9 @@ evaluator.py — будує feature map для ходу:
 - інші фактори для майбутнього (центр, шах, захист тощо)
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 
 from core.evaluator import Evaluator as CoreEvaluator

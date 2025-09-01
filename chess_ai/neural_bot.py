@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 """Neural-network powered sub-bot using :class:`TorchNet`.
 
 The network is loaded lazily to avoid importing the heavy ``torch`` package

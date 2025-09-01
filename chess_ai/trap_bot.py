@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 from core.evaluator import Evaluator, piece_value
 

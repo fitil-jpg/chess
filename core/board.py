@@ -10,6 +10,9 @@ from __future__ import annotations
 from typing import List, Set, Optional
 
 try:  # Optional dependency used only by ``ChessBoard``
+import logging
+logger = logging.getLogger(__name__)
+
     import chess  # type: ignore
 except Exception:  # pragma: no cover - chess may be absent in test env
     chess = None

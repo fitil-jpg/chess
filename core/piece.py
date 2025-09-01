@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 try:  # Optional dependency used only for advanced piece logic
     import chess  # type: ignore
 except Exception:  # pragma: no cover - chess may be absent in tests
@@ -292,4 +295,3 @@ def build_chess_board(board):
             continue
         cb.set_piece_at(square, chess.Piece(ptype, color))
     return cb
-

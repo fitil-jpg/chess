@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import argparse
 import csv
 from dataclasses import dataclass
@@ -60,7 +63,7 @@ def train(model: SimpleChessModel, loader: DataLoader, epochs: int, lr: float) -
             optim.step()
             total += float(loss.item()) * batch.size(0)
         avg = total / len(loader.dataset)
-        print(f"Epoch {epoch + 1}: loss={avg:.4f}")
+        logger.info(f"Epoch {epoch + 1}: loss={avg:.4f}")
 
 
 def main() -> None:
@@ -83,7 +86,7 @@ def main() -> None:
     model = SimpleChessModel()
     train(model, loader, epochs=args.epochs, lr=args.lr)
     torch.save(model.state_dict(), args.output)
-    print(f"Saved weights to {args.output}")
+    logger.info(f"Saved weights to {args.output}")
     if args.heatmap and dataset.samples:
         from .torch_net import TorchNet
         from .viz_heatmap import plot_value_gradient

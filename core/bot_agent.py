@@ -10,6 +10,9 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any, List
 import random
 import chess
+import logging
+logger = logging.getLogger(__name__)
+
 from chess_ai.dynamic_bot import DynamicBot as MetaBot
 from .evaluator import Evaluator
 from .constants import MATERIAL_DIFF_THRESHOLD, KING_SAFETY_THRESHOLD

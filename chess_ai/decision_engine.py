@@ -5,6 +5,9 @@ For a Monte Carlo tree search counterpart see
 :class:`chess_ai.batched_mcts.BatchedMCTS`.
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 import chess
 
 from core.quiescence import quiescence

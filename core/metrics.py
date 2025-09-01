@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import chess
 
+import logging
+logger = logging.getLogger(__name__)
+
 from metrics_common import (
     count_attacked_squares as _count_attacked_squares,
     count_defended_pieces as _count_defended_pieces,
@@ -64,4 +67,3 @@ class BoardMetrics:
 
 
 __all__ = ["MetricsManager", "BoardMetrics"]
-

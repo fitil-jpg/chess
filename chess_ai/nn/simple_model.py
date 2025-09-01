@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import chess
 import torch
+import logging
+logger = logging.getLogger(__name__)
+
 import torch.nn as nn
 import torch.nn.functional as F
 
