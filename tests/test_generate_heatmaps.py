@@ -1,8 +1,12 @@
+import logging
 import sys
 import types
 import importlib.util
 from pathlib import Path
 import pytest
+
+logger = logging.getLogger(__name__)
+pytestmark = pytest.mark.utils
 
 
 @pytest.mark.parametrize(
