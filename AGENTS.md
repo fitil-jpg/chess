@@ -1,15 +1,14 @@
-# AGENTS.md
+# AGENTS
 
-## Vendored dependencies
-- `tests/conftest.py` automatically appends `vendors/` to `sys.path`. When running scripts outside the test suite, manually add `vendors/` to `sys.path`.
-- If a required third-party library is missing, copy it into `vendors/` instead of installing it globally; adjust the `sys.path` update if necessary to import it correctly.
+The project includes several chess agents (bots). Each bot analyses the board and returns a move along with a confidence score.
 
-## Testing
-- Run `pytest` after code changes. For quick checks you can run a subset, e.g. `pytest tests/test_random_bot.py -q`.
-
-## GameContext
-- `GameContext` metrics default to zero; tests only specify non-zero fields.
-
-## Repository
-- This repository has no remote configured. Do not run `git fetch origin` or `git push`; all work should be done locally.
-- When preparing a pull request with `make_pr`, ensure your worktree is clean and tests pass; syncing with a remote is unnecessary.
+- **RandomBot** – chooses a random legal move adjusted by a simple evaluation.
+- **AggressiveBot** – seeks moves that maximise material gain.
+- **FortifyBot** – favours moves that improve defence and pawn structure.
+- **EndgameBot** – applies heuristics tailored for endgame positions.
+- **DynamicBot** – meta-agent that combines suggestions from multiple sub-bots.
+- **CriticalBot** – targets opponent pieces deemed highly threatening.
+- **TrapBot** – tries to set tactical traps for the opponent.
+- **KingValueBot** – evaluates positions based on king safety and piece values.
+- **NeuralBot** – scores moves using a neural network evaluation.
+- **UtilityBot** – provides basic evaluation utilities used by other bots.
