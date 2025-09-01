@@ -8,6 +8,7 @@ packages can satisfy optional dependencies like ``chess`` or ``torch``.
 
 from pathlib import Path
 import sys
+import logging
 
 import pytest
 
@@ -20,6 +21,23 @@ try:  # pragma: no cover - handled in fixtures
     import chess
 except Exception:  # ImportError or partial stubs lacking attributes
     chess = None
+
+
+@pytest.fixture(autouse=True)
+def configure_logging() -> None:
+    """Configure a basic logger for all tests.
+
+    Each test run resets the root logger to emit messages from ``logging``
+    calls made within the codebase. The output is kept concise while still
+    including the originating logger name.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter("%(levelname)s:%(name)s:%(message)s")
+    )
+    root = logging.getLogger()
+    root.handlers = [handler]
+    root.setLevel(logging.INFO)
 
 
 @pytest.fixture(scope="module")
