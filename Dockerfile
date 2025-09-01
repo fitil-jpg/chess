@@ -10,6 +10,13 @@ RUN pip install --no-cache-dir -r /tmp/pip-tmp/requirements.txt \
     && pip install --no-cache-dir pytest \
     && rm -rf /tmp/pip-tmp
 
+# Install R and testthat
+RUN apt-get update \
+    && apt-get install -y r-base \
+    && R -e 'install.packages("testthat", repos="https://cloud.r-project.org")' \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set the default workdir
 WORKDIR /workspace
 
