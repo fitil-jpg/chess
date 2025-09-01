@@ -12,6 +12,10 @@ Usage
     python utils/migrate_runs.py --runs runs/
 """
 
+from utils.usage_logger import record_usage
+
+record_usage(__file__)
+
 import argparse
 import json
 from pathlib import Path
