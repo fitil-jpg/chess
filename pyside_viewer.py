@@ -25,6 +25,7 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
+from ui.usage_pie import UsagePie
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
@@ -170,9 +171,18 @@ class ChessViewer(QWidget):
         self.lbl_leaders  = QLabel("Attack leaders: —")
         self.lbl_king     = QLabel("King coeff: —")
 
-        # Usage — два окремі рядки (як ти просив)
-        self.lbl_usage_w  = QLabel("Dynamic usage (W): —")
-        self.lbl_usage_b  = QLabel("Dynamic usage (B): —")
+        # Usage chart for white/black
+        usage_chart_row = QHBoxLayout()
+        w_box = QVBoxLayout()
+        w_box.addWidget(QLabel("Dynamic usage (W)"))
+        self.usage_pie_w = UsagePie()
+        w_box.addWidget(self.usage_pie_w)
+        b_box = QVBoxLayout()
+        b_box.addWidget(QLabel("Dynamic usage (B)"))
+        self.usage_pie_b = UsagePie()
+        b_box.addWidget(self.usage_pie_b)
+        usage_chart_row.addLayout(w_box)
+        usage_chart_row.addLayout(b_box)
 
         for lab in (
             self.lbl_module,
@@ -181,11 +191,11 @@ class ChessViewer(QWidget):
             self.lbl_attacks,
             self.lbl_leaders,
             self.lbl_king,
-            self.lbl_usage_w,
-            self.lbl_usage_b,
         ):
             lab.setWordWrap(True)
             right_col.addWidget(lab)
+
+        right_col.addLayout(usage_chart_row)
 
         # Список ходів SAN
         right_col.addWidget(QLabel("Moves:"))
@@ -290,7 +300,7 @@ class ChessViewer(QWidget):
             self.timeline_w.clear()
             self.timeline_b.clear()
             self.timeline.set_data(self.timeline_w, self.timeline_b)
-            self._update_usage_labels()
+            self._update_usage_chart()
             self.moves_list.clear()
 
         if not self.auto_running:
@@ -502,15 +512,10 @@ class ChessViewer(QWidget):
 
         return "OTHER"
 
-    def _usage_labels_text(self, dd: dict) -> str:
-        if not dd:
-            return "—"
-        items = sorted(dd.items(), key=lambda kv: (-kv[1], kv[0]))
-        return ", ".join(f"{k}={v}" for k, v in items)
-
-    def _update_usage_labels(self):
-        self.lbl_usage_w.setText(f"Dynamic usage (W): {self._usage_labels_text(self.usage_w)}")
-        self.lbl_usage_b.setText(f"Dynamic usage (B): {self._usage_labels_text(self.usage_b)}")
+    def _update_usage_chart(self):
+        """Refresh pie charts for white and black module usage."""
+        self.usage_pie_w.set_counts(self.usage_w)
+        self.usage_pie_b.set_counts(self.usage_b)
 
     def _on_heatmap_piece(self, piece: str | None) -> None:
         """Callback for heatmap piece selection."""
@@ -551,7 +556,7 @@ class ChessViewer(QWidget):
         self.lbl_king.setText(self._king_coeff_text())
 
         # Оновити usage-лейбли і графік
-        self._update_usage_labels()
+        self._update_usage_chart()
         self.timeline.set_data(self.timeline_w, self.timeline_b)
 
     def _show_game_over(self):
