@@ -21,7 +21,8 @@ htmlcov/
 .ipynb_checkpoints/
 
 # IDE/OS
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .idea/
 .DS_Store
 Thumbs.db
