@@ -204,8 +204,11 @@ class ChessViewer(QWidget):
         right_col.addWidget(self.timeline)
 
         # Heatmap selection panel
-        heatmap_layout, _ = create_heatmap_panel(self._on_heatmap_piece)
-        right_col.addLayout(heatmap_layout)
+        if self.drawer_manager.heatmaps:
+            heatmap_layout, _ = create_heatmap_panel(self._on_heatmap_piece)
+            right_col.addLayout(heatmap_layout)
+        else:
+            right_col.addWidget(QLabel("Heatmap’и не згенеровані"))
 
         # Загальна діаграма використання модулів (нижня панель)
         right_col.addWidget(QLabel("Overall module usage:"))
