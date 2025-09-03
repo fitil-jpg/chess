@@ -1,3 +1,4 @@
+import logging
 import pytest
 import chess
 
@@ -15,15 +16,15 @@ class DummyEval:
         return 0
 
 
-def test_skips_when_king_safe(capfd, context, evaluator):
+def test_skips_when_king_safe(caplog, context, evaluator):
     board = chess.Board()
     evaluator.board = board
     bot = FortifyBot(chess.WHITE)
     context.king_safety = KING_SAFETY_THRESHOLD
-    move, score = bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
+    with caplog.at_level(logging.DEBUG):
+        move, score = bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
     assert move is None and score == 0.0
-    out = capfd.readouterr().out
-    assert "king safety" in out
+    assert "king safety" in caplog.text
 
 
 def test_reuses_provided_evaluator(monkeypatch, context):
