@@ -65,7 +65,7 @@ for (p in pieces) {
   csv_path <- file.path(out_dir, paste0("heatmap_", p, "_bins", opts$bins, ".csv"))
   json_path <- file.path(out_dir, paste0("heatmap_", p, "_bins", opts$bins, ".json"))
   write.csv(mat, file = csv_path)
-  write_json(as.data.frame(mat), path = json_path, pretty = TRUE)
+  write_json(mat, path = json_path, pretty = TRUE)
 
   theme_fun <- get(paste0("theme_", opts$theme), envir = asNamespace("ggplot2"))
   g <- ggplot(dfp, aes(x = file, y = rank)) +
