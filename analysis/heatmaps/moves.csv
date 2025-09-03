@@ -1,0 +1,13 @@
+game_id,piece,to
+1,pawn,e4
+1,knight,f3
+1,bishop,c4
+1,queen,h5
+1,king,e2
+1,rook,h1
+2,pawn,d4
+2,knight,c3
+2,bishop,b5
+2,queen,f3
+2,king,g1
+2,rook,e1
