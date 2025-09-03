@@ -1,9 +1,12 @@
 import json
+import logging
 from pathlib import Path
 
 import chess
 
 from scenarios import detect_scenarios
+
+logger = logging.getLogger(__name__)
 
 
 class DrawerManager:
@@ -26,13 +29,29 @@ class DrawerManager:
 
         heatmaps = {}
         base = Path(__file__).resolve().parent.parent / "analysis" / "heatmaps"
-        if base.exists():
-            for file in base.glob("*.json"):
-                try:
-                    with file.open("r", encoding="utf-8") as fh:
-                        heatmaps[file.stem] = json.load(fh)
-                except Exception:
-                    continue
+        if not base.exists():
+            logger.warning(
+                "Heatmap data missing – generate files via "
+                "`utils.integration.generate_heatmaps` or "
+                "`analysis/heatmaps/generate_heatmaps.R`."
+            )
+            return heatmaps
+
+        files = list(base.glob("*.json"))
+        if not files:
+            logger.warning(
+                "Heatmap data missing – generate files via "
+                "`utils.integration.generate_heatmaps` or "
+                "`analysis/heatmaps/generate_heatmaps.R`."
+            )
+            return heatmaps
+
+        for file in files:
+            try:
+                with file.open("r", encoding="utf-8") as fh:
+                    heatmaps[file.stem] = json.load(fh)
+            except Exception:
+                continue
         return heatmaps
 
     # ------------------------------------------------------------------

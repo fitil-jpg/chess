@@ -10,6 +10,7 @@ import sys
 import re
 import chess
 from collections import defaultdict
+from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
@@ -28,6 +29,7 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
+from utils.integration import generate_heatmaps
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
@@ -208,7 +210,16 @@ class ChessViewer(QWidget):
             heatmap_layout, _ = create_heatmap_panel(self._on_heatmap_piece)
             right_col.addLayout(heatmap_layout)
         else:
-            right_col.addWidget(QLabel("Heatmap’и не згенеровані"))
+            msg = QLabel(
+                "Heatmap data missing – generate files via "
+                "`utils.integration.generate_heatmaps` or "
+                "`analysis/heatmaps/generate_heatmaps.R`."
+            )
+            msg.setWordWrap(True)
+            right_col.addWidget(msg)
+            btn_gen_heatmaps = QPushButton("Generate heatmaps")
+            btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
+            right_col.addWidget(btn_gen_heatmaps)
 
         # Загальна діаграма використання модулів (нижня панель)
         right_col.addWidget(QLabel("Overall module usage:"))
@@ -514,6 +525,24 @@ class ChessViewer(QWidget):
         """Refresh per-side usage charts with current counts."""
         self.chart_usage_w.set_data(self.usage_w)
         self.chart_usage_b.set_data(self.usage_b)
+
+    def _generate_heatmaps(self) -> None:
+        """Invoke heatmap generation and notify the user."""
+        try:
+            fens_file = Path("fens.txt")
+            if fens_file.exists():
+                with fens_file.open("r", encoding="utf-8") as fh:
+                    fens = [line.strip() for line in fh if line.strip()]
+            else:
+                fens = [self.board.fen()]
+            generate_heatmaps(fens)
+            QMessageBox.information(
+                self,
+                "Heatmaps",
+                "Heatmaps generated. Restart viewer to load them.",
+            )
+        except Exception as exc:
+            QMessageBox.warning(self, "Heatmaps", f"Generation failed: {exc}")
 
     def _on_heatmap_piece(self, piece: str | None) -> None:
         """Callback for heatmap piece selection."""
