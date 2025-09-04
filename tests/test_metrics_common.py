@@ -11,7 +11,9 @@ def test_evaluate_pressure() -> None:
     board.set_piece_at(chess.A8, chess.Piece(chess.QUEEN, chess.BLACK))
     board.set_piece_at(chess.B4, chess.Piece(chess.BISHOP, chess.BLACK))
     board.set_piece_at(chess.E1, chess.Piece(chess.KNIGHT, chess.WHITE))
-    assert evaluate_pressure(board) == 6
+    # White attacks the black queen (9). Black attacks the white rook (5)
+    # and knight (3). 9 - (5 + 3) = 1.
+    assert evaluate_pressure(board) == 1
 
 
 def test_evaluate_synergy() -> None:
