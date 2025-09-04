@@ -40,9 +40,11 @@ def escape_squares(board: chess.Board, square: int) -> set[chess.Move]:
 def is_piece_mated(board: chess.Board, square: int) -> bool:
     """Return ``True`` if the piece on ``square`` is attacked with no escape.
 
-    A piece is considered *mated* if the opponent currently attacks its
+    A piece is considered *mated* when the opponent currently attacks its
     square and :func:`escape_squares` finds no legal moves that leave the piece
-    safe.  The function is side‑effect free with respect to ``board.turn``.
+    safe.  Capturing an attacking piece counts as an escape if the destination
+    square is not also attacked.  The function is side‑effect free with respect
+    to ``board.turn``.
     """
 
     piece = board.piece_at(square)
