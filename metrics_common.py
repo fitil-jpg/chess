@@ -102,7 +102,13 @@ def evaluate_pawn_structure(board: chess.Board) -> int:
 
 
 def evaluate_pressure(board: chess.Board) -> int:
-    """Return the pressure differential on valuable enemy pieces."""
+    """Return the pressure differential on valuable enemy pieces.
+
+    Each side sums the standard values of opposing pieces they currently
+    attack.  An attacked piece contributes its value once regardless of
+    how many attackers or defenders it has.  The final score is the white
+    total minus the black total.
+    """
     piece_values = {
         chess.PAWN: 1,
         chess.KNIGHT: 3,
