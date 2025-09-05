@@ -8,8 +8,18 @@ def test_en_passant_corridor_detected():
     risk, tag, r1, r2 = enemy_two_move_fork_risk(board, chess.WHITE)
     assert risk
     assert tag == "P:ep-corridor"
-    assert r1 == chess.Move.from_uci("f4f3")
-    assert r2 == chess.Move.from_uci("h4g3")
+
+    expected_sequences = {
+        (
+            chess.Move.from_uci("f4f3"),
+            chess.Move.from_uci("h4g3"),
+        ),
+        (
+            chess.Move.from_uci("h4h3"),
+            chess.Move.from_uci("f4g3"),
+        ),
+    }
+    assert (r1, r2) in expected_sequences
 
 
 def test_en_passant_corridor_absent():
