@@ -35,7 +35,12 @@ def test_eval_board_returns_float_when_r_available():
     import chess_ai.hybrid_bot.r_bridge as rb
     importlib.reload(rb)
     if rb.robjects is None:
+        with pytest.raises(RuntimeError):
+            rb.eval_board(chess.Board())
         pytest.skip("rpy2.robjects could not be loaded")
-    score = rb.eval_board(chess.Board())
+    try:
+        score = rb.eval_board(chess.Board())
+    except RuntimeError:
+        pytest.skip("R runtime not available")
     assert isinstance(score, float)
 
