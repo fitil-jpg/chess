@@ -1,5 +1,7 @@
 import random
+
 import chess
+import pytest
 
 from chess_ai.random_bot import RandomBot, MOBILITY_FACTOR
 from utils import GameContext
@@ -18,4 +20,4 @@ def test_random_bot_mobility_bias():
         board, GameContext(mobility=-5)
     )
 
-    assert conf_pos - conf_neg == 2 * MOBILITY_FACTOR
+    assert conf_pos - conf_neg == pytest.approx(2 * MOBILITY_FACTOR)
