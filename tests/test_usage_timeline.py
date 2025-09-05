@@ -46,14 +46,16 @@ def test_usage_timeline_clicks_and_signal():
     pos_w1 = _segment_pos(widget, 1, True)
     QTest.mouseClick(widget, Qt.LeftButton, Qt.NoModifier, pos_w1)
     assert widget.last == (1, True)
-    assert spy.count() == 1 and spy[0] == [1, True]
+    assert spy.count() == 1
+    assert spy.takeFirst() == [1, True]
     spy.clear()
 
     # Click third black segment
     pos_b2 = _segment_pos(widget, 2, False)
     QTest.mouseClick(widget, Qt.LeftButton, Qt.NoModifier, pos_b2)
     assert widget.last == (2, False)
-    assert spy.count() == 1 and spy[0] == [2, False]
+    assert spy.count() == 1
+    assert spy.takeFirst() == [2, False]
     spy.clear()
 
     # Click outside any segment (right of last white segment)
