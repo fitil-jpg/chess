@@ -147,14 +147,18 @@ def _en_passant_corridor_threat(board: chess.Board, our_color: bool) -> Tuple[bo
 
     if our_color:
         flank_moves = [
-            (chess.Move(chess.F4, chess.F3), chess.Move(chess.F3, chess.G4)),
-            (chess.Move(chess.H4, chess.H3), chess.Move(chess.H3, chess.G4)),
+            # f4→f3 (ми змушені g2→g4), після чого h4 забирає en passant g4
+            (chess.Move(chess.F4, chess.F3), chess.Move(chess.H4, chess.G3)),
+            # h4→h3 (ми змушені g2→g4), після чого f4 забирає en passant g4
+            (chess.Move(chess.H4, chess.H3), chess.Move(chess.F4, chess.G3)),
         ]
         our_reply = chess.Move(chess.G2, chess.G4)
     else:
         flank_moves = [
-            (chess.Move(chess.F5, chess.F6), chess.Move(chess.F6, chess.G5)),
-            (chess.Move(chess.H5, chess.H6), chess.Move(chess.H6, chess.G5)),
+            # f5→f6 (ми змушені g7→g5), після чого h5 забирає en passant g5
+            (chess.Move(chess.F5, chess.F6), chess.Move(chess.H5, chess.G6)),
+            # h5→h6 (ми змушені g7→g5), після чого f5 забирає en passant g5
+            (chess.Move(chess.H5, chess.H6), chess.Move(chess.F5, chess.G6)),
         ]
         our_reply = chess.Move(chess.G7, chess.G5)
 
