@@ -8,13 +8,18 @@ import pytest
 
 def test_stub_raises_importerror_outside_pytest():
     spec = importlib.util.find_spec("chess")
-    if spec and spec.origin:
+    if spec:
         vendors_dir = Path(__file__).resolve().parent.parent / "vendors"
-        chess_path = Path(spec.origin).resolve()
-        try:
-            chess_path.relative_to(vendors_dir)
-        except ValueError:
-            pytest.skip("real python-chess installed")
+        chess_path = None
+        if spec.origin and spec.origin not in {"namespace", "builtin"}:
+            chess_path = Path(spec.origin).resolve()
+        elif spec.submodule_search_locations:
+            chess_path = Path(next(iter(spec.submodule_search_locations))).resolve()
+        if chess_path is not None:
+            try:
+                chess_path.relative_to(vendors_dir)
+            except ValueError:
+                pytest.skip("real python-chess installed")
     code = (
         "import sys\n"
         "sys.path.append('vendors')\n"
