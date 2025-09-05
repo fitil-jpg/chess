@@ -9,7 +9,7 @@ def test_en_passant_corridor_detected():
     assert risk
     assert tag == "P:ep-corridor"
     assert r1 == chess.Move.from_uci("f4f3")
-    assert r2 == chess.Move.from_uci("f3g4")
+    assert r2 == chess.Move.from_uci("h4g3")
 
 
 def test_en_passant_corridor_absent():
