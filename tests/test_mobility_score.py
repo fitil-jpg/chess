@@ -28,7 +28,7 @@ def test_per_piece_mobility_flags():
     board.clear()
     board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     board.set_piece_at(chess.A2, chess.Piece(chess.PAWN, chess.WHITE))
-    board.set_piece_at(chess.B3, chess.Piece(chess.PAWN, chess.BLACK))
+    board.set_piece_at(chess.B3, chess.Piece(chess.PAWN, chess.BLACK))  # attacks A2
     evaluator = Evaluator(board)
     evaluator.mobility(board)
     pawn_stats = evaluator.mobility_stats['white']['pieces'][chess.A2]
@@ -38,16 +38,16 @@ def test_per_piece_mobility_flags():
 
 
 def test_king_status_checkmate_and_stalemate():
-    # Checkmate scenario
-    mate = chess.Board("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
+    # Checkmate scenario: black king on h8 is in check with no escape squares
+    mate = chess.Board("7k/6Q1/6K1/8/8/8/8/8 w - - 0 1")
     evaluator = Evaluator(mate)
     evaluator.mobility(mate)
     ksq = mate.king(chess.BLACK)
     status = evaluator.mobility_stats['black']['pieces'][ksq]['status']
     assert status == 'checkmated'
 
-    # Stalemate scenario
-    stale = chess.Board("7k/5Q2/7K/8/8/8/8/8 b - - 0 1")
+    # Stalemate scenario: black king has no legal moves but is not in check
+    stale = chess.Board("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1")
     evaluator = Evaluator(stale)
     evaluator.mobility(stale)
     ksq = stale.king(chess.BLACK)
