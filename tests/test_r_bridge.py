@@ -34,6 +34,8 @@ def test_eval_board_returns_float_when_r_available():
     pytest.importorskip("rpy2")
     import chess_ai.hybrid_bot.r_bridge as rb
     importlib.reload(rb)
+    if rb.robjects is None:
+        pytest.skip("rpy2.robjects could not be loaded")
     score = rb.eval_board(chess.Board())
     assert isinstance(score, float)
 
