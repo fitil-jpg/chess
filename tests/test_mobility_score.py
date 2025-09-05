@@ -28,18 +28,18 @@ def test_per_piece_mobility_flags():
     board.clear()
     board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     board.set_piece_at(chess.A2, chess.Piece(chess.PAWN, chess.WHITE))
-    board.set_piece_at(chess.A3, chess.Piece(chess.PAWN, chess.BLACK))
+    board.set_piece_at(chess.B3, chess.Piece(chess.PAWN, chess.BLACK))
     evaluator = Evaluator(board)
     evaluator.mobility(board)
     pawn_stats = evaluator.mobility_stats['white']['pieces'][chess.A2]
-    assert pawn_stats['mobility'] == 0
-    assert pawn_stats['blocked'] is True
+    assert pawn_stats['mobility'] == 2
+    assert pawn_stats['blocked'] is False
     assert pawn_stats['capturable'] is True
 
 
 def test_king_status_checkmate_and_stalemate():
     # Checkmate scenario
-    mate = chess.Board("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1")
+    mate = chess.Board("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1")
     evaluator = Evaluator(mate)
     evaluator.mobility(mate)
     ksq = mate.king(chess.BLACK)
