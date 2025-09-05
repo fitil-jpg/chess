@@ -11,7 +11,9 @@ def test_trapbot_prefers_trapping_knight():
     board = chess.Board('3nk3/3p4/8/8/8/8/8/3QK3 w - - 0 1')
     bot = TrapBot(chess.WHITE)
     move, _ = bot.choose_move(board)
-    assert move == chess.Move.from_uci('d1d8')
+    # The pawn on d7 shields the knight, so capturing it limits the knight's
+    # options while also checking the king.
+    assert move == chess.Move.from_uci('d1d7')
 
 
 def test_trapbot_targets_more_mobile_piece():

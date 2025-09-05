@@ -46,8 +46,11 @@ class TrapBot:
             after_eval.mobility(tmp)
             after_stats = after_eval.mobility_stats[self._opponent_label()]["pieces"]
 
-            # Compare mobility for each opponent piece
-            move_drop = 0.0
+            # Compare mobility for each opponent piece. ``move_drop`` tracks the
+            # largest reduction (which may be negative if all candidate moves
+            # increase the opponent's mobility). Starting at ``-inf`` ensures we
+            # don't ignore moves that worsen the position.
+            move_drop = float("-inf")
             for sq, info in pre_stats.items():
                 pre_mob = info["mobility"]
                 post_info = after_stats.get(sq)
@@ -73,6 +76,7 @@ class TrapBot:
                         drop = pre_mob - max_mob
                 if drop > move_drop:
                     move_drop = drop
+
             if move_drop > best_drop:
                 best_drop = move_drop
                 best_move = mv
