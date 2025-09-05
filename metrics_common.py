@@ -102,12 +102,13 @@ def evaluate_pawn_structure(board: chess.Board) -> int:
 
 
 def evaluate_pressure(board: chess.Board) -> int:
-    """Return the pressure differential on valuable enemy pieces.
+    """Return the pressure differential on each side's pieces.
 
-    Each side sums the standard values of opposing pieces they currently
-    attack.  An attacked piece contributes its value once regardless of
-    how many attackers or defenders it has.  The final score is the white
-    total minus the black total.
+    A piece contributes its standard value to its owner's pressure score when
+    it is currently attacked by the opposing side. Kings are ignored. The
+    returned score is the total pressure on Black minus the total pressure on
+    White, so a positive number indicates that Black faces more pressure than
+    White.
     """
     piece_values = {
         chess.PAWN: 1,
@@ -118,11 +119,10 @@ def evaluate_pressure(board: chess.Board) -> int:
         chess.KING: 0,
     }
     pressure = {chess.WHITE: 0, chess.BLACK: 0}
-    for color in (chess.WHITE, chess.BLACK):
-        for sq, piece in board.piece_map().items():
-            if piece.color != color and board.is_attacked_by(color, sq):
-                pressure[color] += piece_values[piece.piece_type]
-    return pressure[chess.WHITE] - pressure[chess.BLACK]
+    for sq, piece in board.piece_map().items():
+        if board.is_attacked_by(not piece.color, sq):
+            pressure[piece.color] += piece_values[piece.piece_type]
+    return pressure[chess.BLACK] - pressure[chess.WHITE]
 
 
 def evaluate_synergy(board: chess.Board) -> int:
