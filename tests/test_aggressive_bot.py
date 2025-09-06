@@ -16,6 +16,10 @@ def test_capture_gain_scaled_when_behind(caplog, evaluator):
 
     tmp = board.copy(stack=False)
     tmp.push(chess.Move.from_uci("c4d5"))
-    expected = 6 + evaluator.position_score(tmp, chess.WHITE)
+    expected_gain = 6
+    expected = expected_gain + evaluator.position_score(tmp, chess.WHITE)
     assert score == expected
-    assert "material deficit" in caplog.text
+    assert (
+        f"AggressiveBot: material deficit, scaled capture gain to {expected_gain:.1f}"
+        in caplog.text
+    )

@@ -24,7 +24,10 @@ def test_skips_when_king_safe(caplog, context, evaluator):
     with caplog.at_level(logging.DEBUG):
         move, score = bot.choose_move(board, context=context, evaluator=evaluator, debug=True)
     assert move is None and score == 0.0
-    assert "king safety" in caplog.text
+    expected_msg = (
+        f"FortifyBot: king safety {context.king_safety} ≥ {KING_SAFETY_THRESHOLD} – skipping fortification"
+    )
+    assert expected_msg in caplog.text
 
 
 def test_reuses_provided_evaluator(monkeypatch, context):
