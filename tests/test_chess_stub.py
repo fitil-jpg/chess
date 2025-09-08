@@ -22,7 +22,7 @@ def test_stub_raises_importerror_outside_pytest():
                 pytest.skip("real python-chess installed")
     code = (
         "import sys\n"
-        "sys.path.append('vendors')\n"
+        "sys.path.insert(0, 'vendors')\n"
         "import chess\n"
         "try:\n"
         "    chess.A1\n"
