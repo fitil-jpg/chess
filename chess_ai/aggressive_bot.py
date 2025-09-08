@@ -76,9 +76,11 @@ class AggressiveBot:
                     if context and context.material_diff < 0:
                         gain *= self.capture_gain_factor
                         if debug:
-                            logger.debug(
+                            msg = (
                                 f"AggressiveBot: material deficit, scaled capture gain to {gain:.1f}"
                             )
+                            logger.debug(msg)
+                            print(msg)
 
             tmp = board.copy(stack=False)
             tmp.push(move)
