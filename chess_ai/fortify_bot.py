@@ -76,14 +76,18 @@ class FortifyBot:
 
         if context and context.king_safety >= king_safety_threshold:
             if debug:
-                logger.debug(
+                msg = (
                     f"FortifyBot: king safety {context.king_safety} ≥ {king_safety_threshold} – skipping fortification"
                 )
+                logger.debug(msg)
+                print(msg)
             return None, 0.0
         elif debug and context:
-            logger.debug(
+            msg = (
                 f"FortifyBot: king safety {context.king_safety} < {king_safety_threshold} – evaluating moves"
             )
+            logger.debug(msg)
+            print(msg)
 
         global _SHARED_EVALUATOR
         evaluator = evaluator or _SHARED_EVALUATOR
@@ -141,7 +145,9 @@ class FortifyBot:
             )
             # Debug branch still returns numerical confidence as second value
             # but prints details for easier tracing.
-            logger.debug(f"FortifyBot: {details}")
+            msg = f"FortifyBot: {details}"
+            logger.debug(msg)
+            print(msg)
 
         return best, float(best_score if best is not None else 0.0)
 
