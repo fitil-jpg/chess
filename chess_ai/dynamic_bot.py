@@ -155,6 +155,17 @@ class DynamicBot:
         scores: Dict[chess.Move, float] = defaultdict(float)
         debug_contrib: Dict[chess.Move, List[str]] = defaultdict(list)
 
+        # Detect the most critical opponent piece so that moves neutralising
+        # dangerous forks can be prioritised.  We consider only knight threats
+        # that scored the extra fork bonus inside :meth:`Evaluator.criticality`.
+        critical = evaluator.criticality(board, self.color)
+        fork_threat_score: int | None = None
+        if critical:
+            top_sq, top_score = critical[0]
+            piece = board.piece_at(top_sq)
+            if piece and piece.piece_type == chess.KNIGHT and top_score >= 10:
+                fork_threat_score = top_score
+
         for agent, weight in self.agents:
             if debug:
                 move, conf = agent.choose_move(
@@ -172,6 +183,19 @@ class DynamicBot:
                 debug_contrib[move].append(
                     f"{type(agent).__name__}: conf={conf:.3f} w={weight:.3f} → {score:.3f}"
                 )
+
+        # Boost moves that reduce the detected fork threat.
+        if fork_threat_score is not None:
+            bonus = 5.0
+            for mv in list(scores.keys()):
+                tmp = board.copy(stack=False)
+                tmp.push(mv)
+                new_crit = evaluator.criticality(tmp, self.color)
+                new_score = new_crit[0][1] if new_crit else 0
+                if new_score < fork_threat_score:
+                    scores[mv] += bonus
+                    if debug:
+                        debug_contrib[mv].append(f"fork_bonus={bonus:.3f}")
 
         if not scores:
             # No agent produced a move; fall back to a deeper search.
