@@ -196,8 +196,11 @@ class Evaluator:
                 status = None
 
                 if piece.piece_type == chess.KING:
-                    if board.is_checkmate():
-                        status = "checkmated"
+                    if board.is_check():
+                        if board.is_checkmate():
+                            status = "checkmated"
+                        else:
+                            status = "blocked" if blocked else "mobile"
                     elif board.is_stalemate():
                         status = "stalemated"
                     else:
