@@ -15,8 +15,10 @@ def escape_squares(board: chess.Board, square: int) -> set[chess.Move]:
     """Return the set of safe moves for the piece on ``square``.
 
     A move is considered an "escape" if after making it the piece is not
-    attacked by the opponent.  The original ``board.turn`` is restored when
-    finished so the function is side-effect free for callers.
+    attacked by the opponent.  This naturally includes capture moves so long
+    as the destination square is safe after the capture.  The original
+    ``board.turn`` is restored when finished so the function is side-effect
+    free for callers.
     """
 
     piece = board.piece_at(square)
@@ -30,7 +32,14 @@ def escape_squares(board: chess.Board, square: int) -> set[chess.Move]:
         if mv.from_square != square:
             continue
         board.push(mv)
-        if not board.is_attacked_by(not piece.color, mv.to_square):
+        attacked = board.is_attacked_by(not piece.color, mv.to_square)
+        logger.debug(
+            "escape_squares: %s -> %s %s",
+            chess.square_name(mv.from_square),
+            chess.square_name(mv.to_square),
+            "unsafe" if attacked else "escape",
+        )
+        if not attacked:
             escapes.add(mv)
         board.pop()
     board.turn = orig_turn
@@ -49,12 +58,25 @@ def is_piece_mated(board: chess.Board, square: int) -> bool:
 
     piece = board.piece_at(square)
     if piece is None:
+        logger.debug("is_piece_mated: no piece at %s", chess.square_name(square))
         return False
 
     if not board.is_attacked_by(not piece.color, square):
+        logger.debug(
+            "is_piece_mated: %s on %s is not attacked",
+            piece,
+            chess.square_name(square),
+        )
         return False
 
-    return len(escape_squares(board, square)) == 0
+    escapes = escape_squares(board, square)
+    logger.debug(
+        "is_piece_mated: %s on %s has %d escape(s)",
+        piece,
+        chess.square_name(square),
+        len(escapes),
+    )
+    return len(escapes) == 0
 
 class Evaluator:
     def __init__(

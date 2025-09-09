@@ -22,3 +22,8 @@ def test_is_piece_mated_detects_trapped_piece():
 def test_is_piece_mated_false_when_escape_exists():
     board = chess.Board("n5k1/1B6/8/8/8/8/8/7K w - - 0 1")
     assert not is_piece_mated(board, chess.A8)
+
+
+def test_is_piece_mated_allows_capture_escape():
+    board = chess.Board("6k1/8/8/3pN3/4P3/8/6K1/8 w - - 0 1")
+    assert not is_piece_mated(board, chess.E4)
