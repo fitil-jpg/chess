@@ -67,3 +67,14 @@ def test_king_status_checkmate_and_stalemate():
     ksq = stale.king(chess.BLACK)
     status = evaluator.mobility_stats['black']['pieces'][ksq]['status']
     assert status == 'stalemated'
+
+
+def test_king_status_forced_checkmate_position():
+    """Ensure a forced checkmate is recognised over stalemate."""
+    # Fool's Mate checkmate: white king is checkmated on move 2...Qh4#
+    board = chess.Board("rnb1kbnr/pppp1ppp/8/4p3/4P2q/5P2/PPPP2PP/RNBQKBNR w KQkq - 0 3")
+    evaluator = Evaluator(board)
+    evaluator.mobility(board)
+    ksq = board.king(chess.WHITE)
+    status = evaluator.mobility_stats['white']['pieces'][ksq]['status']
+    assert status == 'checkmated'
