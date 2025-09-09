@@ -188,6 +188,9 @@ class Evaluator:
                     continue
 
                 move_count = move_counts.get(sq, 0)
+                # ``board.turn`` is already set to ``color`` above. This ensures
+                # :func:`chess.Board.is_attacked_by` accounts for enemy pawn
+                # attacks (including en passant) when determining capturability.
                 capturable = board.is_attacked_by(not color, sq)
                 blocked = move_count == 0
                 status = None
