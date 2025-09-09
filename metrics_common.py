@@ -106,9 +106,10 @@ def evaluate_pressure(board: chess.Board) -> int:
 
     A piece contributes its standard value to its owner's pressure score when
     it is currently attacked by the opposing side. Kings are ignored. The
-    returned score is the total pressure on Black minus the total pressure on
-    White, so a positive number indicates that Black faces more pressure than
-    White.
+    returned score is the total pressure on White minus the total pressure on
+    Black, i.e. the sum of attacked White piece values minus the sum of attacked
+    Black piece values. A positive number therefore means White's pieces are
+    under greater pressure.
     """
     piece_values = {
         chess.PAWN: 1,
@@ -122,7 +123,8 @@ def evaluate_pressure(board: chess.Board) -> int:
     for sq, piece in board.piece_map().items():
         if board.is_attacked_by(not piece.color, sq):
             pressure[piece.color] += piece_values[piece.piece_type]
-    return pressure[chess.BLACK] - pressure[chess.WHITE]
+    # White pressure minus Black pressure
+    return pressure[chess.WHITE] - pressure[chess.BLACK]
 
 
 def evaluate_synergy(board: chess.Board) -> int:
