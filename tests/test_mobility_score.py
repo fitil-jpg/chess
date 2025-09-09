@@ -37,6 +37,20 @@ def test_per_piece_mobility_flags():
     assert pawn_stats['capturable'] is True
 
 
+def test_diagonal_pawn_attack_sets_capturable():
+    """A pawn attacked by an enemy pawn diagonally is marked capturable."""
+    board = chess.Board()
+    board.clear()
+    board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    board.set_piece_at(chess.A2, chess.Piece(chess.PAWN, chess.WHITE))
+    board.set_piece_at(chess.B3, chess.Piece(chess.PAWN, chess.BLACK))  # attacks A2
+    board.turn = chess.BLACK  # ensure turn doesn't hide pawn attacks
+    evaluator = Evaluator(board)
+    evaluator.mobility(board)
+    pawn_stats = evaluator.mobility_stats['white']['pieces'][chess.A2]
+    assert pawn_stats['capturable'] is True
+
+
 def test_king_status_checkmate_and_stalemate():
     # Checkmate scenario: black king on h8 is in check with no escape squares
     mate = chess.Board("7k/6Q1/6K1/8/8/8/8/8 w - - 0 1")
