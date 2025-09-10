@@ -11,6 +11,7 @@ _SHARED_EVALUATOR: Evaluator | None = None
 # Small tweak applied when mobility differs between the sides.
 # The bot slightly prefers positions where it has more mobility and
 # de-emphasises ones with less, based only on the sign of the mobility.
+# The positive and negative adjustments differ by ``2 * MOBILITY_FACTOR``.
 MOBILITY_FACTOR = 0.01
 
 
@@ -52,5 +53,6 @@ class RandomBot:
         tmp.push(move)
         conf = evaluator.position_score(tmp, self.color)
         if context is not None and context.mobility != 0:
-            conf += MOBILITY_FACTOR if context.mobility > 0 else -MOBILITY_FACTOR
+            bias = 1 if context.mobility > 0 else -1
+            conf += bias * MOBILITY_FACTOR
         return move, float(conf)
