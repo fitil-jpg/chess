@@ -20,8 +20,9 @@ from utils.integration import parse_fen, generate_heatmaps, compute_metrics
 
 ### Heatmaps
 
-Heatmaps are written as JSON files inside ``analysis/heatmaps/``.  Each
-file contains an 8×8 matrix of integers, e.g.
+Heatmaps are written as JSON files inside the specified output directory
+(``analysis/heatmaps/`` by default).  Each file contains an 8×8 matrix of
+integers, e.g.
 
 ```json
 [[0,1,0,0,0,0,0,0],
@@ -71,4 +72,5 @@ ggplot(queen_moves, aes(x, y)) +
 ```
 
 Replace ``queen_moves`` with your own move data derived from the JSON
-heatmap. Output files are saved to ``analysis/heatmaps/`` by default.
+heatmap. Output files are saved alongside the CSV input or to the directory
+given via ``--outdir`` (``analysis/heatmaps/`` by default).

@@ -16,7 +16,9 @@ option_list <- list(
   make_option(c("-r", "--resolution"), type = "integer", default = 300,
               help = "Resolution (DPI) for output PNG files [default %default]"),
   make_option(c("-b", "--bins"), type = "integer", default = 8,
-              help = "Number of bins for heatmap grid [default %default]")
+              help = "Number of bins for heatmap grid [default %default]"),
+  make_option(c("-o", "--outdir"), type = "character", default = NULL,
+              help = "Output directory for heatmap files [default directory of moves.csv]")
 )
 
 parser <- OptionParser(usage = "%prog [options] <moves.csv>",
@@ -31,15 +33,15 @@ if (length(args$args) < 1) {
 input_csv <- args$args[1]
 opts <- args$options
 
+out_dir <- if (is.null(opts$outdir)) dirname(input_csv) else opts$outdir
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
 moves <- read.csv(input_csv, stringsAsFactors = FALSE)
 
 # Extract numeric file (1-8) and rank (1-8) from destination square
 moves <- moves %>%
   mutate(file = match(substr(to, 1, 1), letters[1:8]),
          rank = as.integer(substr(to, 2, 2)))
-
-out_dir <- "analysis/heatmaps"
-dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 pieces <- unique(moves$piece)
 
