@@ -29,3 +29,24 @@ def test_en_passant_corridor_absent():
     assert tag == ""
     assert r1 is None and r2 is None
 
+
+def test_en_passant_capture_detected():
+    board = chess.Board("4k3/8/8/8/5pPp/8/8/4K3 b - g3 0 1")
+    risk, tag, r1, r2 = enemy_two_move_fork_risk(board, chess.WHITE)
+    assert risk
+    assert tag == "P:ep"
+    expected_moves = {
+        chess.Move.from_uci("f4g3"),
+        chess.Move.from_uci("h4g3"),
+    }
+    assert r1 in expected_moves
+    assert r2 is None
+
+
+def test_en_passant_capture_absent():
+    board = chess.Board("4k3/8/8/8/6Pp/8/8/4K3 b - - 0 1")
+    risk, tag, r1, r2 = enemy_two_move_fork_risk(board, chess.WHITE)
+    assert not risk
+    assert tag == ""
+    assert r1 is None and r2 is None
+

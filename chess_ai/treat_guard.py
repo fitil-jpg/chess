@@ -68,6 +68,27 @@ def _enemy_knight_two_move_fork(board: chess.Board, our_color: bool) -> Tuple[bo
                         return True, r1, r2, tag
     return False, None, None, ""
 
+
+def _en_passant_capture_threat(
+    board: chess.Board, our_color: bool
+) -> Tuple[bool, Optional[chess.Move], Optional[chess.Move], str]:
+    """Чи може ворог ЗАРАЗ забрати нашу двокрокову пешку en passant?"""
+
+    # Еn passant можливе лише одразу після нашого ходу двома клітинами
+    # (ep_square != None). Перебираємо всі легальні ходи ворога й шукаємо
+    # ті, що є en passant – враховуємо обидва напрямки взяття.
+    if board.ep_square is None:
+        return False, None, None, ""
+
+    enemy = not our_color
+    for mv in board.legal_moves:
+        if mv.to_square == board.ep_square and board.is_en_passant(mv):
+            pc = board.piece_at(mv.from_square)
+            if pc and pc.color == enemy and pc.piece_type == chess.PAWN:
+                return True, mv, None, "P:ep"
+
+    return False, None, None, ""
+
 def _enemy_bishop_two_move_double(board: chess.Board, our_color: bool) -> Tuple[bool, Optional[chess.Move], Optional[chess.Move], str]:
     """
     Грубий детектор «подвійної атаки» слоном за 2 ходи: r1 — розгортання слона, r2 — хід слоном так,
@@ -200,6 +221,9 @@ def enemy_two_move_fork_risk(board: chess.Board, our_color: bool) -> Tuple[bool,
     if ok:
         return True, tag, r1, r2
     ok, r1, r2, tag = _enemy_pawn_two_move_threat(board, our_color)
+    if ok:
+        return True, tag, r1, r2
+    ok, r1, r2, tag = _en_passant_capture_threat(board, our_color)
     if ok:
         return True, tag, r1, r2
     ok, r1, r2, tag = _en_passant_corridor_threat(board, our_color)
