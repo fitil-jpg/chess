@@ -1,4 +1,7 @@
-"""Bridge to R-based board evaluation via :mod:`rpy2`."""
+"""Bridge to R-based board evaluation via :mod:`rpy2`.
+
+An :class:`ImportError` is raised when the optional R bindings are missing.
+"""
 
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ def _ensure_loaded() -> None:
     if _loaded:
         return
     if robjects is None:
-        raise RuntimeError("rpy2 is not installed")
+        raise ImportError("rpy2 is not installed")
     script = Path(__file__).with_name(f"{_FUNC_NAME}.R")
     if not script.exists():
         logger.warning(
@@ -66,8 +69,9 @@ def eval_board(
         corresponds to full material; lower values reduce the impact of attacks.
 
     The function sources the accompanying R script and calls the R function,
-    returning its numeric result.  ``RuntimeError`` is raised if :mod:`rpy2` or
-    the R function is unavailable.
+    returning its numeric result. ``ImportError`` is raised if :mod:`rpy2` is
+    missing, and ``RuntimeError`` if the R runtime or evaluation script cannot
+    be accessed.
     """
     _ensure_loaded()
     r_func = robjects.globalenv[_FUNC_NAME]

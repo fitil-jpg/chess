@@ -15,7 +15,7 @@ def test_import_without_r_no_warning(monkeypatch):
     with warnings.catch_warnings(record=True) as caught:
         rb = importlib.import_module("chess_ai.hybrid_bot.r_bridge")
     assert caught == []
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ImportError):
         rb.eval_board(chess.Board())
 
 
@@ -35,7 +35,7 @@ def test_eval_board_returns_float_when_r_available():
     import chess_ai.hybrid_bot.r_bridge as rb
     importlib.reload(rb)
     if rb.robjects is None:
-        with pytest.raises(RuntimeError):
+        with pytest.raises(ImportError):
             rb.eval_board(chess.Board())
         pytest.skip("rpy2.robjects could not be loaded")
     try:
