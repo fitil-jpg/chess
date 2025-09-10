@@ -46,6 +46,10 @@ class TrapBot:
             after_eval.mobility(tmp)
             after_stats = after_eval.mobility_stats[self._opponent_label()]["pieces"]
 
+            # Deeper squares (further into enemy territory) are preferred.
+            rank = chess.square_rank(mv.to_square)
+            depth = rank + 1 if self.color == chess.WHITE else 8 - rank
+
             # Compare mobility for each opponent piece. ``move_drop`` tracks the
             # largest reduction (which may be negative if all candidate moves
             # increase the opponent's mobility). Starting at ``-inf`` ensures we
@@ -74,8 +78,13 @@ class TrapBot:
                             )
                             tmp.pop()
                         drop = pre_mob - max_mob
-                if drop > move_drop:
-                    move_drop = drop
+
+                # Weight the drop by the piece's initial mobility and how deep
+                # the trap lies to prioritise high-mobility targets and deeper
+                # incursions.
+                weighted_drop = drop * pre_mob * depth
+                if weighted_drop > move_drop:
+                    move_drop = weighted_drop
 
             if move_drop > best_drop:
                 best_drop = move_drop
