@@ -3,10 +3,10 @@
 The viewer can render additional overlays on top of board cells using
 `DrawerManager`.  It now understands three sources of analysis data:
 
-* **Heatmaps** – JSON files in `analysis/heatmaps/` containing 8×8
-  matrices of numbers in the range 0–1.  Each value is rendered as a
-  translucent square with a colour gradient from green (`0.0`) to red
-  (`1.0`).
+* **Heatmaps** – JSON files in the heatmap output directory (e.g.
+  `analysis/heatmaps/`) containing 8×8 matrices of numbers in the range
+  0–1.  Each value is rendered as a translucent square with a colour
+  gradient from green (`0.0`) to red (`1.0`).
 * **Agent metrics** – key/value pairs stored in
   `analysis/agent_metrics.json`.  The file is loaded on start and the
   data is available through `DrawerManager.agent_metrics` for debugging
@@ -70,8 +70,8 @@ Generate heatmaps by passing the resulting CSV to the R script:
 Rscript analysis/heatmaps/generate_heatmaps.R analysis/heatmaps/fens.csv
 ```
 
-The heatmaps are written back into `analysis/heatmaps/` and can then be
-displayed by the viewer.
+The heatmaps are written back into the same directory as `fens.csv` (or
+as specified via `--outdir`) and can then be displayed by the viewer.
 
 ### Customising style
 
@@ -89,6 +89,8 @@ Rscript analysis/heatmaps/generate_heatmaps.R \
 * `--theme` – ggplot2 theme function such as `minimal` or `classic`
   (default `minimal`).
 * `--resolution` – output image resolution in DPI (default `300`).
+* `--outdir` – directory for generated heatmap files (defaults to the
+  directory of the moves CSV).
 
 Run the script with `--help` to see all available options and defaults.
 
