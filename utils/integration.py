@@ -71,7 +71,10 @@ def generate_heatmaps(
         raise RuntimeError(f"{fail_msg}: {exc}") from exc
 
     heatmaps: Dict[str, List[List[int]]] = {}
-    for json_file in out_path.glob("heatmap_*.json"):
+    heatmap_files = list(out_path.glob("heatmap_*.json"))
+    if not heatmap_files:
+        raise RuntimeError(f"No heatmap files generated in {out_path}")
+    for json_file in heatmap_files:
         with json_file.open("r", encoding="utf-8") as fh:
             heatmaps[json_file.stem.replace("heatmap_", "")] = json.load(fh)
     return heatmaps
