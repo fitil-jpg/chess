@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, QRect, Qt
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
 
+from core.pst_trainer import update_from_board, update_from_history
 from core.piece import piece_class_factory
 from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
@@ -588,6 +589,10 @@ class ChessViewer(QWidget):
 
     def _show_game_over(self):
         res = self.board.result()
+        winner = chess.WHITE if res == "1-0" else chess.BLACK
+        if res in {"1-0", "0-1"}:
+            update_from_board(self.board, winner)
+            update_from_history(list(self.board.move_stack), winner, steps=[15, 21, 35])
         QMessageBox.information(self, "Гру завершено", f"Результат: {res}\n\n{self._moves_san_string()}")
 
 # ====== Запуск ======
