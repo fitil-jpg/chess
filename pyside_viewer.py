@@ -116,6 +116,15 @@ class ChessViewer(QWidget):
         self.board = chess.Board()
         self.piece_objects = {}
         self.drawer_manager = DrawerManager()
+        default_heatmap_piece = None
+        if self.drawer_manager.heatmaps:
+            for piece_name in ["pawn", "knight", "bishop", "rook", "queen", "king"]:
+                if piece_name in self.drawer_manager.heatmaps:
+                    default_heatmap_piece = piece_name
+                    break
+            if default_heatmap_piece is None:
+                default_heatmap_piece = next(iter(self.drawer_manager.heatmaps))
+            self.drawer_manager.active_heatmap_piece = default_heatmap_piece
 
         # Агенти
         self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
@@ -208,7 +217,11 @@ class ChessViewer(QWidget):
 
         # Heatmap selection panel
         if self.drawer_manager.heatmaps:
-            heatmap_layout, _ = create_heatmap_panel(self._on_heatmap_piece)
+            heatmap_layout, heatmap_combo = create_heatmap_panel(self._on_heatmap_piece)
+            if default_heatmap_piece:
+                index = heatmap_combo.findText(str(default_heatmap_piece))
+                if index >= 0:
+                    heatmap_combo.setCurrentIndex(index)
             right_col.addLayout(heatmap_layout)
         else:
             msg = QLabel(
@@ -252,6 +265,8 @@ class ChessViewer(QWidget):
 
         # Початкова ініціалізація
         self._init_pieces()
+        if default_heatmap_piece:
+            self.drawer_manager.collect_overlays(self.piece_objects, self.board)
         self._refresh_board()
         self._update_status("-", None)
 
