@@ -25,7 +25,10 @@ def test_chess_viewer_applies_heatmap_overlay(tmp_path, monkeypatch):
         for path in heatmap_dir.glob("*.json"):
             with path.open("r", encoding="utf-8") as fh:
                 loaded[path.stem] = json.load(fh)
-        return loaded
+        self.heatmap_sets = {"default": loaded}
+        self.active_heatmap_set = "default"
+        self.heatmaps = loaded
+        self.active_heatmap_piece = next(iter(loaded), None)
 
     monkeypatch.setattr(DrawerManager, "_load_heatmaps", fake_load_heatmaps)
 
