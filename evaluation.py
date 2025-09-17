@@ -1,6 +1,7 @@
 # evaluation.py
 import chess
-from pst_tables import PST_MG, PIECE_VALUES
+from pst_loader import effective_pst_for_piece, game_phase_from_board
+from pst_tables import PIECE_VALUES
 
 def material_score(board: chess.Board) -> int:
     score = 0
@@ -12,8 +13,9 @@ def material_score(board: chess.Board) -> int:
 def pst_score(board: chess.Board) -> int:
     """Бонуси/штрафи з таблиць. Для чорних дзеркалим квадрат."""
     score = 0
+    phase = game_phase_from_board(board)
     for piece_type in range(1, 7):
-        table = PST_MG[piece_type]
+        table = effective_pst_for_piece(piece_type, phase=phase)
         for sq in board.pieces(piece_type, chess.WHITE):
             score += table[sq]
         for sq in board.pieces(piece_type, chess.BLACK):

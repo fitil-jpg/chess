@@ -71,6 +71,30 @@ Example output::
 2. g7g5 | MCTS=0.000 AB=-0.000 time=0.57s
 ```
 
+## Piece-square tables
+
+The lightweight evaluation in `evaluation.py` relies on layered piece-square
+tables (PSTs) that distinguish between middlegame and endgame phases.  Each
+phase blends three layers:
+
+- **Base** – curated defaults tracked in `weights/pst_base_*.json`.
+- **User** – optional adjustments in `weights/pst_user_*.json` (initially all
+  zeroes).
+- **Learned** – values produced by automated tuning in
+  `weights/pst_learned_*.json`.
+
+The loader in `pst_loader.py` combines the available layers and automatically
+falls back to the base tables when custom files are missing.  To (re)create the
+default files or reset local modifications run:
+
+```bash
+python scripts/generate_pst_defaults.py
+```
+
+Pass `--force` to overwrite existing files.  User-specific tweaks can be
+applied by editing the appropriate `pst_user_*.json` file; the changes are picked
+up automatically on the next evaluation call.
+
 ## Running Tests
 
 Execute the entire test suite with `pytest`'s automatic discovery:
