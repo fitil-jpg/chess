@@ -9,8 +9,13 @@ from typing import Iterable, Sequence
 
 import chess
 
+from chess_ai.threat_map import ThreatMap
 from main import annotated_board
 from utils.load_runs import load_runs
+from utils.metrics_sidebar import build_sidebar_metrics
+
+
+_THREAT_MAPS: dict[chess.Color, ThreatMap] = {}
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -162,6 +167,7 @@ def _display_position(
 
     info_lines.append(f"To move: {'White' if board.turn == chess.WHITE else 'Black'}")
     info_lines.append(f"FEN: {board.fen()}")
+    info_lines.extend(build_sidebar_metrics(board, _THREAT_MAPS))
 
     diagram = annotated_board(board, info_lines, unicode=unicode, side_by_side=True)
     print(diagram)
