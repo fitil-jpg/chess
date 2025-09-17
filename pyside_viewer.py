@@ -159,6 +159,7 @@ class ChessViewer(QWidget):
         self.usage_b = defaultdict(int)
         self.timeline_w = []  # послідовність ключів для W (по кожному ході білих)
         self.timeline_b = []  # для B
+        self.fen_history = []
 
         # ---- ЛЕВА КОЛОНКА: ДОШКА ----
         self.board_frame = QFrame()
@@ -356,6 +357,7 @@ class ChessViewer(QWidget):
             self.timeline.set_data(self.timeline_w, self.timeline_b)
             self._update_usage_charts()
             self.moves_list.clear()
+            self.fen_history.clear()
 
         if not self.auto_running:
             self.auto_running = True
@@ -386,6 +388,7 @@ class ChessViewer(QWidget):
         prefix = f"{move_no}. " if mover_color == chess.WHITE else f"{move_no}... "
 
         self.board.push(move)
+        self.fen_history.append(self.board.fen())
 
         self._init_pieces()
         self._refresh_board()
@@ -722,7 +725,32 @@ class ChessViewer(QWidget):
         if res in {"1-0", "0-1"}:
             update_from_board(self.board, winner)
             update_from_history(list(self.board.move_stack), winner, steps=[15, 21, 35])
-        QMessageBox.information(self, "Гру завершено", f"Результат: {res}\n\n{self._moves_san_string()}")
+        heatmap_msg = ""
+        if self.fen_history:
+            active_set = self.drawer_manager.active_heatmap_set or "default"
+            try:
+                generate_heatmaps(self.fen_history, pattern_set=active_set)
+            except Exception as exc:  # pragma: no cover - UI notification
+                heatmap_msg = f"\n\nHeatmap update failed: {exc}"
+            else:
+                self.fen_history.clear()
+                self.drawer_manager.set_heatmap_set(active_set)
+                self._sync_heatmap_set_selection()
+                self._populate_heatmap_pieces(self.drawer_manager.active_heatmap_piece)
+                self._save_heatmap_preferences(
+                    set_name=self.drawer_manager.active_heatmap_set,
+                    piece_name=self.drawer_manager.active_heatmap_piece,
+                )
+                self._refresh_board()
+                heatmap_msg = (
+                    f"\n\nHeatmaps updated for set '{active_set}'."
+                )
+
+        QMessageBox.information(
+            self,
+            "Гру завершено",
+            f"Результат: {res}\n\n{self._moves_san_string()}" + heatmap_msg,
+        )
 
 # ====== Запуск ======
 if __name__ == "__main__":
