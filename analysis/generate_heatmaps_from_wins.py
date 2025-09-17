@@ -15,6 +15,7 @@ def generate_heatmaps_from_wins(
     path: str,
     *,
     out_dir: str = "analysis/heatmaps",
+    pattern_set: str = "default",
     use_wolfram: bool = False,
 ):
     """Generate heatmaps for positions taken from decisive games.
@@ -25,7 +26,13 @@ def generate_heatmaps_from_wins(
         Path to a PGN file.
     out_dir:
         Directory where the generated heatmaps should be written.  This is
-        forwarded to :func:`utils.integration.generate_heatmaps`.
+        forwarded to :func:`utils.integration.generate_heatmaps` as the base
+        directory for the selected pattern set.
+    pattern_set:
+        Name of the heatmap pattern set.  Heatmaps are stored in the
+        ``<out_dir>/<pattern_set>`` subdirectory and the resulting dictionary
+        returned by :func:`utils.integration.generate_heatmaps` is keyed by
+        this value.
     use_wolfram:
         Whether to use the Wolfram implementation instead of the default R
         script when generating heatmaps.
@@ -43,4 +50,9 @@ def generate_heatmaps_from_wins(
         if result in _WIN_RESULTS:
             winning_fens.extend(game.get("fens", []))
 
-    return generate_heatmaps(winning_fens, out_dir=out_dir, use_wolfram=use_wolfram)
+    return generate_heatmaps(
+        winning_fens,
+        out_dir=out_dir,
+        pattern_set=pattern_set,
+        use_wolfram=use_wolfram,
+    )
