@@ -50,6 +50,9 @@ def generate_heatmaps_from_wins(
         if result in _WIN_RESULTS:
             winning_fens.extend(game.get("fens", []))
 
+    if not winning_fens:
+        return {}
+
     return generate_heatmaps(
         winning_fens,
         out_dir=out_dir,
