@@ -13,52 +13,75 @@ class DrawerManager:
     def __init__(self):
         self.overlays = {}
         self.scenarios = []
-        self.heatmaps = self._load_heatmaps()
-        self.agent_metrics = self._load_agent_metrics()
-        # Currently selected heatmap piece name (e.g. "knight" or None)
+        self.heatmap_sets = {}
+        self.active_heatmap_set = "default"
+        self.heatmaps = {}
         self.active_heatmap_piece = None
+        self._load_heatmaps()
+        self.agent_metrics = self._load_agent_metrics()
 
     # ------------------------------------------------------------------
     def _load_heatmaps(self):
-        """Load all JSON heatmaps from :mod:`analysis.heatmaps`.
+        """Load heatmap sets from :mod:`analysis.heatmaps`.
 
-        Each file is expected to contain an 8×8 matrix of values between
-        0 and 1.  The matrices are stored in a dict keyed by the file stem.
-        Missing directories result in an empty mapping.
+        Heatmaps are organised in ``analysis/heatmaps/<set_name>`` directories.
+        JSON files directly inside ``analysis/heatmaps`` are treated as the
+        ``"default"`` set for backwards compatibility.
         """
 
-        heatmaps = {}
         base = Path(__file__).resolve().parent.parent / "analysis" / "heatmaps"
-        default_dir = base / "default"
-        if default_dir.exists():
-            search_dir = default_dir
-        else:
-            search_dir = base
-
-        if not search_dir.exists():
+        if not base.exists():
             logger.warning(
                 "Heatmap data missing – generate files via "
                 "`utils.integration.generate_heatmaps` or "
                 "`analysis/heatmaps/generate_heatmaps.R`."
             )
-            return heatmaps
+            self.heatmap_sets = {}
+            self.heatmaps = {}
+            self.active_heatmap_piece = None
+            return
 
-        files = list(search_dir.glob("*.json"))
-        if not files:
+        heatmap_sets = {}
+
+        def load_from_directory(path):
+            mapping = {}
+            for file in sorted(path.glob("*.json")):
+                try:
+                    with file.open("r", encoding="utf-8") as fh:
+                        mapping[file.stem] = json.load(fh)
+                except Exception:
+                    continue
+            return mapping
+
+        for subdir in sorted(p for p in base.iterdir() if p.is_dir()):
+            mapping = load_from_directory(subdir)
+            if mapping:
+                heatmap_sets[subdir.name] = mapping
+
+        root_mapping = load_from_directory(base)
+        if root_mapping:
+            heatmap_sets.setdefault("default", {}).update(root_mapping)
+
+        if not heatmap_sets:
             logger.warning(
                 "Heatmap data missing – generate files via "
                 "`utils.integration.generate_heatmaps` or "
                 "`analysis/heatmaps/generate_heatmaps.R`."
             )
-            return heatmaps
 
-        for file in files:
-            try:
-                with file.open("r", encoding="utf-8") as fh:
-                    heatmaps[file.stem] = json.load(fh)
-            except Exception:
-                continue
-        return heatmaps
+        self.heatmap_sets = heatmap_sets
+
+        if self.active_heatmap_set not in self.heatmap_sets:
+            if "default" in self.heatmap_sets:
+                self.active_heatmap_set = "default"
+            elif self.heatmap_sets:
+                self.active_heatmap_set = next(iter(self.heatmap_sets))
+            else:
+                self.active_heatmap_set = "default"
+
+        self.heatmaps = self.heatmap_sets.get(self.active_heatmap_set, {})
+        if self.active_heatmap_piece not in self.heatmaps:
+            self.active_heatmap_piece = next(iter(self.heatmaps), None)
 
     # ------------------------------------------------------------------
     def _load_agent_metrics(self):
@@ -125,6 +148,51 @@ class DrawerManager:
         except Exception:
             pass
 
+        self._apply_heatmaps()
+
+    # ------------------------------------------------------------------
+    def set_heatmap_set(self, name):
+        """Select the active heatmap set and refresh overlays."""
+
+        if not self.heatmap_sets:
+            self.active_heatmap_set = "default"
+            self.heatmaps = {}
+            self.active_heatmap_piece = None
+            self._refresh_heatmap_overlays()
+            return
+
+        if name not in self.heatmap_sets:
+            name = "default" if "default" in self.heatmap_sets else next(iter(self.heatmap_sets))
+
+        self.active_heatmap_set = name
+        self.heatmaps = self.heatmap_sets.get(name, {})
+        if self.active_heatmap_piece not in self.heatmaps:
+            self.active_heatmap_piece = next(iter(self.heatmaps), None)
+        self._refresh_heatmap_overlays()
+
+    # ------------------------------------------------------------------
+    def list_heatmap_sets(self):
+        """Return available heatmap set names."""
+
+        return sorted(self.heatmap_sets)
+
+    # ------------------------------------------------------------------
+    def _refresh_heatmap_overlays(self):
+        """Remove existing gradient overlays and apply the active heatmap."""
+
+        if not self.overlays:
+            self._apply_heatmaps()
+            return
+
+        to_delete = []
+        for key, items in list(self.overlays.items()):
+            filtered = [item for item in items if item[0] != "gradient"]
+            if filtered:
+                self.overlays[key] = filtered
+            else:
+                to_delete.append(key)
+        for key in to_delete:
+            del self.overlays[key]
         self._apply_heatmaps()
 
     # ------------------------------------------------------------------
