@@ -26,6 +26,7 @@ from datetime import datetime
 
 from chess_ai.bot_agent import make_agent, get_agent_names
 from core.pst_trainer import update_from_board, update_from_history
+from main import annotated_board
 
 # ---------- Налаштування ----------
 THREADS = 4
@@ -217,6 +218,8 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
         # Для подій
         last_phase = current_phase(board)
         last_capture_square: Optional[int] = None  # для детекту retake (розміну)
+        last_move_san: Optional[str] = None
+        last_reason: str = ""
 
         # Основний цикл гри
         while not board.is_game_over():
@@ -261,24 +264,46 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
             else:
                 modules_b.append(reason)
 
+            last_move_san = san_before
+            if isinstance(reason, str):
+                last_reason = reason
+            elif reason:
+                last_reason = str(reason)
+            else:
+                last_reason = ""
+
+            def log_board_event(description: str, extra: Optional[List[str]] = None) -> None:
+                info: List[str] = [description]
+                if extra:
+                    info.extend([line for line in extra if line])
+                info.append(f"FEN: {board.fen()}")
+                info.append(f"Last move: {san_before}")
+                reason_text = last_reason.strip()
+                if reason_text:
+                    reason_parts = reason_text.splitlines()
+                    info.append(f"Reason: {reason_parts[0]}")
+                    info.extend(reason_parts[1:])
+                logger.info(
+                    annotated_board(
+                        board,
+                        info,
+                        unicode=DIAGRAM_UNICODE,
+                    )
+                )
+
             # --- ПОДІЇ ПІСЛЯ PUSH ---
 
             # 1) Перехід фази
             new_phase = current_phase(board)
             if PRINT_DIAGRAM and PRINT_ON_PHASE and new_phase != last_phase:
-                logger.info(
-                    f"PHASE: {last_phase} → {new_phase}\n" +
-                    board_diagram(board, unicode=DIAGRAM_UNICODE)
-                )
+                prev_phase = last_phase
+                log_board_event(f"Phase: {prev_phase} → {new_phase}")
                 last_phase = new_phase
 
             # 2) Capture / Retake (лог — san_before)
             if PRINT_DIAGRAM and is_cap and PRINT_ON_CAPTURE:
                 tag = "RETAKE" if will_retake and PRINT_ON_RETAKE else "CAPTURE"
-                logger.info(
-                    f"{tag}: {san_before} on {chess.square_name(move.to_square)}\n" +
-                    board_diagram(board, unicode=DIAGRAM_UNICODE)
-                )
+                log_board_event(f"{tag}: {chess.square_name(move.to_square)}")
             # оновимо останню «клітину захоплення» для детекту retake на наступному плай
             last_capture_square = move.to_square if is_cap else None
 
@@ -288,21 +313,17 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                 if hang:
                     sq = hang[0]
                     pc = board.piece_at(sq)
-                    # use uppercase for consistent logging
                     sym = pc.symbol().upper() if pc else "?"
-                    logger.info(
-                        f"HANGING ATTACK: opponent {sym} is hanging at {chess.square_name(sq)}\n" +
-                        board_diagram(board, unicode=DIAGRAM_UNICODE)
+                    log_board_event(
+                        "Hanging attack",
+                        extra=[f"Target: opponent {sym} at {chess.square_name(sq)}"],
                     )
 
             # 4) Вилка конем/слоном (після нашого ходу)
             if PRINT_DIAGRAM and PRINT_ON_FORK:
                 fork_tag = is_fork_after_move(board, move, color_to_move)
                 if fork_tag:
-                    logger.info(
-                        f"FORK: {fork_tag} after {san_before}\n" +
-                        board_diagram(board, unicode=DIAGRAM_UNICODE)
-                    )
+                    log_board_event("Fork detected", extra=[f"Pattern: {fork_tag}"])
 
         # Підсумки
         total_time = time.time() - start_game
@@ -335,7 +356,27 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
 
         # Фінальна діаграма
         if PRINT_DIAGRAM:
-            logger.info("FINAL DIAGRAM:\n" + board_diagram(board, unicode=DIAGRAM_UNICODE))
+            final_info: List[str] = [
+                "FINAL DIAGRAM",
+                f"Result: {res}",
+                f"FEN: {board.fen()}",
+            ]
+            if last_move_san:
+                final_info.append(f"Last move: {last_move_san}")
+            reason_text = last_reason.strip()
+            if reason_text:
+                reason_parts = reason_text.splitlines()
+                final_info.append(f"Reason: {reason_parts[0]}")
+                final_info.extend(reason_parts[1:])
+            final_info.append(f"Moves played: {full_moves} ({plys} ply)")
+            final_info.append(f"Elapsed: {total_time:.2f}s")
+            logger.info(
+                annotated_board(
+                    board,
+                    final_info,
+                    unicode=DIAGRAM_UNICODE,
+                )
+            )
 
         # Usage-статистика модулів (якщо є)
         w_stats = agent_usage_stats(white_agent)
