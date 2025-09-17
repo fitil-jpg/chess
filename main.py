@@ -1,5 +1,6 @@
 # main.py
 import textwrap
+from itertools import zip_longest
 from typing import List, Sequence
 
 import chess
@@ -15,6 +16,7 @@ def annotated_board(
     unicode: bool = False,
     separator: str = "  │  ",
     info_width: int = 56,
+    side_by_side: bool = True,
 ) -> str:
     """Return a board diagram with a side panel of supplementary data."""
 
@@ -58,12 +60,16 @@ def annotated_board(
     if not any(line.strip() for line in wrapped_info):
         return diagram_text
 
-    total_lines = max(len(board_lines), len(wrapped_info))
-    board_lines.extend([" " * board_width] * (total_lines - len(board_lines)))
-    wrapped_info.extend([""] * (total_lines - len(wrapped_info)))
+    if not side_by_side:
+        info_text = "\n".join(wrapped_info).rstrip()
+        if not info_text:
+            return diagram_text
+        if not diagram_text:
+            return info_text
+        return f"{diagram_text}\n\n{info_text}"
 
     combined: List[str] = []
-    for board_line, info in zip(board_lines, wrapped_info):
+    for board_line, info in zip_longest(board_lines, wrapped_info, fillvalue=""):
         left = board_line.ljust(board_width)
         combined.append(f"{left}{separator}{info}".rstrip())
 
