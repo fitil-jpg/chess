@@ -45,12 +45,17 @@ if chess:
     }
 
     class ChessBoard:
-        def __init__(self, fen: Optional[str] = None):
+        def __init__(self, fen: Optional[str] = None, *, view=None):
             self.board: chess.Board = chess.Board(fen) if fen else chess.Board()
             # Очікується, що у вашому UI це оновлюється при кліку
             self.selected_square: Optional[int] = None  # 0..63 (python-chess)
             # Набір квадратів, які треба підсвітити (бордери)
             self.highlighted_squares: Set[int] = set()
+            # Опційно: PySide/Qt в'ю, яке відповідає за малювання клітинок
+            # (наприклад, ``ui.mini_board.MiniBoard`` або кастомний віджет).
+            # Базова реалізація очікує наявність методів
+            # ``set_border_highlights`` та ``request_repaint``.
+            self.view = view
 
         def load_fen(self, fen: str) -> None:
             self.board.set_fen(fen)
@@ -59,6 +64,7 @@ if chess:
         def clear_selection(self) -> None:
             self.selected_square = None
             self.highlighted_squares.clear()
+            self._apply_border_highlight()
             self._request_repaint()
 
         def select_square(self, square: int) -> List[int]:
@@ -113,26 +119,53 @@ if chess:
 
         # ---- Нижче — гачки під ваш GUI. Залишаються як TODO, якщо у вас інша реалізація. ----
         def _apply_border_highlight(self) -> None:
-            """Draw border highlights for ``self.highlighted_squares``.
+            """Forward highlighted squares to the attached GUI view.
 
-            Concrete GUI implementations must override this method to
-            integrate with their rendering system.
+            The default implementation looks for a ``view`` attribute that
+            exposes a :meth:`set_border_highlights` method (as provided by
+            :class:`ui.mini_board.MiniBoard`).  Custom GUIs can either supply a
+            compatible view object when constructing :class:`ChessBoard` or
+            override this hook to perform framework specific rendering.
             """
-            # приклад: self.view.draw_borders(self.highlighted_squares)
-            raise NotImplementedError(
-                "GUI integration required for border highlighting"
-            )
+
+            view = getattr(self, "view", None)
+            if view is None:
+                return
+
+            if hasattr(view, "set_border_highlights"):
+                view.set_border_highlights(self.highlighted_squares)
+            elif hasattr(view, "highlight_squares"):
+                # Залишено для сумісності зі старими в'ю, які малювали фон
+                view.highlight_squares(self.highlighted_squares)
+            else:
+                logger.debug(
+                    "ChessBoard view %s has no border highlight API", type(view)
+                )
 
         def _request_repaint(self) -> None:
-            """Request the GUI to repaint.
+            """Trigger a repaint on the attached view, if any.
 
-            Concrete GUI implementations must override this method to trigger
-            a repaint in their framework.
+            The helper prefers a dedicated ``request_repaint`` hook but will
+            gracefully fall back to common Qt methods such as ``update`` or
+            ``repaint``.  Projects embedding :class:`ChessBoard` in a different
+            UI toolkit can override the method or provide a view object exposing
+            one of these entry points.
             """
-            # приклад: self.view.update()
-            raise NotImplementedError(
-                "GUI integration required to request a repaint"
-            )
+
+            view = getattr(self, "view", None)
+            if view is None:
+                return
+
+            if hasattr(view, "request_repaint"):
+                view.request_repaint()
+            elif hasattr(view, "update"):
+                view.update()
+            elif hasattr(view, "repaint"):
+                view.repaint()
+            else:
+                logger.debug(
+                    "ChessBoard view %s has no repaint API", type(view)
+                )
 else:  # chess package not available
     CENTER_16 = set()
 

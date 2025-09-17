@@ -26,6 +26,7 @@ class MiniBoard(QWidget):
         self.scale = scale
         self.board = chess.Board()
         self.drawer_manager = DrawerManager()
+        self._border_highlights: set[int] = set()
 
         board_size = int(60 * 8 * scale)
         self.board_frame = QFrame(self)
@@ -57,6 +58,31 @@ class MiniBoard(QWidget):
         self._refresh_board()
 
     # ------------------------------------------------------------------
+    def set_border_highlights(self, squares) -> None:
+        """Update the border highlight set using python-chess square indices."""
+
+        new = {int(sq) for sq in squares}
+        if new == self._border_highlights:
+            return
+
+        self._border_highlights = new
+        self._apply_border_highlights()
+
+    # ------------------------------------------------------------------
+    def get_border_highlights(self) -> set[int]:
+        """Return a copy of the active border highlight squares."""
+
+        return set(self._border_highlights)
+
+    # ------------------------------------------------------------------
+    def request_repaint(self) -> None:
+        """Request a repaint for all cells (used by :class:`core.board.ChessBoard`)."""
+
+        for row in range(8):
+            for col in range(8):
+                self.cell_grid[row][col].update()
+
+    # ------------------------------------------------------------------
     def _refresh_board(self) -> None:
         piece_objects = {}
         for square in chess.SQUARES:
@@ -85,5 +111,17 @@ class MiniBoard(QWidget):
                 attackers = self.board.attackers(not self.board.turn, square)
                 cell.set_attack_count(len(attackers))
                 cell.set_highlight((row, col) in highlights)
+                cell.set_border_highlight(
+                    square in self._border_highlights
+                )
                 cell.update()
+
+    # ------------------------------------------------------------------
+    def _apply_border_highlights(self) -> None:
+        for row in range(8):
+            for col in range(8):
+                square = chess.square(col, 7 - row)
+                self.cell_grid[row][col].set_border_highlight(
+                    square in self._border_highlights
+                )
 
