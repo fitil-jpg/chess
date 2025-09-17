@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QLabel
-from PySide6.QtGui import QFont, QColor, QPalette, QPainter
+from PySide6.QtGui import QFont, QColor, QPalette, QPainter, QPen
 from PySide6.QtCore import Qt
 from core.constants import SYMBOLS
 
@@ -20,6 +20,7 @@ class Cell(QLabel):
         self.set_highlight(False)
         self._piece_symbol = None
         self.attack_count = 0
+        self._border_highlight = False
 
     def set_piece(self, piece_symbol):
         self._piece_symbol = piece_symbol
@@ -33,6 +34,10 @@ class Cell(QLabel):
 
     def set_attack_count(self, count):
         self.attack_count = count
+        self.update()
+
+    def set_border_highlight(self, active: bool):
+        self._border_highlight = bool(active)
         self.update()
 
     def paintEvent(self, event):
@@ -96,3 +101,16 @@ class Cell(QLabel):
                 painter.setOpacity(0.4)
                 painter.drawRect(0, 0, self.width(), self.height())
                 painter.setOpacity(1.0)
+
+        if self._border_highlight:
+            pen = QPen(QColor("#ff8800"))
+            pen.setWidth(max(2, int(3 * self.scale)))
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            inset = pen.width() // 2
+            painter.drawRect(
+                inset,
+                inset,
+                self.width() - inset * 2,
+                self.height() - inset * 2,
+            )
