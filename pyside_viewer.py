@@ -31,19 +31,11 @@ from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
 from utils.integration import generate_heatmaps
+from utils.metrics_sidebar import build_sidebar_metrics
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "DynamicBot"
 BLACK_AGENT = "FortifyBot"
-
-_PIECE_NAME = {
-    chess.PAWN:  "Pawns",
-    chess.KNIGHT:"Knights",
-    chess.BISHOP:"Bishops",
-    chess.ROOK:  "Rooks",
-    chess.QUEEN: "Queen",
-    chess.KING:  "King",
-}
 
 class OverallUsageChart(QWidget):
     """Simple bar chart summarising module usage across multiple runs."""
@@ -455,20 +447,6 @@ class ChessViewer(QWidget):
 
     # ---------- Метрики / статуси ----------
 
-    def _attack_metrics(self):
-        cells_w = sum(1 for sq in chess.SQUARES if self.board.is_attacked_by(chess.WHITE, sq))
-        cells_b = sum(1 for sq in chess.SQUARES if self.board.is_attacked_by(chess.BLACK, sq))
-        pieces_w = 0
-        pieces_b = 0
-        for sq, pc in self.board.piece_map().items():
-            if pc.color == chess.WHITE:
-                if self.board.is_attacked_by(chess.BLACK, sq):
-                    pieces_w += 1
-            else:
-                if self.board.is_attacked_by(chess.WHITE, sq):
-                    pieces_b += 1
-        return cells_w, cells_b, pieces_w, pieces_b
-
     def _truthy_features_preview(self, feats: dict | None) -> str:
         if not feats:
             return "—"
@@ -495,58 +473,6 @@ class ChessViewer(QWidget):
         if count <= 12: return "endgame"
         if count <= 20: return "midgame"
         return "opening"
-
-    def _attack_leaders_data(self):
-        out = {}
-        for color in (chess.WHITE, chess.BLACK):
-            unions = {
-                chess.PAWN:  set(),
-                chess.KNIGHT:set(),
-                chess.BISHOP:set(),
-                chess.ROOK:  set(),
-                chess.QUEEN: set(),
-                chess.KING:  set(),
-            }
-            for sq, pc in self.board.piece_map().items():
-                if pc.color != color: continue
-                unions[pc.piece_type] |= set(self.board.attacks(sq))
-            counts = {pt: len(sqs) for pt, sqs in unions.items()}
-            maxc = max(counts.values()) if counts else 0
-            tops = [pt for pt, c in counts.items() if c == maxc and maxc > 0]
-            out[color] = (counts, tops, maxc)
-        return out
-
-    def _attack_leaders_text(self) -> str:
-        data = self._attack_leaders_data()
-        def display_max_for(color_bool: bool) -> str:
-            counts, tops, _ = data[color_bool]
-            if not counts: return "—"
-            def disp(pt):
-                c = counts.get(pt, 0)
-                return min(c, 8) if pt == chess.KING else c
-            disp_max = max(disp(pt) for pt in counts.keys())
-            if disp_max == 0: return "—"
-            disp_tops = [pt for pt in counts.keys() if disp(pt) == disp_max]
-            names = ", ".join(_PIECE_NAME[t] for t in sorted(disp_tops))
-            return f"{names}({disp_max})"
-        w_txt = display_max_for(chess.WHITE)
-        b_txt = display_max_for(chess.BLACK)
-        return f"Attack leaders: W={w_txt} | B={b_txt}"
-
-    def _king_coeff_text(self) -> str:
-        def side(color: chess.Color) -> str:
-            base = (
-                8 * len(self.board.pieces(chess.PAWN, color))
-                + 2 * len(self.board.pieces(chess.BISHOP, color))
-                + 2 * len(self.board.pieces(chess.KNIGHT, color))
-                + 2 * len(self.board.pieces(chess.ROOK, color))
-                + len(self.board.pieces(chess.QUEEN, color))
-            )
-            modifier = 0.85 if not self.board.pieces(chess.QUEEN, not color) else 1.0
-            value = int(base * modifier)
-            return f"{value} (m={modifier:.2f})"
-
-        return f"King coeff: W={side(chess.WHITE)} | B={side(chess.BLACK)}"
 
     def _extract_reason_key(self, reason: str) -> str:
         """
@@ -695,25 +621,25 @@ class ChessViewer(QWidget):
         self.lbl_module.setText(f"Модуль: {reason}")
         self.lbl_features.setText(f"Фічі: {self._truthy_features_preview(feats)}")
 
-        side_to_move = self.board.turn
-        tmap = self.tmap_white if side_to_move == chess.WHITE else self.tmap_black
-        summ = tmap.summary(self.board)
+        metrics_lines = build_sidebar_metrics(
+            self.board,
+            {
+                chess.WHITE: self.tmap_white,
+                chess.BLACK: self.tmap_black,
+            },
+        )
 
-        thin_list = summ.get("thin_pieces", [])
-        thinN = len(thin_list)
-        def _n(sq): return chess.square_name(sq) if isinstance(sq, int) else "-"
-
-        if thinN > 0:
-            thin_sq = ", ".join(_n(sq) for (sq, _, _) in thin_list[:5])
-            self.lbl_threat.setText(f"ThreatMap: thin={thinN} [{thin_sq}], max_def={_n(summ.get('max_defended'))}")
-        else:
-            self.lbl_threat.setText(f"ThreatMap: thin=0, max_att={_n(summ.get('max_attacked'))}, max_def={_n(summ.get('max_defended'))}")
-
-        cw, cb, pw, pb = self._attack_metrics()
-        self.lbl_attacks.setText(f"Attacks: cells W={cw}, B={cb} | pieces under attack W={pw}, B={pb}")
-
-        self.lbl_leaders.setText(self._attack_leaders_text())
-        self.lbl_king.setText(self._king_coeff_text())
+        # Ensure UI labels stay in sync even if helper adds/removes lines later.
+        labels = (
+            self.lbl_threat,
+            self.lbl_attacks,
+            self.lbl_leaders,
+            self.lbl_king,
+        )
+        for label, text in zip(labels, metrics_lines):
+            label.setText(text)
+        for label in labels[len(metrics_lines):]:
+            label.setText("")
 
         # Оновити usage-діаграми і графік
         self._update_usage_charts()
