@@ -31,24 +31,57 @@ def create_metrics_panel(side: str, output_labels, left=False, endgame_label=Non
 PIECE_TYPES = ["pawn", "knight", "bishop", "rook", "queen", "king"]
 
 
-def create_heatmap_panel(callback):
-    """Return a panel with a combo box to toggle heatmaps by piece type.
+def create_heatmap_panel(
+    piece_callback,
+    *,
+    set_callback=None,
+    sets=None,
+    pieces=None,
+    current_set=None,
+    current_piece=None,
+):
+    """Return a panel that allows choosing the heatmap set and pattern.
 
-    ``callback`` is invoked with the selected piece name or ``None`` when the
-    selection is cleared.
+    ``piece_callback`` is invoked with the selected piece name or ``None`` when
+    the selection is cleared.  ``set_callback`` (when provided) receives the
+    newly selected heatmap set name.
     """
 
     layout = QVBoxLayout()
+
+    # Heatmap set selector -------------------------------------------------
+    layout.addWidget(QLabel("Heatmap set"))
+    set_combo = QComboBox()
+    set_items = list(sets or [])
+    for item in set_items:
+        set_combo.addItem(item)
+    if current_set and current_set in set_items:
+        idx = set_combo.findText(current_set)
+        if idx >= 0:
+            set_combo.setCurrentIndex(idx)
+    if set_callback is not None:
+        set_combo.currentTextChanged.connect(set_callback)
+    layout.addWidget(set_combo)
+
+    # Heatmap piece/pattern selector --------------------------------------
     layout.addWidget(QLabel("Heatmap piece"))
-    combo = QComboBox()
-    combo.addItem("none")
-    for p in PIECE_TYPES:
-        combo.addItem(p)
+    piece_combo = QComboBox()
+    piece_combo.addItem("none")
+    piece_items = list(pieces) if pieces is not None else PIECE_TYPES
+    for name in piece_items:
+        piece_combo.addItem(name)
 
-    def _on_change(text: str):
-        callback(text if text != "none" else None)
+    if current_piece:
+        idx = piece_combo.findText(current_piece)
+        if idx >= 0:
+            piece_combo.setCurrentIndex(idx)
+    elif current_piece is None:
+        piece_combo.setCurrentIndex(0)
 
-    combo.currentTextChanged.connect(_on_change)
-    layout.addWidget(combo)
-    return layout, combo
+    def _on_piece_change(text: str):
+        piece_callback(text if text != "none" else None)
+
+    piece_combo.currentTextChanged.connect(_on_piece_change)
+    layout.addWidget(piece_combo)
+    return layout, set_combo, piece_combo
 
