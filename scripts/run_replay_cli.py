@@ -163,7 +163,7 @@ def _display_position(
     info_lines.append(f"To move: {'White' if board.turn == chess.WHITE else 'Black'}")
     info_lines.append(f"FEN: {board.fen()}")
 
-    diagram = annotated_board(board, info_lines, unicode=unicode)
+    diagram = annotated_board(board, info_lines, unicode=unicode, side_by_side=True)
     print(diagram)
 
 
