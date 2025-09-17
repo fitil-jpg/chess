@@ -17,13 +17,14 @@ class DynamicBot:
         best_details = {}
 
         for move in board.legal_moves:
+            mover = board.turn
             board.push(move)
             sc, det = evaluate(board)
             board.pop()
 
             # Якщо хід робить ЧОРНИЙ — загальна оцінка з точки зору БІЛИХ все ще sc,
             # але бот (за чорних) максимізує свою користь, тобто *мінімізує* sc.
-            side_factor = 1 if board.turn == chess.WHITE else -1
+            side_factor = 1 if mover == chess.WHITE else -1
             sided_score = side_factor * sc
 
             if sided_score > best_score:
