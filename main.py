@@ -1,8 +1,73 @@
 # main.py
+import textwrap
+from typing import List, Sequence
+
 import chess
 from bot_agent import DynamicBot
 from evaluation import evaluate
 from pst_tables import PST_MG, PIECE_VALUES
+
+
+def annotated_board(
+    board: chess.Board,
+    info_lines: Sequence[str],
+    *,
+    unicode: bool = False,
+    separator: str = "  │  ",
+    info_width: int = 56,
+) -> str:
+    """Return a board diagram with a side panel of supplementary data."""
+
+    try:
+        from arena_threaded import board_diagram as diagram_func  # local import to avoid cycle
+    except ImportError:  # pragma: no cover - fallback for alternative entrypoints
+        diagram_func = None
+
+    if diagram_func is not None:
+        diagram_text = diagram_func(board, unicode=unicode)
+    else:
+        diagram_text = board.unicode(borders=True) if hasattr(board, "unicode") else str(board)
+
+    board_lines: List[str] = diagram_text.splitlines()
+    board_width = max((len(line) for line in board_lines), default=0)
+
+    wrapped_info: List[str] = []
+    for raw_line in info_lines:
+        if raw_line is None:
+            continue
+        text = str(raw_line)
+        if not text:
+            wrapped_info.append("")
+            continue
+        segments = text.splitlines() or [""]
+        for segment in segments:
+            if not segment:
+                wrapped_info.append("")
+                continue
+            wrapped = textwrap.wrap(
+                segment,
+                width=info_width,
+                break_long_words=False,
+                break_on_hyphens=False,
+            )
+            if wrapped:
+                wrapped_info.extend(wrapped)
+            else:
+                wrapped_info.append("")
+
+    if not any(line.strip() for line in wrapped_info):
+        return diagram_text
+
+    total_lines = max(len(board_lines), len(wrapped_info))
+    board_lines.extend([" " * board_width] * (total_lines - len(board_lines)))
+    wrapped_info.extend([""] * (total_lines - len(wrapped_info)))
+
+    combined: List[str] = []
+    for board_line, info in zip(board_lines, wrapped_info):
+        left = board_line.ljust(board_width)
+        combined.append(f"{left}{separator}{info}".rstrip())
+
+    return "\n".join(combined)
 
 def print_pst_summary():
     print("=== PST SUMMARY (midgame) ===")
