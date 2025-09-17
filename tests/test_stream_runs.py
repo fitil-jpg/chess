@@ -45,3 +45,8 @@ def test_stream_runs_missing_key():
         with pytest.raises(ValueError) as exc:
             list(stream_runs(tmpdir))
         assert "modules_b" in str(exc.value)
+
+
+def test_stream_runs_missing_directory():
+    with pytest.raises(FileNotFoundError):
+        list(stream_runs("missing/path"))
