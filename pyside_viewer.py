@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea,
 )
-from PySide6.QtCore import QTimer, QRect, Qt
+from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
 
 from core.pst_trainer import update_from_board, update_from_history
@@ -115,16 +115,36 @@ class ChessViewer(QWidget):
         # Логіка позиції
         self.board = chess.Board()
         self.piece_objects = {}
+        self.settings = QSettings("ChessViewer", "Preferences")
+        saved_set_raw = self.settings.value("heatmap/set")
+        saved_set = str(saved_set_raw) if saved_set_raw is not None else None
+        saved_piece_raw = self.settings.value("heatmap/piece")
+        saved_piece_missing = saved_piece_raw is None
+        if not saved_piece_missing:
+            saved_piece_str = str(saved_piece_raw)
+            saved_piece = None if saved_piece_str == "none" else saved_piece_str
+        else:
+            saved_piece = None
+
         self.drawer_manager = DrawerManager()
-        default_heatmap_piece = None
-        if self.drawer_manager.heatmaps:
-            for piece_name in ["pawn", "knight", "bishop", "rook", "queen", "king"]:
-                if piece_name in self.drawer_manager.heatmaps:
-                    default_heatmap_piece = piece_name
-                    break
-            if default_heatmap_piece is None:
-                default_heatmap_piece = next(iter(self.drawer_manager.heatmaps))
-            self.drawer_manager.active_heatmap_piece = default_heatmap_piece
+        self.heatmap_set_combo = None
+        self.heatmap_piece_combo = None
+
+        if saved_set:
+            self.drawer_manager.set_heatmap_set(saved_set)
+
+        default_heatmap_set = self.drawer_manager.active_heatmap_set
+        default_heatmap_piece = self.drawer_manager.active_heatmap_piece
+
+        if not saved_piece_missing:
+            if saved_piece is None:
+                self.drawer_manager.active_heatmap_piece = None
+                default_heatmap_piece = None
+            elif saved_piece in self.drawer_manager.heatmaps:
+                self.drawer_manager.active_heatmap_piece = saved_piece
+                default_heatmap_piece = saved_piece
+            else:
+                default_heatmap_piece = self.drawer_manager.active_heatmap_piece
 
         # Агенти
         self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
@@ -217,12 +237,21 @@ class ChessViewer(QWidget):
 
         # Heatmap selection panel
         if self.drawer_manager.heatmaps:
-            heatmap_layout, heatmap_combo = create_heatmap_panel(self._on_heatmap_piece)
-            if default_heatmap_piece:
-                index = heatmap_combo.findText(str(default_heatmap_piece))
-                if index >= 0:
-                    heatmap_combo.setCurrentIndex(index)
+            heatmap_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
+                self._on_heatmap_piece,
+                set_callback=self._on_heatmap_set,
+                sets=self.drawer_manager.list_heatmap_sets(),
+                pieces=list(self.drawer_manager.heatmaps),
+                current_set=default_heatmap_set,
+                current_piece=default_heatmap_piece,
+            )
             right_col.addLayout(heatmap_layout)
+            self._populate_heatmap_pieces(default_heatmap_piece)
+            self._sync_heatmap_set_selection()
+            self._save_heatmap_preferences(
+                set_name=self.drawer_manager.active_heatmap_set,
+                piece_name=self.drawer_manager.active_heatmap_piece,
+            )
         else:
             msg = QLabel(
                 "Heatmap data missing – generate files via "
@@ -560,9 +589,94 @@ class ChessViewer(QWidget):
         except Exception as exc:
             QMessageBox.warning(self, "Heatmaps", f"Generation failed: {exc}")
 
+    def _sync_heatmap_set_selection(self) -> None:
+        """Ensure the set combo reflects :class:`DrawerManager` state."""
+
+        if not self.heatmap_set_combo:
+            return
+        active = self.drawer_manager.active_heatmap_set
+        index = self.heatmap_set_combo.findText(active)
+        if index >= 0 and self.heatmap_set_combo.currentIndex() != index:
+            self.heatmap_set_combo.blockSignals(True)
+            self.heatmap_set_combo.setCurrentIndex(index)
+            self.heatmap_set_combo.blockSignals(False)
+
+    def _populate_heatmap_pieces(self, current_piece: str | None) -> None:
+        """Rebuild the piece combo according to the active set."""
+
+        if not self.heatmap_piece_combo:
+            return
+        self.heatmap_piece_combo.blockSignals(True)
+        self.heatmap_piece_combo.clear()
+        self.heatmap_piece_combo.addItem("none")
+        for name in self.drawer_manager.heatmaps:
+            self.heatmap_piece_combo.addItem(name)
+
+        selection = (
+            current_piece
+            if current_piece is not None
+            else self.drawer_manager.active_heatmap_piece
+        )
+        if selection is None:
+            self.heatmap_piece_combo.setCurrentIndex(0)
+        else:
+            idx = self.heatmap_piece_combo.findText(selection)
+            if idx >= 0:
+                self.heatmap_piece_combo.setCurrentIndex(idx)
+            else:
+                self.heatmap_piece_combo.setCurrentIndex(0)
+        self.heatmap_piece_combo.setEnabled(self.heatmap_piece_combo.count() > 1)
+        self.heatmap_piece_combo.blockSignals(False)
+
+    def _save_heatmap_preferences(
+        self, *, set_name: str | None = None, piece_name: str | None = None
+    ) -> None:
+        """Persist the chosen heatmap set/piece across viewer sessions."""
+
+        if set_name is not None:
+            self.settings.setValue("heatmap/set", set_name)
+        if piece_name is not None:
+            value = "none" if piece_name is None else piece_name
+            self.settings.setValue("heatmap/piece", value)
+
+    def _on_heatmap_set(self, set_name: str) -> None:
+        """Callback for heatmap set selection."""
+
+        if not set_name:
+            return
+
+        previous_piece_raw = self.settings.value("heatmap/piece")
+        previous_piece_missing = previous_piece_raw is None
+        previous_piece = None
+        if not previous_piece_missing:
+            previous_piece_str = str(previous_piece_raw)
+            previous_piece = None if previous_piece_str == "none" else previous_piece_str
+
+        self.drawer_manager.set_heatmap_set(set_name)
+        self._sync_heatmap_set_selection()
+
+        active_piece = self.drawer_manager.active_heatmap_piece
+        if not previous_piece_missing:
+            if previous_piece is None:
+                active_piece = None
+            elif previous_piece in self.drawer_manager.heatmaps:
+                active_piece = previous_piece
+
+        self.drawer_manager.active_heatmap_piece = active_piece
+        self._populate_heatmap_pieces(active_piece)
+        self._save_heatmap_preferences(
+            set_name=self.drawer_manager.active_heatmap_set,
+            piece_name=active_piece,
+        )
+        self._refresh_board()
+
     def _on_heatmap_piece(self, piece: str | None) -> None:
         """Callback for heatmap piece selection."""
         self.drawer_manager.active_heatmap_piece = piece
+        self._save_heatmap_preferences(
+            set_name=self.drawer_manager.active_heatmap_set,
+            piece_name=piece,
+        )
         self._refresh_board()
 
     def _on_timeline_click(self, index: int, is_white: bool) -> None:
