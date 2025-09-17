@@ -26,12 +26,13 @@ def mobility_score(board: chess.Board) -> int:
         return 0
 
     # Порахуємо к-ть легальних ходів для кожної сторони, не змінюючи позицію.
-    turn = board.turn
-    board.turn = chess.WHITE
-    white_moves = sum(1 for _ in board.legal_moves)
-    board.turn = chess.BLACK
-    black_moves = sum(1 for _ in board.legal_moves)
-    board.turn = turn
+    white_board = board.copy(stack=False)
+    white_board.turn = chess.WHITE
+    white_moves = sum(1 for _ in white_board.legal_moves)
+
+    black_board = board.copy(stack=False)
+    black_board.turn = chess.BLACK
+    black_moves = sum(1 for _ in black_board.legal_moves)
 
     return (white_moves - black_moves) * 2  # невелика вага
 
