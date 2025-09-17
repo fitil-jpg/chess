@@ -44,10 +44,13 @@ def attacked_squares_metrics(board: chess.Board) -> dict:
                 total += 1
         return total
 
+    white_attacks = count_attacks(chess.WHITE)
+    black_attacks = count_attacks(chess.BLACK)
+
     return {
-        "white_attacks": count_attacks(chess.WHITE),
-        "black_attacks": count_attacks(chess.BLACK),
-        "delta_attacks": count_attacks(chess.WHITE) - count_attacks(chess.BLACK),
+        "white_attacks": white_attacks,
+        "black_attacks": black_attacks,
+        "delta_attacks": white_attacks - black_attacks,
     }
 
 def evaluate(board: chess.Board) -> tuple[int, dict]:
