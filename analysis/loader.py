@@ -45,6 +45,10 @@ def stream_runs(
     """
 
     base_path = Path(path)
+
+    if not base_path.exists() or not base_path.is_dir():
+        raise FileNotFoundError(f"Directory not found: {path}")
+
     files = sorted(base_path.glob("*.json"))
 
     if sample_size is not None and sample_size < len(files):
