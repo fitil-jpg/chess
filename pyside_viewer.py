@@ -551,7 +551,7 @@ class ChessViewer(QWidget):
                     fens = [line.strip() for line in fh if line.strip()]
             else:
                 fens = [self.board.fen()]
-            generate_heatmaps(fens)
+            generate_heatmaps(fens, pattern_set="default")
             QMessageBox.information(
                 self,
                 "Heatmaps",

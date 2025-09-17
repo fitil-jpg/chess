@@ -5,11 +5,12 @@ fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 board = parse_fen(fen)
 heatmaps = generate_heatmaps([fen])
+default_heatmaps = heatmaps.get("default", {})
 metrics = compute_metrics(fen)
 
 print("Board:")
 print(board)
 print("Heatmaps:")
-print(json.dumps(heatmaps, indent=2))
+print(json.dumps(default_heatmaps, indent=2))
 print("Metrics:")
 print(json.dumps(metrics, indent=2))

@@ -39,11 +39,12 @@ def test_generate_heatmaps_from_wins_filters_results(monkeypatch, tmp_path):
 
     captured = {}
 
-    def fake_generate_heatmaps(fens, *, out_dir, use_wolfram):
+    def fake_generate_heatmaps(fens, *, out_dir, pattern_set, use_wolfram):
         captured["fens"] = list(fens)
         captured["out_dir"] = out_dir
+        captured["pattern_set"] = pattern_set
         captured["use_wolfram"] = use_wolfram
-        return {"status": "ok"}
+        return {pattern_set: {"status": "ok"}}
 
     monkeypatch.setattr(
         "analysis.generate_heatmaps_from_wins.generate_heatmaps",
@@ -51,9 +52,9 @@ def test_generate_heatmaps_from_wins_filters_results(monkeypatch, tmp_path):
     )
 
     result = generate_heatmaps_from_wins(
-        str(pgn_path), out_dir="custom", use_wolfram=True
+        str(pgn_path), out_dir="custom", pattern_set="default", use_wolfram=True
     )
-    assert result == {"status": "ok"}
+    assert result == {"default": {"status": "ok"}}
 
     winning_games = [
         game
@@ -64,4 +65,5 @@ def test_generate_heatmaps_from_wins_filters_results(monkeypatch, tmp_path):
 
     assert captured["fens"] == expected_fens
     assert captured["out_dir"] == "custom"
+    assert captured["pattern_set"] == "default"
     assert captured["use_wolfram"] is True

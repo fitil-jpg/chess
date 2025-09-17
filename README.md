@@ -164,7 +164,9 @@ wolframscript -file analysis/heatmaps/generate_heatmaps.wl \
 ```
 
 Heatmap matrices are written as CSV and JSON files into the directory containing
-`moves.csv` (such as `analysis/heatmaps/` in this example).
+`moves.csv` (such as `analysis/heatmaps/` in this example). When invoking the
+Python helper ``utils.integration.generate_heatmaps`` the files are stored in the
+``analysis/heatmaps/<pattern_set>`` subdirectory (``default`` by default).
 The Wolfram variant requires the Wolfram Engine and exposes the same
 `--palette`, `--bins` and `--resolution` options. From Python set
 `use_wolfram=True` when calling `utils.integration.generate_heatmaps` to use

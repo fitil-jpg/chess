@@ -11,8 +11,9 @@ from utils.integration import parse_fen, generate_heatmaps, compute_metrics
 ```
 
 * `parse_fen(fen)` – return an 8×8 board state representation.
-* `generate_heatmaps(fens, out_dir="analysis/heatmaps")` – create
-  heatmap JSON files and return them as dictionaries.
+* `generate_heatmaps(fens, out_dir="analysis/heatmaps", pattern_set="default")`
+  – create heatmap JSON files inside ``<out_dir>/<pattern_set>`` and return
+  them grouped by pattern-set name.
 * `compute_metrics(fen)` – compute short‑ and long‑term metrics for a
   position.
 
@@ -20,9 +21,9 @@ from utils.integration import parse_fen, generate_heatmaps, compute_metrics
 
 ### Heatmaps
 
-Heatmaps are written as JSON files inside the specified output directory
-(``analysis/heatmaps/`` by default).  Each file contains an 8×8 matrix of
-integers, e.g.
+Heatmaps are written as JSON files inside the selected pattern-set directory
+(``analysis/heatmaps/default`` by default).  Each file contains an 8×8 matrix
+of integers, e.g.
 
 ```json
 [[0,1,0,0,0,0,0,0],
@@ -52,10 +53,13 @@ fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 board_state = parse_fen(fen)
 heatmaps = generate_heatmaps([fen])
+default_heatmaps = heatmaps["default"]
 metrics = compute_metrics(fen)
 ```
 
-The ``heatmaps`` dictionary maps FEN identifiers to 8×8 matrices, while
+The ``heatmaps`` dictionary maps pattern-set names to dictionaries of FEN
+identifiers and their 8×8 matrices. ``default_heatmaps`` contains the
+generated matrices for the default set, while
 ``metrics`` contains the derived evaluation numbers for the position.
 
 ### Generating heatmaps in R

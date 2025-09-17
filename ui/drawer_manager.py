@@ -29,7 +29,13 @@ class DrawerManager:
 
         heatmaps = {}
         base = Path(__file__).resolve().parent.parent / "analysis" / "heatmaps"
-        if not base.exists():
+        default_dir = base / "default"
+        if default_dir.exists():
+            search_dir = default_dir
+        else:
+            search_dir = base
+
+        if not search_dir.exists():
             logger.warning(
                 "Heatmap data missing – generate files via "
                 "`utils.integration.generate_heatmaps` or "
@@ -37,7 +43,7 @@ class DrawerManager:
             )
             return heatmaps
 
-        files = list(base.glob("*.json"))
+        files = list(search_dir.glob("*.json"))
         if not files:
             logger.warning(
                 "Heatmap data missing – generate files via "

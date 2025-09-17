@@ -53,8 +53,10 @@ def test_full_pipeline(tmp_path, monkeypatch):
 
     monkeypatch.setattr(integration.subprocess, "run", fake_run)
     heatmaps = integration.generate_heatmaps(fens, out_dir=str(heat_dir))
-    assert (heat_dir / "heatmap_0.json").exists()
-    assert "0" in heatmaps and len(heatmaps["0"]) == 8
+    default_dir = heat_dir / "default"
+    assert (default_dir / "heatmap_0.json").exists()
+    assert "default" in heatmaps
+    assert "0" in heatmaps["default"] and len(heatmaps["default"]["0"]) == 8
 
     # --- Metrics ---------------------------------------------------------
     metrics = integration.compute_metrics(fens[0])

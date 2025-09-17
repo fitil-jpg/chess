@@ -33,9 +33,10 @@ def parse_fen(fen: str) -> List[List[str | None]]:
 
 def generate_heatmaps(
     fens: Iterable[str],
-    out_dir: str = "analysis/heatmaps",
+    out_dir: str | Path | None = None,
+    pattern_set: str = "default",
     use_wolfram: bool = False,
-) -> Dict[str, List[List[int]]]:
+) -> Dict[str, Dict[str, List[List[int]]]]:
     """Generate heatmaps for *fens* and return them as dictionaries.
 
     This function serialises ``fens`` into a CSV file and invokes either the
@@ -43,11 +44,14 @@ def generate_heatmaps(
     default) ``analysis/heatmaps/generate_heatmaps.R`` is executed via
     ``Rscript``.  When ``True`` the Wolfram Language implementation
     ``analysis/heatmaps/generate_heatmaps.wl`` is run via ``wolframscript``.
-    The resulting JSON heatmaps are loaded and returned as a mapping from
-    ``fen_id`` to 8×8 integer matrices.
+    The resulting JSON heatmaps are loaded from ``analysis/heatmaps/<pattern_set>``
+    (or ``out_dir/<pattern_set>`` when ``out_dir`` is provided) and returned as
+    ``{pattern_set: {fen_id: matrix}}`` with each matrix being an 8×8 grid of
+    integers.
     """
 
-    out_path = Path(out_dir)
+    base_path = Path(out_dir) if out_dir is not None else Path("analysis/heatmaps")
+    out_path = base_path / pattern_set
     out_path.mkdir(parents=True, exist_ok=True)
     csv_path = out_path / "fens.csv"
     export_fen_table(fens, csv_path=str(csv_path))
@@ -77,7 +81,7 @@ def generate_heatmaps(
     for json_file in heatmap_files:
         with json_file.open("r", encoding="utf-8") as fh:
             heatmaps[json_file.stem.replace("heatmap_", "")] = json.load(fh)
-    return heatmaps
+    return {pattern_set: heatmaps}
 
 
 def compute_metrics(fen: str) -> Dict[str, Dict[str, Any]]:

@@ -4,7 +4,7 @@ The viewer can render additional overlays on top of board cells using
 `DrawerManager`.  It now understands three sources of analysis data:
 
 * **Heatmaps** – JSON files in the heatmap output directory (e.g.
-  `analysis/heatmaps/`) containing 8×8 matrices of numbers in the range
+  `analysis/heatmaps/default/`) containing 8×8 matrices of numbers in the range
   0–1.  Each value is rendered as a translucent square with a colour
   gradient from green (`0.0`) to red (`1.0`).
 * **Agent metrics** – key/value pairs stored in
@@ -17,7 +17,7 @@ The viewer can render additional overlays on top of board cells using
 
 ## Heatmap format
 
-Example `analysis/heatmaps/example.json`:
+Example `analysis/heatmaps/default/example.json`:
 
 ```json
 [
