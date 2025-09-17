@@ -1,7 +1,11 @@
 # evaluation.py
+from typing import Optional
+
 import chess
 from pst_loader import effective_pst_for_piece, game_phase_from_board
 from pst_tables import PIECE_VALUES
+
+MATE_SCORE = 100_000
 
 def material_score(board: chess.Board) -> int:
     score = 0
@@ -56,8 +60,35 @@ def attacked_squares_metrics(board: chess.Board) -> dict:
         "delta_attacks": white_attacks - black_attacks,
     }
 
-def evaluate(board: chess.Board) -> tuple[int, dict]:
-    """Повертає (оцінка з точки зору БІЛИХ, деталi)."""
+def _terminal_score(board: chess.Board) -> Optional[int]:
+    """Return a terminal score if the position is terminal."""
+
+    if board.is_checkmate():
+        score = MATE_SCORE if board.turn == chess.BLACK else -MATE_SCORE
+        return score
+
+    draw_detectors = [
+        board.is_stalemate,
+        getattr(board, "is_insufficient_material", lambda: False),
+        getattr(board, "is_seventyfive_moves", lambda: False),
+        getattr(board, "is_fivefold_repetition", lambda: False),
+        board.is_repetition,
+    ]
+
+    for detector in draw_detectors:
+        try:
+            if detector():
+                return 0
+        except TypeError:
+            # ``board.is_repetition`` accepts an optional count parameter in
+            # some python-chess versions.  Retry with the default claim value.
+            if detector is board.is_repetition and detector(3):
+                return 0
+
+    return None
+
+
+def _evaluation_components(board: chess.Board) -> tuple[int, dict]:
     mat = material_score(board)
     pst = pst_score(board)
     mob = mobility_score(board)
@@ -73,4 +104,18 @@ def evaluate(board: chess.Board) -> tuple[int, dict]:
         "delta_attacks": atk["delta_attacks"],
         "total": total,
     }
+
+    return total, details
+
+
+def evaluate(board: chess.Board) -> tuple[int, dict]:
+    """Повертає (оцінка з точки зору БІЛИХ, деталi)."""
+
+    terminal_score = _terminal_score(board)
+    total, details = _evaluation_components(board)
+
+    if terminal_score is not None:
+        details["total"] = terminal_score
+        return terminal_score, details
+
     return total, details
