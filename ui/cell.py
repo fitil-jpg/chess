@@ -74,7 +74,9 @@ class Cell(QLabel):
             elif overlay_type == "king_attacked":
                 painter.setBrush(QColor("red"))
                 painter.setPen(Qt.NoPen)
+                painter.setOpacity(0.6)  # Reduce transparency from full opacity to 60%
                 painter.drawEllipse(int(4 * self.scale), int(20 * self.scale), int(13 * self.scale), int(13 * self.scale))
+                painter.setOpacity(1.0)  # Reset opacity for other drawings
             elif overlay_type == "rook_defended":
                 painter.setBrush(QColor("blue"))
                 painter.setPen(Qt.NoPen)
