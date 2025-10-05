@@ -80,12 +80,35 @@ export function renderFenBoard(target, fen, overlays = [], options = {}) {
         }
       }
 
-      const overlay = overlays[r] && overlays[r][c];
-      if (overlay && overlay.length) {
-        // Apply the colour of the last overlay entry.
-        const last = overlay[overlay.length - 1];
-        cell.style.backgroundColor = last.color;
-        cell.style.opacity = '0.7';
+      const overlayItems = overlays[r] && overlays[r][c];
+      if (overlayItems && overlayItems.length) {
+        // Prefer gradient overlays for background colouring; avoid solid fills for alerts.
+        const getType = (item) => (item && typeof item === 'object' && 'type' in item) ? item.type : (Array.isArray(item) ? item[0] : undefined);
+        const getColor = (item) => (item && typeof item === 'object' && 'color' in item) ? item.color : (Array.isArray(item) ? item[1] : undefined);
+
+        const gradientItem = overlayItems.find((it) => getType(it) === 'gradient');
+        if (gradientItem) {
+          const color = getColor(gradientItem);
+          if (color) {
+            cell.style.backgroundColor = color;
+            cell.style.opacity = '0.7';
+          }
+        }
+
+        // Render non-gradient overlays (e.g., king_attacked) as small markers, not full-cell fills.
+        const attackedItem = overlayItems.find((it) => getType(it) === 'king_attacked');
+        if (attackedItem) {
+          const marker = document.createElement('div');
+          marker.style.position = 'absolute';
+          marker.style.width = '12px';
+          marker.style.height = '12px';
+          marker.style.borderRadius = '50%';
+          marker.style.backgroundColor = getColor(attackedItem) || 'red';
+          marker.style.top = '50%';
+          marker.style.left = '50%';
+          marker.style.transform = 'translate(-50%, -50%)';
+          cell.appendChild(marker);
+        }
       }
 
       if (scenarioMap[r] && scenarioMap[r][c]) {
