@@ -41,5 +41,4 @@ Thumbs.db
 *.qrc.dep
 *.qm
 
-# Project stats
 stats/usage_counts.json
