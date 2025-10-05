@@ -113,14 +113,45 @@ def run_match(max_plies: int = 40):
         print(f"  FEN: {board.fen()}")
         print("-")
 
-    print("Result:", board.result(claim_draw=True))
-    print("Game over reason:",
-          "checkmate" if board.is_checkmate() else
-          "stalemate" if board.is_stalemate() else
-          "insufficient material" if board.is_insufficient_material() else
-          "seventyfive-move" if board.is_seventyfive_moves() else
-          "fivefold repetition" if board.is_fivefold_repetition() else
-          "move limit reached"
+    # Cross-version compatibility for python-chess API differences.
+    def _safe_result(b: chess.Board) -> str:
+        try:
+            return b.result(claim_draw=True)
+        except TypeError:
+            # Older python-chess versions don't accept claim_draw
+            return b.result()
+
+    def _has(board_obj: chess.Board, method_name: str) -> bool:
+        method = getattr(board_obj, method_name, None)
+        if not callable(method):
+            return False
+        try:
+            return method()
+        except TypeError:
+            # Some versions require an optional count for is_repetition
+            if method_name == "is_repetition":
+                try:
+                    return method(3)
+                except Exception:
+                    return False
+            return False
+
+    print("Result:", _safe_result(board))
+    print(
+        "Game over reason:",
+        "checkmate"
+        if board.is_checkmate()
+        else "stalemate"
+        if board.is_stalemate()
+        else "insufficient material"
+        if _has(board, "is_insufficient_material")
+        else "seventyfive-move"
+        if _has(board, "is_seventyfive_moves")
+        else "fivefold repetition"
+        if _has(board, "is_fivefold_repetition")
+        else "repetition"
+        if _has(board, "is_repetition")
+        else "move limit reached",
     )
 
 if __name__ == "__main__":
