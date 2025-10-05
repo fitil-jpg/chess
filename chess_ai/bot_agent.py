@@ -35,6 +35,7 @@ __all__ = [
     "AggressiveBot",
     "HybridBot",
     "KingValueBot",
+    "StockfishBot",
     "ChessBot",
     "EndgameBot",
     "RandomBot",
@@ -100,6 +101,20 @@ try:
     from .king_value_bot import KingValueBot  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     class KingValueBot(ChessBot):
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
+            return super().choose_move(board, context, evaluator, debug)
+
+# Optional UCI engine-backed bot (Stockfish)
+try:
+    from .stockfish_bot import StockfishBot  # type: ignore
+except Exception:  # pragma: no cover - environments without engine
+    class StockfishBot(ChessBot):  # type: ignore
         def choose_move(
             self,
             board: chess.Board,
@@ -997,6 +1012,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "AggressiveBot":     _factory(AggressiveBot),
     "HybridBot":         _factory(HybridBot),
     "KingValueBot":     _factory(KingValueBot),
+    "StockfishBot":      _factory(StockfishBot),
     "ChessBot":          _factory(ChessBot),
     "EndgameBot":        _factory(EndgameBot),
     "RandomBot":         _factory(RandomBot),

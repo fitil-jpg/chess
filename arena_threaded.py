@@ -32,6 +32,7 @@ from main import annotated_board
 THREADS = 4
 GAMES_PER_THREAD = 2
 
+# Default internal vs internal. Override to pit against external engine.
 WHITE_AGENT = "DynamicBot"
 BLACK_AGENT = "FortifyBot"
 
