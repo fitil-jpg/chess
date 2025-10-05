@@ -2,10 +2,13 @@
 import textwrap
 from itertools import zip_longest
 from typing import List, Sequence
+import argparse
 
 import chess
 from bot_agent import DynamicBot
+from utils.metrics_sidebar import build_sidebar_metrics
 from evaluation import evaluate
+from pst_loader import effective_pst_for_piece, game_phase_from_board
 from pst_tables import PST_MG, PIECE_VALUES
 
 
@@ -85,7 +88,54 @@ def print_pst_summary():
     print("Piece values:", PIECE_VALUES)
     print("=============================")
 
-def run_match(max_plies: int = 40):
+
+def _pst_insights(board: chess.Board) -> List[str]:
+    """Relate evaluation to PST numbers for current phase.
+
+    Returns bullet-like lines: per-piece PST totals and top contributing cells.
+    """
+    phase = game_phase_from_board(board)
+
+    per_piece: dict[int, int] = {pt: 0 for pt in range(1, 7)}
+    cell_contribs: List[tuple[int, str]] = []  # (abs_val, display)
+    sym = {
+        chess.PAWN: "P",
+        chess.KNIGHT: "N",
+        chess.BISHOP: "B",
+        chess.ROOK: "R",
+        chess.QUEEN: "Q",
+        chess.KING: "K",
+    }
+
+    for piece_type in range(1, 7):
+        table = effective_pst_for_piece(piece_type, phase=phase)
+        for sq in board.pieces(piece_type, chess.WHITE):
+            v = int(table[sq])
+            per_piece[piece_type] += v
+            cell_contribs.append((abs(v), f"W {sym[piece_type]}{chess.square_name(sq)}:{v:+d}"))
+        for sq in board.pieces(piece_type, chess.BLACK):
+            v = -int(table[chess.square_mirror(sq)])
+            per_piece[piece_type] += v
+            cell_contribs.append((abs(v), f"B {sym[piece_type]}{chess.square_name(sq)}:{v:+d}"))
+
+    summary = (
+        f"PST[{phase}] per-piece: "
+        f"P={per_piece[chess.PAWN]:+d} N={per_piece[chess.KNIGHT]:+d} "
+        f"B={per_piece[chess.BISHOP]:+d} R={per_piece[chess.ROOK]:+d} "
+        f"Q={per_piece[chess.QUEEN]:+d} K={per_piece[chess.KING]:+d}"
+    )
+
+    cell_contribs.sort(key=lambda t: t[0], reverse=True)
+    top_cells = ", ".join(text for _, text in cell_contribs[:4]) or "-"
+    return [summary, f"Top PST cells: {top_cells}"]
+
+def run_match(
+    max_plies: int = 40,
+    *,
+    diagram_every: int | None = None,
+    diagram_unicode: bool = False,
+    include_metrics: bool = True,
+):
     board = chess.Board()
     white = DynamicBot("DynamicBot-White")
     black = DynamicBot("DynamicBot-Black")
@@ -107,11 +157,42 @@ def run_match(max_plies: int = 40):
         score, _ = evaluate(board)
 
         print(f"[Ply {ply:02d}] {side} {bot.name} played {board.peek().uci()}")
-        print(f"  material={det['material']}  pst={det['pst']}  mobility={det['mobility']}  "
-              f"att_w={det['attacks_white']} att_b={det['attacks_black']}  delta_att={det['delta_attacks']}")
+        print(
+            f"  material={det['material']}  pst={det['pst']}  mobility={det['mobility']}  "
+            f"att_w={det['attacks_white']} att_b={det['attacks_black']}  delta_att={det['delta_attacks']}"
+        )
         print(f"  eval_before_push(raw)≈{det['raw_score']}   eval_after={score}")
         print(f"  FEN: {board.fen()}")
         print("-")
+
+        # Optional ASCII/Unicode board diagram every N plies with metrics
+        if diagram_every and diagram_every > 0 and (ply % diagram_every == 0):
+            info_lines: List[str] = [
+                f"Ply {ply:02d}: {side} {bot.name} {board.peek().uci()}",
+                f"material={det['material']}  pst={det['pst']}  mobility={det['mobility']}",
+                f"att_w={det['attacks_white']} att_b={det['attacks_black']}  delta_att={det['delta_attacks']}",
+                f"eval_after={score}  raw≈{det['raw_score']}",
+                f"FEN: {board.fen()}",
+            ]
+            if include_metrics:
+                try:
+                    info_lines.extend(build_sidebar_metrics(board))
+                except Exception:
+                    # Metrics are optional; continue even if they fail
+                    pass
+            # Add PST insights for the current phase
+            try:
+                info_lines.extend(_pst_insights(board))
+            except Exception:
+                pass
+            print(
+                annotated_board(
+                    board,
+                    info_lines,
+                    unicode=diagram_unicode,
+                    side_by_side=True,
+                )
+            )
 
     # Cross-version compatibility for python-chess API differences.
     def _safe_result(b: chess.Board) -> str:
@@ -136,9 +217,8 @@ def run_match(max_plies: int = 40):
                     return False
             return False
 
-    print("Result:", _safe_result(board))
-    print(
-        "Game over reason:",
+    result_text = _safe_result(board)
+    reason_text = (
         "checkmate"
         if board.is_checkmate()
         else "stalemate"
@@ -151,9 +231,63 @@ def run_match(max_plies: int = 40):
         if _has(board, "is_fivefold_repetition")
         else "repetition"
         if _has(board, "is_repetition")
-        else "move limit reached",
+        else "move limit reached"
+    )
+    print("Result:", result_text)
+    print("Game over reason:", reason_text)
+
+    # Print a final annotated board diagram with metrics and reason
+    final_info: List[str] = [
+        "FINAL POSITION",
+        f"Result: {result_text}",
+        f"Reason: {reason_text}",
+        f"FEN: {board.fen()}",
+        f"Moves played: {board.fullmove_number} ({len(board.move_stack)} ply)",
+    ]
+    if include_metrics:
+        try:
+            final_info.extend(build_sidebar_metrics(board))
+        except Exception:
+            pass
+    # Always try to add PST insights at the end
+    try:
+        final_info.extend(_pst_insights(board))
+    except Exception:
+        pass
+    print(
+        annotated_board(
+            board,
+            final_info,
+            unicode=diagram_unicode,
+            side_by_side=True,
+        )
     )
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run a headless chess match between internal bots.")
+    parser.add_argument("--max-plies", type=int, default=40, help="Maximum number of plies to play")
+    parser.add_argument(
+        "--diagram-every",
+        type=int,
+        default=0,
+        help="Print ASCII/Unicode board every N plies (0 disables)",
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--unicode", action="store_true", help="Use Unicode chess symbols in diagrams")
+    group.add_argument("--ascii", action="store_true", help="Force ASCII diagrams (default)")
+    parser.add_argument(
+        "--no-metrics",
+        action="store_true",
+        help="Do not include sidebar metrics in diagrams",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    # 40 плайів = 20 ходів кожної сторони. Зміни якщо треба.
-    run_match(max_plies=40)
+    args = _parse_args()
+    run_match(
+        max_plies=args.max_plies,
+        diagram_every=(args.diagram_every if args.diagram_every > 0 else None),
+        diagram_unicode=(True if args.unicode else False),
+        include_metrics=(False if args.no_metrics else True),
+    )
