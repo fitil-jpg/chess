@@ -19,6 +19,7 @@ if str(VENDOR_PATH) not in sys.path:
     sys.path.append(str(VENDOR_PATH))
 
 import chess
+from .base_evaluator import MetricEvaluator
 
 from metrics_common import (
     count_attacked_squares as _count_attacked_squares,
@@ -70,5 +71,5 @@ class MetricsManager:
         return self.metrics
 
 
-__all__ = ["MetricsManager"]
+__all__ = ["MetricsManager", "MetricEvaluator"]
 
