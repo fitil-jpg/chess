@@ -2,6 +2,13 @@
 import chess
 from evaluation import evaluate
 
+# Optional metrics registry integration.  The registry is best-effort and
+# must never affect move selection in this lightweight bot.
+try:  # pragma: no cover - integration is optional for tests
+    from metrics import registry as metrics_registry  # type: ignore
+except Exception:  # pragma: no cover - missing optional dependency
+    metrics_registry = None  # type: ignore
+
 class DynamicBot:
     """
     Дуже простий динамічний бот: depth=1 (оцінює позицію після власного ходу).
@@ -20,6 +27,15 @@ class DynamicBot:
             mover = board.turn
             board.push(move)
             sc, det = evaluate(board)
+
+            # Best-effort evaluator chain: compute auxiliary metrics for debug
+            # logging without influencing the choice.
+            metrics_summary = {}
+            if metrics_registry is not None:
+                try:  # pragma: no cover - side logging only
+                    metrics_summary = metrics_registry.evaluate_all(board)
+                except Exception:
+                    metrics_summary = {}
             board.pop()
 
             # Якщо хід робить ЧОРНИЙ — загальна оцінка з точки зору БІЛИХ все ще sc,
@@ -30,6 +46,17 @@ class DynamicBot:
             if sided_score > best_score:
                 best_score = sided_score
                 best_move = move
-                best_details = det | {"raw_score": sc}
+                best_details = det | {
+                    "raw_score": sc,
+                    "metrics": metrics_summary,
+                }
+
+        # Optional log for humans running the CLI: brief metrics summary.
+        if metrics_registry is not None and best_details.get("metrics"):
+            try:  # pragma: no cover - print-only
+                pairs = ", ".join(f"{k}={v}" for k, v in sorted(best_details["metrics"].items()))
+                print(f"[DynamicBot] metrics: {pairs}")
+            except Exception:
+                pass
 
         return best_move, best_details
