@@ -8,6 +8,7 @@ import chess
 from bot_agent import DynamicBot
 from utils.metrics_sidebar import build_sidebar_metrics
 from evaluation import evaluate
+from pst_loader import effective_pst_for_piece, game_phase_from_board
 from pst_tables import PST_MG, PIECE_VALUES
 
 
@@ -87,6 +88,47 @@ def print_pst_summary():
     print("Piece values:", PIECE_VALUES)
     print("=============================")
 
+
+def _pst_insights(board: chess.Board) -> List[str]:
+    """Relate evaluation to PST numbers for current phase.
+
+    Returns bullet-like lines: per-piece PST totals and top contributing cells.
+    """
+    phase = game_phase_from_board(board)
+
+    per_piece: dict[int, int] = {pt: 0 for pt in range(1, 7)}
+    cell_contribs: List[tuple[int, str]] = []  # (abs_val, display)
+    sym = {
+        chess.PAWN: "P",
+        chess.KNIGHT: "N",
+        chess.BISHOP: "B",
+        chess.ROOK: "R",
+        chess.QUEEN: "Q",
+        chess.KING: "K",
+    }
+
+    for piece_type in range(1, 7):
+        table = effective_pst_for_piece(piece_type, phase=phase)
+        for sq in board.pieces(piece_type, chess.WHITE):
+            v = int(table[sq])
+            per_piece[piece_type] += v
+            cell_contribs.append((abs(v), f"W {sym[piece_type]}{chess.square_name(sq)}:{v:+d}"))
+        for sq in board.pieces(piece_type, chess.BLACK):
+            v = -int(table[chess.square_mirror(sq)])
+            per_piece[piece_type] += v
+            cell_contribs.append((abs(v), f"B {sym[piece_type]}{chess.square_name(sq)}:{v:+d}"))
+
+    summary = (
+        f"PST[{phase}] per-piece: "
+        f"P={per_piece[chess.PAWN]:+d} N={per_piece[chess.KNIGHT]:+d} "
+        f"B={per_piece[chess.BISHOP]:+d} R={per_piece[chess.ROOK]:+d} "
+        f"Q={per_piece[chess.QUEEN]:+d} K={per_piece[chess.KING]:+d}"
+    )
+
+    cell_contribs.sort(key=lambda t: t[0], reverse=True)
+    top_cells = ", ".join(text for _, text in cell_contribs[:4]) or "-"
+    return [summary, f"Top PST cells: {top_cells}"]
+
 def run_match(
     max_plies: int = 40,
     *,
@@ -138,6 +180,11 @@ def run_match(
                 except Exception:
                     # Metrics are optional; continue even if they fail
                     pass
+            # Add PST insights for the current phase
+            try:
+                info_lines.extend(_pst_insights(board))
+            except Exception:
+                pass
             print(
                 annotated_board(
                     board,
@@ -202,6 +249,11 @@ def run_match(
             final_info.extend(build_sidebar_metrics(board))
         except Exception:
             pass
+    # Always try to add PST insights at the end
+    try:
+        final_info.extend(_pst_insights(board))
+    except Exception:
+        pass
     print(
         annotated_board(
             board,
