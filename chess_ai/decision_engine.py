@@ -84,10 +84,29 @@ class DecisionEngine:
         if not legal_moves:
             return None
 
+        # First prefer tactically safe moves; if none, consider all.
         safe_moves = [m for m in legal_moves if not self.risk_analyzer.is_risky(board, m)]
         moves_to_consider = safe_moves if safe_moves else legal_moves
 
-        scored_moves: list[tuple[int, int, chess.Move]] = []
+        # Score moves and annotate tactical features for pyramid ordering.
+        # A small tolerance allows choosing a non-repetition move that is
+        # slightly worse than the best repetition line.
+        REPETITION_TOLERANCE = 60  # centipawns
+
+        def _attack_count_after(move: chess.Move) -> int:
+            tmp = board.copy(stack=False)
+            tmp.push(move)
+            to_sq = move.to_square
+            enemy = not board.turn
+            count = 0
+            for sq in tmp.attacks(to_sq):
+                p = tmp.piece_at(sq)
+                if p and p.color == enemy:
+                    count += 1
+            return count
+
+        annotated: list[tuple[int, int, bool, bool, int, bool, chess.Move]] = []
+        # (score, capture_val, gives_check, is_capture, attack_cnt, repeats, move)
         for move in moves_to_consider:
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             capture_val = 0
@@ -96,26 +115,37 @@ class DecisionEngine:
                 capture_val = dynamic_piece_value(target, board) if target else 0
             board.push(move)
             score = -self.search(board, self.base_depth + extension)
+            rep = board.is_repetition(3)
+            gives_check = board.is_check()
             board.pop()
             score += capture_val * self.material_weight
-            scored_moves.append((score, capture_val, move))
+            is_cap = board.is_capture(move)
+            atk_cnt = _attack_count_after(move)
+            annotated.append((score, capture_val, gives_check, is_cap, atk_cnt, rep, move))
 
-        if not scored_moves:
+        if not annotated:
             return None
 
-        # Prefer the highest scoring move that does not lead to a
-        # threefold repetition.  Sort first by score and capture value to
-        # keep behaviour deterministic across runs.
-        scored_moves.sort(key=lambda x: (x[0], x[1]), reverse=True)
-        for score, capture_val, move in scored_moves:
-            board.push(move)
-            rep = board.is_repetition(3)
-            board.pop()
-            if not rep:
-                return move
+        # Compute the best score among repetition moves to gauge disadvantage.
+        rep_scores = [sc for sc, _, _, _, _, rep, _ in annotated if rep]
+        best_rep_score = max(rep_scores) if rep_scores else -float("inf")
 
-        # All candidate moves repeat the position; fall back to a random
-        # choice to break the repetition cycle.
-        from .random_bot import RandomBot
+        # Candidate non-repetition moves that are not materially/tactically worse.
+        non_rep_good = [t for t in annotated if not t[5] and (t[0] >= best_rep_score - REPETITION_TOLERANCE)]
 
-        return RandomBot(board.turn).choose_move(board)[0]
+        # If we have acceptable non-repetition moves, pick by pyramid:
+        # check > capture > attack count > score > capture_val deterministically.
+        if non_rep_good:
+            non_rep_good.sort(key=lambda t: (
+                int(t[2]),               # gives_check
+                int(t[3]),               # is_capture
+                t[4],                    # attack count
+                t[0],                    # score
+                t[1],                    # capture value
+            ), reverse=True)
+            return non_rep_good[0][6]
+
+        # Otherwise, if all acceptable alternatives either repeat or are too
+        # disadvantageous, allow the best move even if it repeats.
+        annotated.sort(key=lambda t: (t[0], t[1]), reverse=True)
+        return annotated[0][6]

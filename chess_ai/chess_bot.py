@@ -93,22 +93,56 @@ class ChessBot:
             evaluator = _SHARED_EVALUATOR = Evaluator(board)
 
         best_score = float("-inf")
-        best_moves = []
+        candidates: list[tuple[float, chess.Move, bool, bool, int]] = []
+        # (score, move, gives_check, is_capture, attack_count)
         for move in board.legal_moves:
             score, _ = self.evaluate_move(board, move, context)
             tmp = board.copy(stack=False)
             tmp.push(move)
             score += evaluator.position_score(tmp, self.color)
+            gives_check = tmp.is_check()
+            is_cap = board.is_capture(move)
+            atk_cnt = 0
+            for sq in tmp.attacks(move.to_square):
+                p = tmp.piece_at(sq)
+                if p and p.color != self.color:
+                    atk_cnt += 1
+            tmp.pop()
+            candidates.append((float(score), move, gives_check, is_cap, atk_cnt))
             if score > best_score:
-                best_score = score
-                best_moves = [move]
-            elif score == best_score:
-                best_moves.append(move)
-        # Pick a deterministic move to keep tests stable.  When multiple
-        # moves share the best score, choose the one with the smallest UCI
-        # string so that results are reproducible.
-        move = min(best_moves, key=lambda m: m.uci()) if best_moves else None
-        return move, float(best_score if best_moves else 0.0)
+                best_score = float(score)
+
+        # Prefer avoiding immediate threefold repetition when reasonable.
+        REP_TOL = 60.0
+        rep_best = -float("inf")
+        for s, m, _, _, _ in candidates:
+            tmp = board.copy(stack=False); tmp.push(m)
+            if tmp.is_repetition(3):
+                rep_best = max(rep_best, s)
+            tmp.pop()
+
+        non_rep_ok: list[tuple[float, chess.Move, bool, bool, int]] = []
+        for item in candidates:
+            s, m, *_ = item
+            tmp = board.copy(stack=False); tmp.push(m)
+            rep = tmp.is_repetition(3)
+            tmp.pop()
+            if not rep and (rep_best == -float("inf") or s >= rep_best - REP_TOL):
+                non_rep_ok.append(item)
+
+        chosen: chess.Move | None = None
+        if non_rep_ok:
+            # Pyramid preference: check > capture > attack_count > score > uci
+            non_rep_ok.sort(key=lambda t: (int(t[2]), int(t[3]), t[4], t[0], -ord(t[1].uci()[0])), reverse=True)
+            chosen = non_rep_ok[0][1]
+            best_score = non_rep_ok[0][0]
+        else:
+            # Fall back to best score deterministically
+            candidates.sort(key=lambda t: (t[0], t[1].uci()))
+            chosen = candidates[-1][1]
+            best_score = candidates[-1][0]
+
+        return chosen, float(best_score)
 
     def evaluate_move(self, board, move, context: GameContext | None = None):
         if self.risk_analyzer.is_risky(board, move):
