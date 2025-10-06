@@ -17,6 +17,12 @@ from typing import Tuple, List
 
 import chess
 
+# Ensure project root is on sys.path when running via absolute script path
+import sys
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from chess_ai.bot_agent import make_agent, get_agent_names
 
 
