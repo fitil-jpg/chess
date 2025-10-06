@@ -43,24 +43,7 @@ Thumbs.db
 
 stats/usage_counts.json
 
-# Analysis outputs
-analysis/heatmaps/default/fens.csv
-
-# Heatmaps (bins8)
-heatmaps/heatmap_B_bins8.json
-heatmaps/heatmap_K_bins8.json
-heatmaps/heatmap_N_bins8.json
-heatmaps/heatmap_P_bins8.json
-heatmaps/heatmap_Q_bins8.json
-heatmaps/heatmap_R_bins8.json
-
-# Run logs
-runs/20251005_234748_852173.json
-runs/20251005_234804_261736.json
-runs/20251005_234819_487123.json
-runs/20251005_234854_706995.json
-
-# Ignore entire data directories
-analysis/heatmaps/
+# Ignore generated directories
+analysis/heatmaps/*/
 heatmaps/
 runs/
