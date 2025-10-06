@@ -206,6 +206,21 @@ class DynamicBot:
         sorted_moves = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         move, total = sorted_moves[0]
 
+        # Avoid steering into an imminent threefold repetition unless it is
+        # clearly the only non-disadvantageous option. If the chosen move
+        # repeats, consult the deeper decision engine which includes a
+        # tolerance and tactical pyramid (check > capture > attack) to select
+        # a different move when reasonable.
+        tmp = board.copy(stack=False)
+        tmp.push(move)
+        repeats = tmp.is_repetition(3)
+        tmp.pop()
+        if repeats:
+            engine_move = self.decision_engine.choose_best_move(board)
+            if engine_move is not None:
+                move = engine_move
+                total = scores.get(engine_move, total)
+
         # If top candidates are too close, ask the decision engine to
         # perform a deeper search to break the tie.
         if len(sorted_moves) > 1:
