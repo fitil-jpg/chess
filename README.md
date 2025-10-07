@@ -95,6 +95,46 @@ Pass `--force` to overwrite existing files.  User-specific tweaks can be
 applied by editing the appropriate `pst_user_*.json` file; the changes are picked
 up automatically on the next evaluation call.
 
+## Development setup
+
+### Python version
+
+- This project targets **Python 3.10** for local development.
+- A `.python-version` file is included to help tools like `pyenv`/`asdf` select the
+  correct interpreter.
+
+### One-step bootstrap (recommended)
+
+Create a local virtual environment and install dependencies with a single command:
+
+```bash
+bash scripts/bootstrap.sh --quick-test
+```
+
+- Use `SKIP_R=1` if you don't have R installed and don't need the R bridge right now:
+
+```bash
+SKIP_R=1 bash scripts/bootstrap.sh --quick-test
+```
+
+The script will:
+- Create `.venv/`
+- Upgrade `pip`/`setuptools`/`wheel`
+- Install Python dependencies from `requirements.txt` (optionally skipping `rpy2`)
+- Optionally run a quick import check for `chess`, `torch`, and `matplotlib`
+
+Activate the environment afterwards:
+
+```bash
+source .venv/bin/activate
+```
+
+On Windows, run the script in Git Bash or WSL and activate with:
+
+```bash
+.venv\\Scripts\\activate
+```
+
 ## Running Tests
 
 Execute the entire test suite with `pytest`'s automatic discovery:
@@ -111,7 +151,7 @@ pytest
 
 ## Dependencies
 
-Install required packages with:
+If you prefer to install manually instead of using the bootstrap script:
 
 ```bash
 pip install -r requirements.txt
