@@ -7,7 +7,7 @@ from disk based on a configuration file.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Tuple, Optional
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,6 +31,15 @@ class TorchNet:
         self.model = model or SimpleChessModel()
         self.model.to(self.device)
         self.model.eval()
+        # Inference/calibration options (may be overridden by from_config)
+        self.policy_temperature: float = 1.0
+        self.value_scale: float = 1.0
+        self.value_bias: float = 0.0
+        self.clamp_value: bool = True
+        self._cache_size: int = 0
+        self._cache: Optional["_LRUCache"] = None
+        self._use_half: bool = False
+        self._quantized: bool = False
 
     # ------------------------------------------------------------------
     @classmethod
@@ -46,6 +55,27 @@ class TorchNet:
             if weights:
                 state = torch.load(weights, map_location=net.device)
                 net.model.load_state_dict(state)
+        # Optional precision/quantization
+        try:
+            if bool(cfg.get("half_precision", False)) and net.device.type == "cuda":
+                net.model.half()
+                net._use_half = True
+            if bool(cfg.get("quantize_dynamic", False)) and net.device.type == "cpu":
+                # Best-effort: quantize Linear layers dynamically
+                from torch.quantization import quantize_dynamic  # type: ignore
+                net.model = quantize_dynamic(net.model, {torch.nn.Linear}, dtype=torch.qint8)  # type: ignore
+                net._quantized = True
+        except Exception:
+            logger.warning("Quantization/half precision setup failed; continuing without.")
+
+        # Calibration and caching
+        net.policy_temperature = float(cfg.get("policy_temperature", 1.0) or 1.0)
+        net.value_scale = float(cfg.get("value_scale", 1.0) or 1.0)
+        net.value_bias = float(cfg.get("value_bias", 0.0) or 0.0)
+        net.clamp_value = bool(cfg.get("clamp_value", True))
+        net._cache_size = int(cfg.get("cache_size", 0) or 0)
+        if net._cache_size > 0:
+            net._cache = _LRUCache(net._cache_size)
         return net
 
     # ------------------------------------------------------------------
@@ -59,18 +89,73 @@ class TorchNet:
         boards_list = list(boards)
         if not boards_list:
             return []
-        batch = torch.stack([board_to_tensor(b) for b in boards_list]).to(self.device)
-        with torch.no_grad():
-            policy_logits, values = self.model(batch)
+        # Try cache first
+        cache = self._cache
+        cached_indices: List[int] = []
+        cached_values: Dict[int, Tuple[Dict[str, float], float]] = {}
+        if cache is not None:
+            for i, b in enumerate(boards_list):
+                fen = b.fen()
+                got = cache.get(fen)
+                if got is not None:
+                    cached_indices.append(i)
+                    cached_values[i] = got
+
+        # Prepare tensors for uncached boards
+        to_eval_indices: List[int] = [i for i in range(len(boards_list)) if i not in cached_indices]
+        eval_boards: List[chess.Board] = [boards_list[i] for i in to_eval_indices]
+        results_pairs: Dict[int, Tuple[Dict[str, float], float]] = {}
+
+        if eval_boards:
+            batch = torch.stack([board_to_tensor(b) for b in eval_boards]).to(self.device)
+            # Ensure dtype matches model
+            try:
+                param_dtype = next(self.model.parameters()).dtype
+                if batch.dtype != param_dtype:
+                    batch = batch.to(param_dtype)
+            except StopIteration:
+                pass
+
+            with torch.inference_mode():
+                policy_logits, values = self.model(batch)
+
+            temp = max(1e-3, float(self.policy_temperature))
+            for j, (b, logits, v) in enumerate(zip(eval_boards, policy_logits, values)):
+                legal = list(b.legal_moves)
+                policy_ucis: Dict[str, float] = {}
+                if legal:
+                    idx = torch.tensor([m.from_square * 64 + m.to_square for m in legal], device=logits.device)
+                    sel = logits[idx] / temp
+                    probs = torch.softmax(sel, dim=0).cpu().tolist()
+                    policy_ucis = {m.uci(): p for m, p in zip(legal, probs)}
+                val = float(v.item())
+                val = self.value_scale * val + self.value_bias
+                if self.clamp_value:
+                    val = max(-1.0, min(1.0, val))
+                global_index = to_eval_indices[j]
+                results_pairs[global_index] = (policy_ucis, val)
+                if cache is not None:
+                    cache.set(b.fen(), (policy_ucis, val))
+
+        # Assemble final results in original order
         results: List[Tuple[Dict[chess.Move, float], float]] = []
-        for b, logits, v in zip(boards_list, policy_logits, values):
-            legal = list(b.legal_moves)
+        for i, b in enumerate(boards_list):
+            if i in cached_values:
+                policy_ucis, val = cached_values[i]
+            else:
+                policy_ucis, val = results_pairs[i]
+            # Map back to Move objects and filter to legal only
+            legal = set(b.legal_moves)
             policy: Dict[chess.Move, float] = {}
-            if legal:
-                idx = torch.tensor([m.from_square * 64 + m.to_square for m in legal], device=logits.device)
-                probs = torch.softmax(logits[idx], dim=0).cpu().tolist()
-                policy = {m: p for m, p in zip(legal, probs)}
-            results.append((policy, float(v.item())))
+            if policy_ucis:
+                for uci, p in policy_ucis.items():
+                    try:
+                        mv = chess.Move.from_uci(uci)
+                    except Exception:
+                        continue
+                    if mv in legal:
+                        policy[mv] = p
+            results.append((policy, float(val)))
         return results
 
 
