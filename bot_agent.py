@@ -1,6 +1,7 @@
 # bot_agent.py
 import chess
 from evaluation import evaluate
+from chess_ai.guardrails import Guardrails
 
 # Optional metrics registry integration.  The registry is best-effort and
 # must never affect move selection in this lightweight bot.
@@ -17,6 +18,7 @@ class DynamicBot:
 
     def __init__(self, name: str = "DynamicBot"):
         self.name = name
+        self.guardrails = Guardrails()
 
     def select_move(self, board: chess.Board) -> tuple[chess.Move, dict]:
         best_move = None
@@ -24,6 +26,11 @@ class DynamicBot:
         best_details = {}
 
         for move in board.legal_moves:
+            # Guardrails: skip illegal/insane and high-value hangs; penalize blunders
+            if not self.guardrails.is_legal_and_sane(board, move):
+                continue
+            if self.guardrails.is_high_value_hang(board, move):
+                continue
             mover = board.turn
             board.push(move)
             sc, det = evaluate(board)
@@ -37,11 +44,13 @@ class DynamicBot:
                 except Exception:
                     metrics_summary = {}
             board.pop()
-
-            # Якщо хід робить ЧОРНИЙ — загальна оцінка з точки зору БІЛИХ все ще sc,
-            # але бот (за чорних) максимізує свою користь, тобто *мінімізує* sc.
+            # Compute side-aware score first, then apply penalty consistently
             side_factor = 1 if mover == chess.WHITE else -1
             sided_score = side_factor * sc
+            if self.guardrails.is_blunder(board, move):
+                sided_score -= 300  # penalty in centipawns
+            # Якщо хід робить ЧОРНИЙ — загальна оцінка з точки зору БІЛИХ все ще sc,
+            # але бот (за чорних) максимізує свою користь, тобто *мінімізує* sc.
 
             if sided_score > best_score:
                 best_score = sided_score

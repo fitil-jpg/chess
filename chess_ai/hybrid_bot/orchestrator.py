@@ -24,6 +24,7 @@ import os
 from .alpha_beta import search as ab_search
 from .mcts import BatchMCTS
 from .evaluation import evaluate_position
+from ..guardrails import Guardrails
 
 _USE_R = os.getenv("CHESS_USE_R") == "1"
 if _USE_R:
@@ -70,6 +71,9 @@ class HybridOrchestrator:
         mcts_simulations: int = 64,
         top_k: int = 3,
         lam: float = 0.5,
+        use_guardrails: bool = True,
+        blunder_depth: int = 2,
+        high_value_threshold: int = 500,
     ) -> None:
         self.color = color
         self.ab_depth = ab_depth
@@ -77,6 +81,10 @@ class HybridOrchestrator:
         self.top_k = top_k
         self.lam = lam
         self.mcts = BatchMCTS()
+        self.guardrails = Guardrails(
+            blunder_depth=blunder_depth,
+            high_value_threshold=high_value_threshold,
+        ) if use_guardrails else None
 
     # ------------------------------------------------------------------
     #  Helpers
@@ -135,6 +143,12 @@ class HybridOrchestrator:
 
         candidates: List[_Candidate] = []
         for move, node in children[: self.top_k]:
+            # Guardrails: skip illegal/insane and obvious high-value hangs
+            if self.guardrails is not None:
+                if not self.guardrails.is_legal_and_sane(board, move):
+                    continue
+                if self.guardrails.is_high_value_hang(board, move):
+                    continue
             b = board.copy()
             b.push(move)
             depth = max(1, self.ab_depth - 1)
@@ -144,6 +158,9 @@ class HybridOrchestrator:
             if b.turn != self.color:
                 r_val = -r_val
             ab_score = (ab_val + r_val) / 2
+            # Guardrails: penalize shallow blunders so mixing disfavors them
+            if self.guardrails is not None and self.guardrails.is_blunder(board, move):
+                ab_score -= 300  # conservative penalty in centipawns
             candidates.append(_Candidate(move, node.q(), ab_score, r_val))
 
         # Normalise scores
