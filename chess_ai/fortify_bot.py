@@ -38,10 +38,15 @@ class FortifyBot:
             "capture": 2.5,           # взяття
             "opp_doubled_delta": 4.0, # збільшення кількості здвоєних пішаків у опонента
             "opp_shield_delta": 5.0,  # зменшення кількості пішаків у «щитку» перед королем опонента
+            "self_shield_delta": 4.0,  # зміни нашого щитка: + за посилення, - за ослаблення
+            "king_safety_delta": 3.0,  # покращення безпеки нашого короля за спрощеним скорером
+            "king_defenders_delta": 1.0,  # зміна кількості захисників клітини короля
             "opp_thin_delta": 2.0,    # збільшення кількості "тонких" фігур у опонента
             "self_thin_delta": -2.0,  # штраф за появу нових "тонких" наших фігур
             "opp_escape_delta": 1.0,  # зменшення кількості втеч опонента
             "opp_mated_delta": 5.0,   # зростання кількості атакованих фігур без втечі
+            "opp_backward_delta": 3.0, # збільшення кількості відсталих (backward) пішаків опонента
+            "self_backward_delta": -3.0, # штраф за збільшення наших відсталих пішаків
         }
         if weights:
             self.W.update(weights)
@@ -105,12 +110,17 @@ class FortifyBot:
         opp = not self.color
         before_doubled_opp = self._count_doubled_pawns(board, opp)
         before_opp_shield = self._king_pawn_shield_count(board, opp)
+        before_self_shield = self._king_pawn_shield_count(board, self.color)
+        before_king_safety = Evaluator.king_safety(board, self.color)
+        before_king_defenders = self._king_defenders_count(board, self.color)
         before_threat_self = ThreatMap(self.color).summary(board)
         before_threat_opp = ThreatMap(opp).summary(board)
         before_thin_self = len(before_threat_self["thin_pieces"])
         before_thin_opp = len(before_threat_opp["thin_pieces"])
         before_opp_escape = self._total_escape_squares(board, opp)
         before_opp_mated = self._count_mated_pieces(board, opp)
+        before_backward_self = self._count_backward_pawns(board, self.color)
+        before_backward_opp = self._count_backward_pawns(board, opp)
 
         best = None
         best_score = float("-inf")
@@ -126,6 +136,11 @@ class FortifyBot:
                 before_thin_self,
                 before_opp_escape,
                 before_opp_mated,
+                before_self_shield,
+                before_king_safety,
+                before_king_defenders,
+                before_backward_self,
+                before_backward_opp,
                 evaluator,
             )
             if score > best_score:
@@ -139,7 +154,9 @@ class FortifyBot:
                 f"gain={best_info['capture_gain']} see={best_info['see_gain']} "
                 f"thinΔ={best_info['opp_thin_delta']} selfThinΔ={best_info['self_thin_delta']} "
                 f"doubledΔ={best_info['opp_doubled_delta']} "
-                f"shieldΔ={best_info['opp_shield_delta']} "
+                f"oppShieldΔ={best_info['opp_shield_delta']} selfShieldΔ={best_info['self_shield_delta']} "
+                f"kSafeΔ={best_info['king_safety_delta']} kDefΔ={best_info['king_defenders_delta']} "
+                f"oppBackΔ={best_info['opp_backward_delta']} selfBackΔ={best_info['self_backward_delta']} "
                 f"escΔ={best_info['opp_escape_delta']} mateΔ={best_info['opp_mated_delta']} "
                 f"score={round(best_score,2)}"
             )
@@ -162,6 +179,11 @@ class FortifyBot:
         before_thin_self: int,
         before_opp_escape: int,
         before_opp_mated: int,
+        before_self_shield: int,
+        before_king_safety: int,
+        before_king_defenders: int,
+        before_backward_self: int,
+        before_backward_opp: int,
         evaluator: Evaluator,
     ) -> Tuple[float, Dict[str, Any]]:
         """Return the defensive score of ``m`` using ``evaluator``.
@@ -215,6 +237,16 @@ class FortifyBot:
         after_opp_shield = self._king_pawn_shield_count(tmp, not self.color)
         opp_shield_delta = max(0, before_opp_shield - after_opp_shield)
 
+        # Зміна нашого щитка (може бути від'ємною або додатною)
+        after_self_shield = self._king_pawn_shield_count(tmp, self.color)
+        self_shield_delta = after_self_shield - before_self_shield
+
+        # Δ безпеки нашого короля та кількості його захисників
+        after_king_safety = Evaluator.king_safety(tmp, self.color)
+        king_safety_delta = after_king_safety - before_king_safety
+        after_king_defenders = self._king_defenders_count(tmp, self.color)
+        king_defenders_delta = after_king_defenders - before_king_defenders
+
         # Δ "тонких" фігур опонента і наших власних
         after_threat_self = ThreatMap(self.color).summary(tmp)
         after_threat_opp = ThreatMap(not self.color).summary(tmp)
@@ -231,6 +263,12 @@ class FortifyBot:
         after_opp_mated = self._count_mated_pieces(tmp, not self.color)
         opp_mated_delta = max(0, after_opp_mated - before_opp_mated)
 
+        # Δ відсталих пішаків (backward)
+        after_backward_self = self._count_backward_pawns(tmp, self.color)
+        after_backward_opp = self._count_backward_pawns(tmp, not self.color)
+        self_backward_delta = after_backward_self - before_backward_self
+        opp_backward_delta = after_backward_opp - before_backward_opp
+
         score = (
             self.W["defense_density"] * defense_density +
             self.W["defenders"] * defenders +
@@ -238,10 +276,15 @@ class FortifyBot:
             self.W["capture"] * gain +
             self.W["opp_doubled_delta"] * opp_doubled_delta +
             self.W["opp_shield_delta"] * opp_shield_delta +
+            self.W["self_shield_delta"] * self_shield_delta +
+            self.W["king_safety_delta"] * king_safety_delta +
+            self.W["king_defenders_delta"] * king_defenders_delta +
             self.W["opp_thin_delta"] * opp_thin_delta +
             self.W["self_thin_delta"] * self_thin_delta +
             self.W["opp_escape_delta"] * opp_escape_delta +
             self.W["opp_mated_delta"] * opp_mated_delta +
+            self.W["opp_backward_delta"] * opp_backward_delta +
+            self.W["self_backward_delta"] * self_backward_delta +
             see_gain
         )
 
@@ -257,10 +300,15 @@ class FortifyBot:
             "see_gain": see_gain,
             "opp_doubled_delta": opp_doubled_delta,
             "opp_shield_delta": opp_shield_delta,
+            "self_shield_delta": self_shield_delta,
+            "king_safety_delta": king_safety_delta,
+            "king_defenders_delta": king_defenders_delta,
             "opp_thin_delta": opp_thin_delta,
             "self_thin_delta": self_thin_delta,
             "opp_escape_delta": opp_escape_delta,
             "opp_mated_delta": opp_mated_delta,
+            "opp_backward_delta": opp_backward_delta,
+            "self_backward_delta": self_backward_delta,
         }
         return score, info
 
@@ -348,4 +396,67 @@ class FortifyBot:
                     p = board.piece_at(sq)
                     if p and p.color == color and p.piece_type == chess.PAWN:
                         total += 1
+        return total
+
+    def _king_defenders_count(self, board: chess.Board, color: bool) -> int:
+        """Кількість наших фігур, що захищають клітину короля."""
+        ksq = board.king(color)
+        if ksq is None:
+            return 0
+        return len(board.attackers(color, ksq))
+
+    def _count_backward_pawns(self, board: chess.Board, color: bool) -> int:
+        """Груба евристика для підрахунку відсталих (backward) пішаків.
+
+        Вважаємо пішака відсталим, якщо:
+        - на суміжних файлах немає дружнього пішака на тій самій або позаду
+          (для білих: на рядках <= його; для чорних: на рядках >= його), який міг би
+          потенційно підтримати просування;
+        - клітина попереду (на один ряд) атакована пішаками супротивника.
+        """
+        total = 0
+        enemy = not color
+        for sq, piece in board.piece_map().items():
+            if piece.color != color or piece.piece_type != chess.PAWN:
+                continue
+
+            f = chess.square_file(sq)
+            r = chess.square_rank(sq)
+
+            # Клітина попереду
+            fr = r + (1 if color == chess.WHITE else -1)
+            if not (0 <= fr < 8):
+                continue
+            forward_sq = chess.square(f, fr)
+
+            # Чи атакована пішаками супротивника?
+            attacked_by_enemy_pawn = False
+            for att in board.attackers(enemy, forward_sq):
+                ap = board.piece_at(att)
+                if ap and ap.color == enemy and ap.piece_type == chess.PAWN:
+                    attacked_by_enemy_pawn = True
+                    break
+            if not attacked_by_enemy_pawn:
+                continue
+
+            # Чи є дружній пішак на суміжних файлах не попереду цього?
+            has_supporting_pawn = False
+            for af in (f - 1, f + 1):
+                if 0 <= af < 8:
+                    if color == chess.WHITE:
+                        ranks_iter = range(r, -1, -1)
+                    else:
+                        ranks_iter = range(r, 8)
+                    for rr in ranks_iter:
+                        adj_sq = chess.square(af, rr)
+                        p2 = board.piece_at(adj_sq)
+                        if p2 and p2.color == color and p2.piece_type == chess.PAWN:
+                            has_supporting_pawn = True
+                            break
+                    if has_supporting_pawn:
+                        break
+
+            if not has_supporting_pawn:
+                total += 1
+
         return total
