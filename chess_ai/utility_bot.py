@@ -24,45 +24,7 @@ class UtilityBot:
         top_score = float("-inf")
 
         for move in moves:
-            src = board.piece_at(move.from_square)
-            tgt = board.piece_at(move.to_square)
-            score = 0
-
-            # Дати шах
-            if board.gives_check(move):
-                score = 100
-            # Capture
-            elif board.is_capture(move) and tgt:
-                tgt_val = piece_value(tgt)
-                src_val = piece_value(src)
-                attackers = board.attackers(not self.color, move.to_square)
-                defended = len(attackers) > 0
-                hanging = not defended
-                if hanging:
-                    score = 90 + tgt_val
-                elif tgt_val > src_val:
-                    score = 80 + tgt_val - src_val
-                else:
-                    score = 60 + tgt_val - src_val
-            # Attack (не capture)
-            elif tgt and tgt.color != self.color:
-                tgt_val = piece_value(tgt)
-                attackers = board.attackers(self.color, move.to_square)
-                defended = len(attackers) > 0
-                hanging = not defended
-                if hanging:
-                    score = 70 + tgt_val
-                else:
-                    score = 50 + tgt_val
-            # Просто хід → score = 0
-
-            if score > top_score:
-                best_moves = [move]
-                top_score = score
-            tmp = board.copy(stack=False)
-            tmp.push(move)
-            score += evaluator.position_score(tmp, self.color)
-
+            score = evaluator.score_move(move, self.color)
             if score > top_score:
                 best_moves = [move]
                 top_score = score
