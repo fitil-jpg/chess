@@ -2,6 +2,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import chess
+from metrics.attack_map import attack_count_per_square
 from .pst_trainer import PST
 from .phase import GamePhaseDetector
 
@@ -114,6 +115,30 @@ class Evaluator:
             "black": {"pieces": {}, "blocked": 0, "capturable": 0, "total": 0},
             "score": 0,
         }
+
+    # --- Tuning knobs for king-safety model (class-level, mutable) -----------
+    # shield, open_file, attackers, proximity, storm
+    KING_SAFETY_WEIGHTS = {
+        "shield": 2,
+        "open_file": 2,
+        "attackers": 1,
+        "proximity": 1,
+        "storm": 2,
+    }
+
+    @classmethod
+    def set_king_safety_weights(cls, **weights: int) -> None:
+        """Update king-safety weights. Unknown keys are ignored.
+
+        Example: Evaluator.set_king_safety_weights(shield=3, proximity=2)
+        """
+        for k, v in weights.items():
+            if k in cls.KING_SAFETY_WEIGHTS and isinstance(v, int):
+                cls.KING_SAFETY_WEIGHTS[k] = v
+
+    @classmethod
+    def get_king_safety_weights(cls) -> dict:
+        return dict(cls.KING_SAFETY_WEIGHTS)
 
     @staticmethod
     def piece_zone(board: chess.Board, square: int, radius: int) -> set[int]:
@@ -506,54 +531,116 @@ class Evaluator:
 
     @staticmethod
     def king_safety(board: chess.Board, color: bool) -> int:
-        """Return a simple king safety score for ``color``.
+        """Return a richer king safety score for ``color``.
 
-        The score penalizes missing pawn shield squares directly in front of
-        the king as well as nearby enemy attackers.  A smaller (possibly
-        negative) score indicates a more vulnerable king.
+        More negative values indicate greater danger. The model combines:
+        - Pawn shield integrity directly in front of the king
+        - Open/half-open files around the king
+        - Density of enemy attackers near the king (cached attack map)
+        - Proximity of enemy heavy/minor pieces, with sliding-line bonuses
+        - Pawn storm pressure from enemy pawns advancing toward the king
         """
         king_sq = board.king(color)
         if king_sq is None:
             return 0
 
+        enemy = not color
         file = chess.square_file(king_sq)
         rank = chess.square_rank(king_sq)
 
-        # --- Pawn shield check -------------------------------------------------
-        shield_rank = rank + (1 if color == chess.WHITE else -1)
-        missing_pawns = 0
-        if 0 <= shield_rank < 8:
-            for df in (-1, 0, 1):
-                f = file + df
-                if 0 <= f < 8:
-                    sq = chess.square(f, shield_rank)
-                    piece = board.piece_at(sq)
-                    if not (piece and piece.piece_type == chess.PAWN and piece.color == color):
-                        missing_pawns += 1
+        # Weights (kept small to avoid over-influencing simple evaluators)
+        W_SHIELD = Evaluator.KING_SAFETY_WEIGHTS["shield"]
+        W_OPEN_FILE = Evaluator.KING_SAFETY_WEIGHTS["open_file"]
+        W_ATTACKERS = Evaluator.KING_SAFETY_WEIGHTS["attackers"]
+        W_PROX = Evaluator.KING_SAFETY_WEIGHTS["proximity"]
+        W_STORM = Evaluator.KING_SAFETY_WEIGHTS["storm"]
 
-        # --- Enemy attackers near the king ------------------------------------
-        attackers: set[int] = set()
-        for df in range(-2, 3):
-            for dr in range(-2, 3):
-                f = file + df
-                r = rank + dr
-                if 0 <= f < 8 and 0 <= r < 8:
-                    sq = chess.square(f, r)
-                    attackers.update(board.attackers(not color, sq))
-        for df in range(-3, 4):
-            for dr in range(-3, 4):
-                if max(abs(df), abs(dr)) == 3:
-                    f = file + df
-                    r = rank + dr
-                    if 0 <= f < 8 and 0 <= r < 8:
-                        sq = chess.square(f, r)
-                        attackers.update(board.attackers(not color, sq))
+        def raw_safety(for_color: bool) -> int:
+            ksq = board.king(for_color)
+            if ksq is None:
+                return 0
+            opp = not for_color
+            f = chess.square_file(ksq)
+            r = chess.square_rank(ksq)
 
-        attackers_count = len(attackers)
+            total = 0
 
-        # Less pawns and more attackers reduce the score.
-        king_safety_score = 0 - missing_pawns - attackers_count
-        return king_safety_score
+            # Pawn shield
+            shield_rank = r + (1 if for_color == chess.WHITE else -1)
+            missing = 0
+            if 0 <= shield_rank < 8:
+                for df in (-1, 0, 1):
+                    ff = f + df
+                    if 0 <= ff < 8:
+                        sq = chess.square(ff, shield_rank)
+                        pc = board.piece_at(sq)
+                        if not (pc and pc.piece_type == chess.PAWN and pc.color == for_color):
+                            missing += 1
+            total -= missing * W_SHIELD
+
+            # Open/half-open files around the king
+            friendly_pawn_files = {chess.square_file(sq) for sq in board.pieces(chess.PAWN, for_color)}
+            enemy_pawn_files = {chess.square_file(sq) for sq in board.pieces(chess.PAWN, opp)}
+            open_pen = 0
+            for ff in (f - 1, f, f + 1):
+                if 0 <= ff < 8:
+                    has_friendly = ff in friendly_pawn_files
+                    has_enemy = ff in enemy_pawn_files
+                    if not has_friendly and not has_enemy:
+                        open_pen += 1
+                    elif not has_friendly and has_enemy:
+                        open_pen += 1
+            total -= open_pen * W_OPEN_FILE
+
+            # Attacker density using cached map
+            counts_map = attack_count_per_square(board)[opp]
+            density = 0
+            for sq in chess.SQUARES:
+                if chess.square_distance(ksq, sq) <= 2:
+                    density += counts_map[sq]
+            total -= density * W_ATTACKERS
+
+            # Proximity of enemy pieces with open ray bonus
+            prox = 0
+            for sq, pc in board.piece_map().items():
+                if pc.color != opp:
+                    continue
+                dist = chess.square_distance(ksq, sq)
+                if pc.piece_type == chess.QUEEN:
+                    base = 3
+                elif pc.piece_type == chess.ROOK:
+                    base = 2
+                elif pc.piece_type in (chess.BISHOP, chess.KNIGHT):
+                    base = 1
+                else:
+                    base = 0
+                if base:
+                    prox += max(0, 5 - dist) * base
+                    if pc.piece_type in (chess.QUEEN, chess.ROOK, chess.BISHOP):
+                        ray = board.ray(sq, ksq)
+                        if ray and all(board.piece_at(rsq) is None for rsq in ray):
+                            prox += 3
+            total -= prox * W_PROX
+
+            # Pawn storm toward the king
+            storm = 0
+            for ep in board.pieces(chess.PAWN, opp):
+                ef = chess.square_file(ep)
+                er = chess.square_rank(ep)
+                if abs(ef - f) <= 1:
+                    if for_color == chess.WHITE:
+                        if er >= 4:
+                            storm += max(1, er - r)
+                    else:
+                        if er <= 3:
+                            storm += max(1, r - er)
+            total -= storm * W_STORM
+
+            return total
+
+        # Symmetric measure: our raw safety minus opponent's raw safety
+        # This yields ~0 in symmetric initial positions and negative when our king is worse.
+        return raw_safety(color) - raw_safety(enemy)
 
 def game_incident_tags(board):
     tags = []
