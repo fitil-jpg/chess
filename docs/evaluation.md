@@ -80,3 +80,75 @@ score = metrics["position_score"]
 ```
 
 This allows bots in `chess_ai` to reuse the same metric without re‑evaluating the board.
+
+## Strength and style goals
+
+Define concrete, measurable targets for both overall strength and tactical/positional style using the project config at `configs/metrics_targets.json`.
+
+Example targets (edit the JSON to fit your goals):
+
+```json
+{
+  "schema_version": 1,
+  "strength": {
+    "selfplay_elo": { "target": 1600, "min_games": 200, "confidence": 0.95 },
+    "winrate_vs_baselines": { "RandomBot": 0.90, "AggressiveBot": 0.55, "FortifyBot": 0.55, "EndgameBot": 0.60 }
+  },
+  "style": {
+    "themed_puzzles": { "mate_in_1": 0.95, "knight_fork": 0.70, "hanging_attack": 0.80 }
+  }
+}
+```
+
+These targets are validated by the evaluation workflows below and produce JSON artifacts suitable for dashboards or CI gates.
+
+## Performance evaluation workflows
+
+Three lightweight CLIs provide repeatable measurements. All scripts output machine‑readable JSON under the chosen output directory.
+
+### 1) Self‑play Elo (round‑robin)
+
+Computes Elo ratings by having internal agents play each other in a round‑robin. Ratings start at 1500 and are updated per game with a configurable K‑factor.
+
+```bash
+python scripts/selfplay_elo.py \
+  --agents DynamicBot,AggressiveBot,FortifyBot \
+  --rounds 10 \
+  --runs output
+```
+
+Outputs: `output/selfplay_elo_YYYYmmdd_HHMMSS.json` with fields: `agents`, `ratings`, and per‑game records.
+
+### 2) Win‑rate vs baselines
+
+Measures the subject agent’s win‑rate against a set of baseline agents, alternating colors.
+
+```bash
+python scripts/baseline_winrate.py \
+  --agent DynamicBot \
+  --baselines RandomBot,AggressiveBot,FortifyBot \
+  --games 20 \
+  --runs output
+```
+
+Outputs: `output/winrate_<AGENT>_YYYYmmdd_HHMMSS.json` with per‑baseline W/L/D and win‑rate plus an overall summary.
+
+### 3) Themed puzzle suites
+
+Evaluates style via targeted motifs (e.g., mate‑in‑1, hanging captures). Puzzles are JSONL entries with `id`, `fen`, and `judge`.
+
+Sample suite is provided at `puzzles/themes/mate_in_1.jsonl` and supported judges are `mate_in_1`, `gives_check`, and `capture_hanging`.
+
+```bash
+python scripts/puzzle_runner.py \
+  --agent DynamicBot \
+  --suite puzzles/themes/mate_in_1.jsonl \
+  --limit 50 \
+  --runs output
+```
+
+Outputs: `output/puzzles_<AGENT>_YYYYmmdd_HHMMSS.json` with overall accuracy, per‑theme breakdown, and per‑puzzle details.
+
+---
+
+Tip: Combine these artifacts with `analysis/` helpers or your own pipeline to track progress against the targets in `configs/metrics_targets.json` over time.
