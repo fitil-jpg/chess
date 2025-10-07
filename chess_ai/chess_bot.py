@@ -7,6 +7,7 @@ from core.evaluator import Evaluator
 from utils import GameContext
 from .risk_analyzer import RiskAnalyzer
 from .piece_values import dynamic_piece_value
+from core.shallow_search import ShallowSearch
 
 
 _SHARED_EVALUATOR: Evaluator | None = None
@@ -59,6 +60,7 @@ class ChessBot:
     def __init__(self, color: bool):
         self.color = color
         self.risk_analyzer = RiskAnalyzer()
+        self._shallow = ShallowSearch()
 
     def choose_move(
         self,
@@ -107,6 +109,12 @@ class ChessBot:
                 p = tmp.piece_at(sq)
                 if p and p.color != self.color:
                     atk_cnt += 1
+            # Tactical shallow search refinement where it likely pays
+            if gives_check or is_cap or move.promotion or atk_cnt >= 2:
+                depth = 3 if (gives_check or is_cap) else 2
+                sscore, _ = self._shallow.search(tmp, depth=depth)
+                # Negate because shallow returns score from opponent to move
+                score += 0.25 * (-float(sscore))
             tmp.pop()
             candidates.append((float(score), move, gives_check, is_cap, atk_cnt))
             if score > best_score:
