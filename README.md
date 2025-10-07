@@ -140,13 +140,45 @@ On Windows, run the script in Git Bash or WSL and activate with:
 Execute the entire test suite with `pytest`'s automatic discovery:
 
 ```bash
+# Option A: via the helper
 python tests.py
+
+# Option B: run pytest directly
+pytest -q
 ```
 
-Running `pytest` directly works as well:
+### Linting (basic)
+
+We use Ruff for a fast, basic lint check (errors only). Install and run:
 
 ```bash
-pytest
+pip install ruff
+ruff check . --select F --exclude vendors
+```
+
+To attempt auto-fixes where possible:
+
+```bash
+ruff check . --fix
+```
+
+### Run lint and tests together
+
+```bash
+ruff check . --select F --exclude vendors && pytest -q
+```
+
+### PR CI
+
+All pull requests run GitHub Actions to execute the Python and R test suites and a basic Ruff lint.
+
+### Запуск локально (UA)
+
+```bash
+pip install -r requirements.txt
+pip install ruff
+ruff check . --select F --exclude vendors
+pytest -q
 ```
 
 ## Dependencies
