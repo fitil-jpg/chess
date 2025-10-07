@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 import io
 import pstats
+import time
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import chess
@@ -39,6 +40,7 @@ INF = 10 ** 9
 # ---------------------------------------------------------------------------
 #  Move generation / ordering hooks
 # ---------------------------------------------------------------------------
+
 
 def generate_moves(board: chess.Board) -> List[chess.Move]:
     """Return a list of legal moves for ``board``.
@@ -100,8 +102,12 @@ def order_moves(
 #  Quiescence Search
 # ---------------------------------------------------------------------------
 
-def quiescence(board: chess.Board, alpha: float, beta: float) -> float:
+
+def quiescence(board: chess.Board, alpha: float, beta: float, deadline: float | None = None) -> float:
     """Capture-only search to avoid the horizon effect."""
+
+    if deadline is not None and time.monotonic() >= deadline:
+        return evaluate_position(board)
 
     stand_pat = evaluate_position(board)
     if stand_pat >= beta:
@@ -113,7 +119,7 @@ def quiescence(board: chess.Board, alpha: float, beta: float) -> float:
         if not board.is_capture(move):
             continue
         board.push(move)
-        score = -quiescence(board, -beta, -alpha)
+        score = -quiescence(board, -beta, -alpha, deadline)
         board.pop()
         if score >= beta:
             return score
@@ -144,6 +150,7 @@ TT: Dict[int, TTEntry] = {}
 #  Alpha-beta search
 # ---------------------------------------------------------------------------
 
+
 def ab_search(
     board: chess.Board,
     depth: int,
@@ -151,6 +158,7 @@ def ab_search(
     beta: float,
     allow_null: bool = True,
     ply: int = 0,
+    deadline: float | None = None,
 ) -> Tuple[float, Optional[chess.Move]]:
     """Negamax alpha-beta search with numerous enhancements."""
 
@@ -158,6 +166,9 @@ def ab_search(
     if ply == 0 and STATS.start_time == 0.0:
         STATS.start()
     STATS.nodes += 1
+
+    if deadline is not None and time.monotonic() >= deadline:
+        return evaluate_position(board), None
 
     alpha_orig = alpha
 
@@ -178,12 +189,12 @@ def ab_search(
             return entry.value, tt_move
 
     if depth == 0 or board.is_game_over():
-        return quiescence(board, alpha, beta), None
+        return quiescence(board, alpha, beta, deadline), None
 
     # Null move pruning
     if allow_null and depth >= 3 and not board.checkers():
         board.push(chess.Move.null())
-        score, _ = ab_search(board, depth - 1 - 2, -beta, -beta + 1, False, ply + 1)
+        score, _ = ab_search(board, depth - 1 - 2, -beta, -beta + 1, False, ply + 1, deadline)
         score = -score
         board.pop()
         if score >= beta:
@@ -197,6 +208,8 @@ def ab_search(
 
     first = True
     for idx, move in enumerate(moves):
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         board.push(move)
 
         # Late move reductions for quiet moves
@@ -206,14 +219,14 @@ def ab_search(
             STATS.lmr_reductions += 1
 
         if first:
-            score, _ = ab_search(board, depth - 1, -beta, -alpha, True, ply + 1)
+            score, _ = ab_search(board, depth - 1, -beta, -alpha, True, ply + 1, deadline)
             score = -score
             first = False
         else:
-            score, _ = ab_search(board, depth - 1 - reduce, -alpha - 1, -alpha, True, ply + 1)
+            score, _ = ab_search(board, depth - 1 - reduce, -alpha - 1, -alpha, True, ply + 1, deadline)
             score = -score
             if alpha < score < beta:
-                score, _ = ab_search(board, depth - 1, -beta, -score, True, ply + 1)
+                score, _ = ab_search(board, depth - 1, -beta, -score, True, ply + 1, deadline)
                 score = -score
 
         board.pop()
@@ -254,7 +267,7 @@ KILLERS: Dict[int, List[chess.Move]] = {}
 HISTORY: Dict[Tuple[int, int, int], int] = {}
 
 
-def search(board: chess.Board, depth: int) -> Tuple[float, Optional[chess.Move]]:
+def search(board: chess.Board, depth: int, deadline: float | None = None) -> Tuple[float, Optional[chess.Move]]:
     """Convenience wrapper around :func:`ab_search` with fresh tables."""
     STATS.start()
 
@@ -267,8 +280,10 @@ def search(board: chess.Board, depth: int) -> Tuple[float, Optional[chess.Move]]
 
     moves = order_moves(board, generate_moves(board), KILLERS, HISTORY, 0, None)
     for move in moves:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
         board.push(move)
-        score, _ = ab_search(board, depth - 1, -beta, -alpha, True, 1)
+        score, _ = ab_search(board, depth - 1, -beta, -alpha, True, 1, deadline)
         score = -score
         board.pop()
         if score > best_score:

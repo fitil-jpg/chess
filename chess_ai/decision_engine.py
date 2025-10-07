@@ -9,6 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import chess
+import time
 
 from core.quiescence import quiescence
 from .risk_analyzer import RiskAnalyzer
@@ -48,13 +49,12 @@ class DecisionEngine:
         return score * self.material_weight
 
     def search(self, board: chess.Board, depth: int,
-               alpha: int = -float("inf"), beta: int = float("inf")) -> int:
-        """Alpha-beta negamax search with simple selective extensions.
+               alpha: int = -float("inf"), beta: int = float("inf"),
+               deadline: float | None = None) -> int:
+        """Alpha-beta negamax search with simple selective extensions and deadline."""
+        if deadline is not None and time.monotonic() >= deadline:
+            return self._evaluate(board)
 
-        Once the nominal depth is exhausted or the position is terminal,
-        the function transitions into a quiescence search to avoid the
-        horizon effect.
-        """
         if depth == 0 or board.is_game_over() or board.is_repetition(3):
             # Scale the quiescence search to emphasise material balance
             # without distorting the alpha--beta window.
@@ -62,11 +62,13 @@ class DecisionEngine:
             scaled_beta = beta / self.material_weight
             return quiescence(board, scaled_alpha, scaled_beta) * self.material_weight
 
-        best = float("-inf")
+        best = float("inf") * -1
         for move in board.legal_moves:
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             board.push(move)
-            score = -self.search(board, depth - 1 + extension, -beta, -alpha)
+            score = -self.search(board, depth - 1 + extension, -beta, -alpha, deadline)
             board.pop()
 
             if score > best:
@@ -79,7 +81,7 @@ class DecisionEngine:
             return quiescence(board, alpha, beta)
         return best
 
-    def choose_best_move(self, board: chess.Board):
+    def choose_best_move(self, board: chess.Board, *, time_budget_s: float | None = None):
         legal_moves = list(board.legal_moves)
         if not legal_moves:
             return None
@@ -92,6 +94,10 @@ class DecisionEngine:
         # A small tolerance allows choosing a non-repetition move that is
         # slightly worse than the best repetition line.
         REPETITION_TOLERANCE = 60  # centipawns
+
+        deadline: float | None = None
+        if time_budget_s is not None:
+            deadline = time.monotonic() + time_budget_s
 
         def _attack_count_after(move: chess.Move) -> int:
             tmp = board.copy(stack=False)
@@ -108,13 +114,20 @@ class DecisionEngine:
         annotated: list[tuple[int, int, bool, bool, int, bool, chess.Move]] = []
         # (score, capture_val, gives_check, is_capture, attack_cnt, repeats, move)
         for move in moves_to_consider:
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             extension = 1 if board.is_capture(move) or board.gives_check(move) else 0
             capture_val = 0
             if board.is_capture(move):
                 target = board.piece_at(move.to_square)
                 capture_val = dynamic_piece_value(target, board) if target else 0
             board.push(move)
-            score = -self.search(board, self.base_depth + extension)
+            # split remaining time across moves
+            sub_deadline = None
+            if deadline is not None:
+                remaining = max(0.0, deadline - time.monotonic())
+                sub_deadline = time.monotonic() + remaining / max(1, len(moves_to_consider))
+            score = -self.search(board, self.base_depth + extension, deadline=sub_deadline)
             rep = board.is_repetition(3)
             gives_check = board.is_check()
             board.pop()
@@ -124,7 +137,17 @@ class DecisionEngine:
             annotated.append((score, capture_val, gives_check, is_cap, atk_cnt, rep, move))
 
         if not annotated:
-            return None
+            # fallback: best legal move by static eval within time
+            best_mv = None
+            best_sc = float("-inf")
+            for mv in legal_moves:
+                tmp = board.copy(stack=False)
+                tmp.push(mv)
+                sc = self._evaluate(tmp)
+                if sc > best_sc:
+                    best_sc = sc
+                    best_mv = mv
+            return best_mv
 
         # Compute the best score among repetition moves to gauge disadvantage.
         rep_scores = [sc for sc, _, _, _, _, rep, _ in annotated if rep]
