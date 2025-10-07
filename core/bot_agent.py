@@ -450,6 +450,22 @@ class BotAgent:
             mobility=mobility_score,
             king_safety=king_safety_score,
         )
-        return self.impl.choose_move(
+        move, score = self.impl.choose_move(
             board, context=context, evaluator=evaluator, debug=debug
         )
+        if not debug:
+            return move, score
+        # Build a short rationale string for UI debugging. Avoid heavy text.
+        # We leverage existing evaluator stats and context for a concise summary.
+        rationale_bits = [
+            f"mat={material}",
+            f"mob={mobility_score}",
+            f"king={king_safety_score}",
+        ]
+        # Include move SAN if available
+        try:
+            san = board.san(move) if move is not None else "-"
+        except Exception:
+            san = "-"
+        rationale = f"{san} | score={score:.3f} | " + " ".join(rationale_bits)
+        return move, rationale
