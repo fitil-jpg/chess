@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "strength": {
+    "selfplay_elo": {
+      "target": 1600,
+      "min_games": 200,
+      "confidence": 0.95
+    },
+    "winrate_vs_baselines": {
+      "RandomBot": 0.90,
+      "AggressiveBot": 0.55,
+      "FortifyBot": 0.55,
+      "EndgameBot": 0.60
+    }
+  },
+  "style": {
+    "themed_puzzles": {
+      "mate_in_1": 0.95,
+      "knight_fork": 0.70,
+      "hanging_attack": 0.80
+    }
+  }
+}
