@@ -28,7 +28,11 @@ class Cell(QLabel):
 
     def set_highlight(self, active):
         palette = self.palette()
-        palette.setColor(QPalette.Window, QColor("#ffcc00") if active else self.base_color)
+        # Use a greener highlight with higher opacity (less transparent)
+        palette.setColor(
+            QPalette.Window,
+            QColor(46, 204, 113) if active else self.base_color,  # #2ecc71, fully opaque
+        )
         palette.setColor(QPalette.WindowText, QColor("red") if active else QColor("black"))
         self.setPalette(palette)
 
