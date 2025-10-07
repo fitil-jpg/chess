@@ -1,4 +1,5 @@
 import logging
+import os
 logger = logging.getLogger(__name__)
 
 import chess
@@ -93,11 +94,21 @@ class Evaluator:
         ``passed_bonus`` rewards passed pawns.  The defaults mirror the
         previously hardcoded constants so existing callers need not change.
         """
-
         self.board = board
-        self.isolated_penalty = isolated_penalty
-        self.doubled_penalty = doubled_penalty
-        self.passed_bonus = passed_bonus
+
+        # Allow environment overrides for quick A/B and CI-tuned runs.
+        try:
+            env_iso = os.getenv("CHESS_EVAL_ISOLATED_PENALTY")
+            env_dbl = os.getenv("CHESS_EVAL_DOUBLED_PENALTY")
+            env_pas = os.getenv("CHESS_EVAL_PASSED_BONUS")
+            self.isolated_penalty = int(env_iso) if env_iso is not None else isolated_penalty
+            self.doubled_penalty = int(env_dbl) if env_dbl is not None else doubled_penalty
+            self.passed_bonus = int(env_pas) if env_pas is not None else passed_bonus
+        except Exception:
+            # Fallback to provided defaults if parsing fails
+            self.isolated_penalty = isolated_penalty
+            self.doubled_penalty = doubled_penalty
+            self.passed_bonus = passed_bonus
 
         # last recorded mobility stats:
         # {
