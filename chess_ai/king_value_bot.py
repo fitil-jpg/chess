@@ -20,14 +20,30 @@ class KingValueBot(ChessBot):
     def evaluate_move(self, board: chess.Board, move: chess.Move, context: GameContext | None = None):
         score, reason = super().evaluate_move(board, move, context)
         opp_color = not self.color
-        before = calculate_king_value(board, opp_color)
+
+        # Dynamic king value pressure (material-based)
+        before_val = calculate_king_value(board, opp_color)
         tmp = board.copy(stack=False)
         tmp.push(move)
-        after = calculate_king_value(tmp, opp_color)
-        delta = before - after
-        if delta:
-            score += delta
-            bonus_reason = f"king value pressure (+{delta})"
+        after_val = calculate_king_value(tmp, opp_color)
+        delta_val = before_val - after_val
+
+        # Rich king-safety pressure using Evaluator.king_safety
+        ks_before = Evaluator.king_safety(board, opp_color)
+        ks_after = Evaluator.king_safety(tmp, opp_color)
+        # If the opponent's safety gets worse (more negative), we gain bonus.
+        # Convert safety change into a small bonus to avoid overpowering.
+        ks_improvement = ks_before - ks_after
+
+        total_bonus = 0
+        if delta_val:
+            total_bonus += delta_val
+        if ks_improvement:
+            total_bonus += int(ks_improvement)
+
+        if total_bonus:
+            score += total_bonus
+            bonus_reason = f"king pressure (+{total_bonus})"
             reason = f"{reason} | {bonus_reason}" if reason else bonus_reason
         return score, reason
 
