@@ -1,8 +1,12 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from pathlib import Path
 import chess
 from core.evaluator import Evaluator, piece_value
+from core.pattern_loader import PatternResponder
+from .see import static_exchange_eval
+from .risk_analyzer import RiskAnalyzer
 
 
 class TrapBot:
@@ -10,6 +14,20 @@ class TrapBot:
 
     def __init__(self, color: bool):
         self.color = color
+        self._risk = RiskAnalyzer()
+        self._trap_responder: PatternResponder | None = None
+
+    def _load_traps(self) -> None:
+        """Lazily load trap patterns from `configs/traps.json` if present."""
+        if self._trap_responder is not None:
+            return
+        cfg = Path("configs/traps.json")
+        if cfg.exists():
+            try:
+                self._trap_responder = PatternResponder.from_file(cfg)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("Failed to load trap patterns: %s", exc)
+                self._trap_responder = None
 
     def _opponent_label(self) -> str:
         return "black" if self.color == chess.WHITE else "white"
@@ -32,6 +50,20 @@ class TrapBot:
         """
 
         evaluator = evaluator or Evaluator(board)
+        # Optional trap pattern for current board
+        self._load_traps()
+        pattern_move: chess.Move | None = None
+        trap_factor_safe = 1.25  # bonus for safe traps
+        trap_factor_risky = 0.50  # downgrade risky traps rather than forbidding
+        if self._trap_responder is not None:
+            action = self._trap_responder.match(board)
+            if action:
+                try:
+                    candidate = chess.Move.from_uci(action)
+                    if candidate in board.legal_moves:
+                        pattern_move = candidate
+                except Exception:  # pragma: no cover - invalid action ignored
+                    pattern_move = None
         evaluator.mobility(board)
         pre_stats = evaluator.mobility_stats[self._opponent_label()]["pieces"]
 
@@ -46,10 +78,6 @@ class TrapBot:
             after_eval.mobility(tmp)
             after_stats = after_eval.mobility_stats[self._opponent_label()]["pieces"]
 
-            # Deeper squares (further into enemy territory) are preferred.
-            rank = chess.square_rank(mv.to_square)
-            depth = rank + 1 if self.color == chess.WHITE else 8 - rank
-
             # Compare mobility for each opponent piece. ``move_drop`` tracks the
             # largest reduction (which may be negative if all candidate moves
             # increase the opponent's mobility). Starting at ``-inf`` ensures we
@@ -58,8 +86,14 @@ class TrapBot:
             for sq, info in pre_stats.items():
                 pre_mob = info["mobility"]
                 post_info = after_stats.get(sq)
+                was_capture = False
+                # Depth preference is relative to the targeted piece's zone,
+                # not our move destination, to avoid overvaluing incidental checks.
+                rank_sq = chess.square_rank(sq)
+                depth = rank_sq + 1 if self.color == chess.WHITE else 8 - rank_sq
                 if post_info is None:
                     drop = pre_mob  # piece captured
+                    was_capture = True
                 else:
                     drop = pre_mob - post_info["mobility"]
                     # Look ahead: piece tries to escape
@@ -83,6 +117,19 @@ class TrapBot:
                 # the trap lies to prioritise high-mobility targets and deeper
                 # incursions.
                 weighted_drop = drop * pre_mob * depth
+                if was_capture:
+                    # Slightly prefer capturing highly mobile targets
+                    weighted_drop *= 1.15
+
+                # If this move matches a trap pattern, apply SEE + 1-ply safety
+                # gating: reward safe traps, downgrade risky ones.
+                if pattern_move is not None and mv == pattern_move:
+                    see_score = static_exchange_eval(board, mv)
+                    risky = self._risk.is_risky(board, mv, depth=1)
+                    if see_score >= 0 and not risky:
+                        weighted_drop *= trap_factor_safe
+                    else:
+                        weighted_drop *= trap_factor_risky
                 if weighted_drop > move_drop:
                     move_drop = weighted_drop
 
