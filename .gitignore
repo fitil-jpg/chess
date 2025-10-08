@@ -64,3 +64,14 @@ runs/20251005_234854_706995.json
 analysis/heatmaps/
 heatmaps/
 runs/
+
+# Output artifacts
+output/
+
+# Analysis single-file outputs
+analysis/agent_metrics.json
+analysis/synergy.json
+
+# ML weights / checkpoints
+*.pth
+*.pt
