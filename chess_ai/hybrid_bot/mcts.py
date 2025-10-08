@@ -8,6 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import chess
+import time
 from .evaluation import evaluate_positions
 from ..utils.profile_stats import STATS, plot_profile_stats
 
@@ -48,6 +49,7 @@ class BatchMCTS:
         dirichlet_alpha: float = 0.3,
         epsilon: float = 0.25,
         batch_size: int = 1,
+        deadline: float | None = None,
     ) -> tuple[chess.Move | None, Node]:
         """Run MCTS and return a move and the search tree.
 
@@ -74,6 +76,8 @@ class BatchMCTS:
 
         sims_done = 0
         while sims_done < n_simulations:
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             batch_nodes: list[Node] = []
             batch_boards: list[chess.Board] = []
             batch_paths: list[list[Node]] = []
@@ -81,6 +85,8 @@ class BatchMCTS:
                 len(batch_nodes) < batch_size
                 and sims_done + len(batch_nodes) < n_simulations
             ):
+                if deadline is not None and time.monotonic() >= deadline:
+                    break
                 node = root
                 b = board.copy()
                 path = [node]
@@ -105,7 +111,7 @@ class BatchMCTS:
                 STATS.nodes += len(path)
 
             # Evaluate all boards in a single call
-            values = evaluate_positions(batch_boards)
+            values = evaluate_positions(batch_boards) if batch_boards else []
 
             # Backup each result along its path
             for path, value in zip(batch_paths, values):
@@ -117,13 +123,16 @@ class BatchMCTS:
             sims_done += len(batch_nodes)
 
         # Choose move from root
-        if temperature <= 1e-3:
-            move = max(root.children.items(), key=lambda kv: kv[1].n)[0]
+        if root.children:
+            if temperature <= 1e-3:
+                move = max(root.children.items(), key=lambda kv: kv[1].n)[0]
+            else:
+                visits = [child.n ** (1 / temperature) for child in root.children.values()]
+                s = sum(visits)
+                probs = [v / s for v in visits]
+                move = random.choices(list(root.children.keys()), weights=probs, k=1)[0]
         else:
-            visits = [child.n ** (1 / temperature) for child in root.children.values()]
-            s = sum(visits)
-            probs = [v / s for v in visits]
-            move = random.choices(list(root.children.keys()), weights=probs, k=1)[0]
+            move = legal[0] if legal else None
         STATS.stop()
         logger.info("MCTS: %s", STATS.summary())
         plot_profile_stats(STATS, filename="mcts_profile.png")

@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 import chess
 import os
+import time
 
 from .alpha_beta import search as ab_search
 from .mcts import BatchMCTS
@@ -109,6 +110,7 @@ class HybridOrchestrator:
         plot: bool = False,
         plot_title: str | None = None,
         plot_path: str | None = None,
+        time_budget_s: float | None = None,
     ) -> Tuple[chess.Move | None, Dict[str, Any]]:
         """Return the final move and optional visualisation.
 
@@ -123,22 +125,48 @@ class HybridOrchestrator:
             Optional title passed to :func:`plot_orchestrator_diag`.
         plot_path:
             If provided, the generated figure is saved to this path.
+        time_budget_s:
+            Optional per-move time budget in seconds. The orchestrator splits
+            this across MCTS and alpha-beta checks and ensures a safe fallback
+            when the deadline is reached.
         """
         if board.turn != self.color:
             return None, {"candidates": [], "chosen": None, "mcts_first": None}
 
+        # Per-move time management
+        deadline: float | None = None
+        if time_budget_s is not None:
+            deadline = time.monotonic() + time_budget_s
+
         # Perform MCTS and gather top-K candidates by visit count
-        _, root = self.mcts.search(board, n_simulations=self.mcts_simulations)
+        mcts_deadline: float | None = None
+        if deadline is not None:
+            # Allocate ~60% of the remaining budget to MCTS
+            remaining = max(0.0, deadline - time.monotonic())
+            mcts_deadline = time.monotonic() + 0.6 * remaining
+        _, root = self.mcts.search(
+            board,
+            n_simulations=self.mcts_simulations,
+            deadline=mcts_deadline,
+        )
         children = sorted(root.children.items(), key=lambda kv: kv[1].n, reverse=True)
         if not children:
-            return None, {"candidates": [], "chosen": None, "mcts_first": None}
+            # Fallback: pick any legal move quickly
+            first = next(iter(board.legal_moves), None)
+            return first, {"candidates": [], "chosen": None, "mcts_first": None}
 
         candidates: List[_Candidate] = []
         for move, node in children[: self.top_k]:
             b = board.copy()
             b.push(move)
             depth = max(1, self.ab_depth - 1)
-            ab_val, _ = ab_search(b, depth)
+            # Distribute remaining time evenly across candidates
+            ab_deadline: float | None = None
+            if deadline is not None:
+                remaining = max(0.0, deadline - time.monotonic())
+                per = remaining / max(1, self.top_k)
+                ab_deadline = time.monotonic() + per
+            ab_val, _ = ab_search(b, depth, deadline=ab_deadline)
             ab_val = -ab_val  # convert to our perspective
             r_val = self._r_eval(b)
             if b.turn != self.color:
@@ -171,6 +199,9 @@ class HybridOrchestrator:
                 title = f"{colour} move {board.fullmove_number}"
             plot_orchestrator_diag(diag, title=title, save_path=plot_path)
 
+        # Ensure safe fallback if time was exceeded
+        if deadline is not None and time.monotonic() >= deadline:
+            return mcts_first.move, diag
         return chosen.move, diag
 
 
