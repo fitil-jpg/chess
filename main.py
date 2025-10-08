@@ -24,7 +24,7 @@ def annotated_board(
     """Return a board diagram with a side panel of supplementary data."""
 
     try:
-        from arena_threaded import board_diagram as diagram_func  # local import to avoid cycle
+        from arena import board_diagram as diagram_func  # local import to avoid cycle
     except ImportError:  # pragma: no cover - fallback for alternative entrypoints
         diagram_func = None
 
