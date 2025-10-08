@@ -2,3 +2,4 @@ matplotlib
 python-chess
 rpy2
 torch
+py-spy

@@ -11,6 +11,7 @@ bishop_skewer > check > capture > develop > threaten_hanging > nothing
 
 from __future__ import annotations
 from typing import Dict, Any
+import os
 import chess
 from core.constants import PIECE_PRIORITY, fork_pair_priority, sigmoid_multiplier
 
@@ -24,7 +25,8 @@ class Scorer:
     PRIORITY_SCALE = 0.09  # масштаб «цінностей фігур» у бали (~0..150)
 
     def __init__(self):
-        self.weights: Dict[str, int] = {
+        # Base weights with env overrides (e.g. CHESS_SCORER_CHECK=90)
+        defaults: Dict[str, int] = {
             "capture_hanging":      140,
             "check":                 85,
             "capture_defended":      40,
@@ -34,10 +36,23 @@ class Scorer:
             "active_piece":            5,
             "nothing":                1,
         }
+        weights: Dict[str, int] = {}
+        for k, v in defaults.items():
+            env_key = f"CHESS_SCORER_{k.upper()}"
+            try:
+                env_val = os.getenv(env_key)
+                weights[k] = int(env_val) if env_val is not None else v
+            except Exception:
+                weights[k] = v
+        self.weights = weights
         self.last_check_signature = None
         self.last_check_eval = None
         self.check_repeat_count = 0
-        self.repeat_penalty = 20
+        # Allow tuning via env as well
+        try:
+            self.repeat_penalty = int(os.getenv("CHESS_SCORER_REPEAT_PENALTY", "20"))
+        except Exception:
+            self.repeat_penalty = 20
 
     def _score_attack_queen(self, pawn: bool) -> int:
         base = PIECE_PRIORITY[chess.QUEEN]

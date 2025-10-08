@@ -11,6 +11,7 @@ bot_agent.py
 from __future__ import annotations
 from typing import Optional, Tuple, Dict, Any, List, Callable, Set
 import random
+import os
 import chess
 
 import logging
@@ -401,7 +402,14 @@ class _FeatureExtractor:
 class AggressiveBot:
     def __init__(self, color: bool):
         self.color = color
+        # Optionally scale certain weights for quick experimentation via env.
         self.scorer = Scorer()
+        try:
+            scale = float(os.getenv("CHESS_AGGR_PRIORITY_SCALE", "1.0"))
+            for k in list(self.scorer.weights.keys()):
+                self.scorer.weights[k] = int(round(self.scorer.weights[k] * scale))
+        except Exception:
+            pass
         self.fx = _FeatureExtractor()
     def choose_move(
         self,
@@ -438,7 +446,12 @@ class FortifyBot:
                  tiebreak_jitter: float = 0.01):
         self.color = color
         self.safe_only = safe_only
-        self.tiebreak_jitter = tiebreak_jitter
+        # Allow disabling jitter via env for determinism in CI
+        try:
+            jitter_env = os.getenv("CHESS_FORTIFY_TIEBREAK_JITTER")
+            self.tiebreak_jitter = float(jitter_env) if jitter_env is not None else tiebreak_jitter
+        except Exception:
+            self.tiebreak_jitter = tiebreak_jitter
         self.W = {
             "defense_density": 5.0,
             "defenders": 0.5,
@@ -448,6 +461,22 @@ class FortifyBot:
             "opp_shield_delta": 5.0,
         }
         if weights: self.W.update(weights)
+        # Environment overrides for quick tuning from CI/tuner
+        try:
+            scale_env = os.getenv("CHESS_FORTIFY_SCALE")
+            scale = float(scale_env) if scale_env is not None else 1.0
+            for k in list(self.W.keys()):
+                env_key = f"CHESS_FORTIFY_{k.upper()}"
+                v = os.getenv(env_key)
+                if v is not None:
+                    try:
+                        self.W[k] = float(v)
+                    except Exception:
+                        pass
+                if scale != 1.0:
+                    self.W[k] = float(self.W[k]) * scale
+        except Exception:
+            pass
 
     def choose_move(
         self,
