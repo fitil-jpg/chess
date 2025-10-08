@@ -24,6 +24,65 @@ bot = DynamicBot(
 )
 ```
 
+### DynamicBot ensemble improvements
+
+`DynamicBot` now supports advanced ensembling features:
+
+- Phase-aware weights: provide different sub-agent weights per game phase (`opening`, `middlegame`, `endgame`).
+- Diversity bonus: reward non-overlapping agent ideas to encourage coverage of alternative plans.
+- Contextual bandit: adapt agent weights online per position-type bucket.
+
+Usage examples:
+
+```python
+from chess_ai.dynamic_bot import DynamicBot
+import chess
+
+board = chess.Board()
+
+# 1) Phase-aware weights (preferred)
+bot = DynamicBot(
+    color=chess.WHITE,
+    phase_weights={
+        "opening": {"aggressive": 1.5, "fortify": 0.7},
+        "middlegame": {"critical": 1.2, "center": 1.0},
+        "endgame": {"endgame": 1.6},
+    },
+)
+
+# 2) Or pass a nested mapping via `weights`
+bot = DynamicBot(
+    color=chess.WHITE,
+    weights={
+        "opening": {"aggressive": 1.5},
+        "middlegame": {"critical": 1.2},
+        "endgame": {"endgame": 1.6},
+        # fallback defaults used for other agents if not specified
+    },
+)
+
+# 3) Configure diversity and bandit
+bot = DynamicBot(
+    color=chess.WHITE,
+    enable_diversity=True,
+    diversity_bonus=0.25,   # default 0.25
+    enable_bandit=True,
+    bandit_alpha=0.15,      # learning rate for online updates
+)
+```
+
+Environment flags (override constructor defaults):
+
+- `CHESS_DYNAMIC_DIVERSITY=1|0` – enable/disable diversity bonus (default: 1)
+- `CHESS_DYNAMIC_DIVERSITY_BONUS=float` – per-pair bonus magnitude (default: 0.25)
+- `CHESS_DYNAMIC_BANDIT=1|0` – enable/disable contextual bandit updates (default: 1)
+- `CHESS_DYNAMIC_BANDIT_ALPHA=float` – bandit learning rate (default: 0.15)
+
+Implementation notes:
+
+- Position-type buckets are formed as `"{phase}|{tac|quiet}|{low|norm}"` using lightweight features and mobility. Bandit multipliers are updated only for agents that proposed the finally chosen move.
+- The diversity idea overlap is approximated using from/to squares (and the first step along slider direction) and awards a bonus when overlap ≤ 25%.
+
 By default all deterministic sub-bots have a weight of `1.0` while
 `RandomBot` is assigned a weight of `0.0` and therefore excluded unless a
 positive weight is supplied.
