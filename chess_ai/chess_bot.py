@@ -121,7 +121,7 @@ class ChessBot:
                 best_score = float(score)
 
         # Prefer avoiding immediate threefold repetition when reasonable.
-        REP_TOL = 60.0
+        REP_TOL = 200.0
         rep_best = -float("inf")
         for s, m, _, _, _ in candidates:
             tmp = board.copy(stack=False); tmp.push(m)
@@ -140,8 +140,27 @@ class ChessBot:
 
         chosen: chess.Move | None = None
         if non_rep_ok:
-            # Pyramid preference: check > capture > attack_count > score > uci
-            non_rep_ok.sort(key=lambda t: (int(t[2]), int(t[3]), t[4], t[0], -ord(t[1].uci()[0])), reverse=True)
+            # Prefer safe captures (esp. rook/queen) to break repetition.
+            # Key: capture > (target value + safety) > score > check > attacks > UCI
+            def _prio(t):
+                s, m, gives_check, is_cap, atk_cnt = t
+                cap_score = 0
+                if is_cap:
+                    tgt = board.piece_at(m.to_square)
+                    if tgt:
+                        base = {
+                            chess.QUEEN: 900,
+                            chess.ROOK: 500,
+                            chess.BISHOP: 330,
+                            chess.KNIGHT: 320,
+                            chess.PAWN: 100,
+                        }.get(tgt.piece_type, 0)
+                        defenders = board.attackers(self.color, m.to_square)
+                        attackers = board.attackers(not self.color, m.to_square)
+                        safe = 1 if len(defenders) >= len(attackers) else 0
+                        cap_score = base + 200 * safe
+                return (int(is_cap), cap_score, s, int(gives_check), atk_cnt, -ord(m.uci()[0]))
+            non_rep_ok.sort(key=_prio, reverse=True)
             chosen = non_rep_ok[0][1]
             best_score = non_rep_ok[0][0]
         else:
@@ -267,6 +286,11 @@ class ChessBot:
                     from_val = dynamic_piece_value(from_piece, board)
                 gain = target_val - from_val
                 score += gain
+                # Mildly prefer using a lower-valued attacker (avoid overusing the queen)
+                try:
+                    score -= 0.1 * float(from_val)
+                except Exception:
+                    pass
                 if context and context.material_diff < 0:
                     bonus = abs(context.material_diff) * MATERIAL_DEFICIT_BONUS
                     score += bonus

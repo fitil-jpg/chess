@@ -130,7 +130,7 @@ def _pst_insights(board: chess.Board) -> List[str]:
     return [summary, f"Top PST cells: {top_cells}"]
 
 def run_match(
-    max_plies: int = 40,
+    max_plies: int = 0,
     *,
     diagram_every: int | None = None,
     diagram_unicode: bool = False,
@@ -141,20 +141,78 @@ def run_match(
     black = DynamicBot("DynamicBot-Black")
 
     ply = 0
+    # --- Aggregation across the whole game ---
+    metric_keys = [
+        "material",
+        "pst",
+        "mobility",
+        "attacks_white",
+        "attacks_black",
+        "delta_attacks",
+    ]
+    metrics_sum: dict[str, int] = {k: 0 for k in metric_keys}
+    metrics_min: dict[str, int] = {k: 10**9 for k in metric_keys}
+    metrics_max: dict[str, int] = {k: -10**9 for k in metric_keys}
+    # Event counters and auxiliary aggregates
+    checks_delivered = 0
+    captures_made = 0
+    retakes_made = 0
+    last_capture_square: int | None = None
+    # Phase distribution (as defined by PST loader: midgame/endgame)
+    phase_counts: dict[str, int] = {"midgame": 0, "endgame": 0}
+    # Average branching factor
+    bf_sum = 0
+    pos_count = 0
     print_pst_summary()
     print("Start FEN:", board.fen())
     print()
 
-    while not board.is_game_over() and ply < max_plies:
+    while not board.is_game_over() and (max_plies <= 0 or ply < max_plies):
         side = "White" if board.turn == chess.WHITE else "Black"
         bot = white if board.turn == chess.WHITE else black
 
+        # Branching factor before the move
+        L = board.legal_moves.count()
+        bf_sum += L
+        pos_count += 1
+
         move, det = bot.select_move(board)
+        # Capture/retake detection (must be done before push)
+        is_cap = board.is_capture(move)
+        will_retake = bool(is_cap and last_capture_square is not None and move.to_square == last_capture_square)
         board.push(move)
         ply += 1
 
         # Оцінка після зробленого ходу (позиція належить супернику):
         score, _ = evaluate(board)
+
+        # Track checks delivered, captures and retakes
+        if board.is_check():
+            checks_delivered += 1
+        if is_cap:
+            captures_made += 1
+        if will_retake:
+            retakes_made += 1
+        last_capture_square = move.to_square if is_cap else None
+
+        # Phase distribution after the move
+        try:
+            ph = game_phase_from_board(board)
+            if ph in phase_counts:
+                phase_counts[ph] += 1
+        except Exception:
+            pass
+
+        # Accumulate key evaluation metrics for summary
+        for k in metric_keys:
+            v = det.get(k)
+            if isinstance(v, (int, float)):
+                iv = int(v)
+                metrics_sum[k] += iv
+                if iv < metrics_min[k]:
+                    metrics_min[k] = iv
+                if iv > metrics_max[k]:
+                    metrics_max[k] = iv
 
         print(f"[Ply {ply:02d}] {side} {bot.name} played {board.peek().uci()}")
         print(
@@ -263,9 +321,29 @@ def run_match(
         )
     )
 
+    # ---- End-of-game metrics summary ----
+    denom = max(ply, 1)
+    print("\n=== METRICS SUMMARY (entire game) ===")
+    print("Processed metrics (min / avg / max):")
+    for k in metric_keys:
+        mn = metrics_min[k] if metrics_min[k] != 10**9 else 0
+        mx = metrics_max[k] if metrics_max[k] != -10**9 else 0
+        avg = metrics_sum[k] / denom
+        print(f"- {k}: {mn:+d} / {avg:+.1f} / {mx:+d}")
+    # Auxiliary counters and aggregates
+    avg_bf = (bf_sum / pos_count) if pos_count else 0.0
+    print("Auxiliary counters:")
+    print(f"- checks_delivered: {checks_delivered}")
+    print(f"- captures_made: {captures_made}")
+    print(f"- retakes_made: {retakes_made}")
+    print(f"- avg_branching_factor: {avg_bf:.1f} over {pos_count} positions")
+    print("Phase distribution (plies):", phase_counts)
+    print("Other metrics you can enable/track:")
+    print("- hanging_targets, fork_patterns, king_safety_gradient, center_control, passed_pawns")
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a headless chess match between internal bots.")
-    parser.add_argument("--max-plies", type=int, default=40, help="Maximum number of plies to play")
+    parser.add_argument("--max-plies", type=int, default=0, help="Maximum number of plies to play (0 = until game end)")
     parser.add_argument(
         "--diagram-every",
         type=int,
