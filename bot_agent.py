@@ -10,7 +10,11 @@ except Exception:  # pragma: no cover - graceful degradation in stub envs
     class Guardrails:  # type: ignore
         def is_legal_and_sane(self, board, move) -> bool:
             try:
-                return move in getattr(board, "legal_moves", [])
+                # Accept any move present in the iterable of legal moves
+                for m in getattr(board, "legal_moves", []):
+                    if getattr(m, "uci", lambda: None)() == getattr(move, "uci", lambda: None)():
+                        return True
+                return False
             except Exception:
                 return True
 
