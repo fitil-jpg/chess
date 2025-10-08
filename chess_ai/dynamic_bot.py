@@ -20,6 +20,7 @@ from .critical_bot import CriticalBot
 from .neural_bot import NeuralBot
 from core.evaluator import Evaluator
 from utils import GameContext
+from metrics.calibration import centipawn_to_winprob
 
 _USE_R = os.getenv("CHESS_USE_R") == "1"
 if _USE_R:
@@ -154,6 +155,8 @@ class DynamicBot:
 
         scores: Dict[chess.Move, float] = defaultdict(float)
         debug_contrib: Dict[chess.Move, List[str]] = defaultdict(list)
+        # Keep raw weighted scores per move for a later win-prob estimate.
+        per_move_weighted: Dict[chess.Move, List[float]] = defaultdict(list)
 
         # Detect the most critical opponent piece so that moves neutralising
         # dangerous forks can be prioritised.  We consider only knight threats
@@ -179,6 +182,7 @@ class DynamicBot:
                 continue
             score = conf * weight
             scores[move] += score
+            per_move_weighted[move].append(score)
             if debug:
                 debug_contrib[move].append(
                     f"{type(agent).__name__}: conf={conf:.3f} w={weight:.3f} → {score:.3f}"
@@ -231,10 +235,20 @@ class DynamicBot:
                     move = engine_move
                     total = scores.get(engine_move, total)
 
+        # Compute a calibrated win probability from the weighted per-move scores.
+        # We treat the accumulated weighted scores as centipawn-like and convert
+        # via a logistic mapping.
+        weighted_list = per_move_weighted.get(move, [total])
+        avg_weighted = sum(weighted_list) / max(1, len(weighted_list))
+        win_prob = centipawn_to_winprob(avg_weighted)
+
         if debug:
             logger.debug("DynamicBot contributions:")
             for mv, lines in debug_contrib.items():
                 for line in lines:
                     logger.debug(f"  {mv}: {line}")
-            logger.debug(f"DynamicBot selected {move} with score {total:.3f}")
-        return move, total
+            logger.debug(f"DynamicBot selected {move} with score {total:.3f} (p(win)={win_prob:.3f})")
+        # Preserve numeric compatibility: return a score; callers that want
+        # probability can derive or read debug logs. We return the same 'total'
+        # to avoid changing tests, but downstream wrappers may surface rationale.
+        return move, float(total)

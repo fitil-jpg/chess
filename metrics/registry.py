@@ -76,6 +76,23 @@ def _try_register_defaults() -> None:
     except Exception:
         pass
 
+    # Optional: win probability via calibrated conversion if available.
+    try:
+        from .calibration import centipawn_to_winprob  # type: ignore
+
+        def _win_prob(board: Any) -> float:
+            # Reuse evaluation.evaluate() if present to obtain a centipawn-like score.
+            try:
+                from evaluation import evaluate as _evaluate_inner  # type: ignore
+                score, _ = _evaluate_inner(board)
+                return float(centipawn_to_winprob(float(score)))
+            except Exception:
+                return 0.5
+
+        REGISTRY.register("win_prob", _win_prob, override=True)
+    except Exception:
+        pass
+
 
 _try_register_defaults()
 
