@@ -34,6 +34,7 @@ __all__ = [
     "DynamicBot",
     "FortifyBot",
     "AggressiveBot",
+    "PieceMateBot",
     "HybridBot",
     "KingValueBot",
     "StockfishBot",
@@ -97,6 +98,23 @@ except Exception:
             moves = list(board.legal_moves)
             m = random.choice(moves) if moves else None
             return m, "LOW | RandomBot(STUB): random"
+
+try:
+    from .piece_mate_bot import PieceMateBot  # type: ignore
+except Exception:
+    class PieceMateBot:
+        def __init__(self, color: bool, **kwargs):
+            self.color = color
+        def choose_move(
+            self,
+            board: chess.Board,
+            context: GameContext | None = None,
+            evaluator: Evaluator | None = None,
+            debug: bool = True,
+        ):
+            moves = list(board.legal_moves)
+            m = random.choice(moves) if moves else None
+            return m, "PIECE_MATE(STUB): random"
 
 try:
     from .king_value_bot import KingValueBot  # type: ignore
@@ -1039,6 +1057,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "DynamicBot":        _factory(DynamicBot),
     "FortifyBot":        _factory(FortifyBot),
     "AggressiveBot":     _factory(AggressiveBot),
+    "PieceMateBot":      _factory(PieceMateBot),
     "HybridBot":         _factory(HybridBot),
     "KingValueBot":     _factory(KingValueBot),
     "StockfishBot":      _factory(StockfishBot),
