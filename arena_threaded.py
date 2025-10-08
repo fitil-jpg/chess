@@ -29,7 +29,7 @@ from core.pst_trainer import update_from_board, update_from_history
 from main import annotated_board
 
 # ---------- Налаштування ----------
-THREADS = 4
+THREADS = 1
 GAMES_PER_THREAD = 2
 
 # Default internal vs internal. Override to pit against external engine.
@@ -423,22 +423,26 @@ def main():
         logger.warning(f"Agents list: {sorted(names)}")
         raise SystemExit(f"Unknown agent(s). WHITE={WHITE_AGENT} BLACK={BLACK_AGENT}")
 
-    threads: List[threading.Thread] = []
     stats: Dict[int, Tuple[int,int,int]] = {}
 
     t0 = time.time()
-    for i in range(1, THREADS + 1):
-        t = threading.Thread(
-            target=play_games,
-            name=f"Arena-{i}",
-            args=(i, GAMES_PER_THREAD, stats),
-            daemon=True,
-        )
-        threads.append(t)
-        t.start()
+    if THREADS <= 1:
+        # Послідовний режим (без потоків)
+        play_games(1, GAMES_PER_THREAD, stats)
+    else:
+        threads: List[threading.Thread] = []
+        for i in range(1, THREADS + 1):
+            t = threading.Thread(
+                target=play_games,
+                name=f"Arena-{i}",
+                args=(i, GAMES_PER_THREAD, stats),
+                daemon=True,
+            )
+            threads.append(t)
+            t.start()
 
-    for t in threads:
-        t.join()
+        for t in threads:
+            t.join()
 
     total_time = time.time() - t0
     total_games = sum(sum(s) for s in stats.values())
