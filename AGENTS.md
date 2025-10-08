@@ -12,3 +12,4 @@ The project includes several chess agents (bots). Each bot analyses the board an
 - **KingValueBot** – evaluates positions based on king safety and piece values.
 - **NeuralBot** – scores moves using a neural network evaluation.
 - **UtilityBot** – provides basic evaluation utilities used by other bots.
+ - **PieceMateBot** – traps targeted enemy pieces by cutting off all safe escapes.
