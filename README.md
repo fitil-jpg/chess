@@ -2,7 +2,9 @@
 
 See [AGENTS.md](AGENTS.md) for an overview of the available bots. Development guidelines and testing instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+
 For a focused trapping strategy, see [docs/piece_mate_bot.md](docs/piece_mate_bot.md) describing `PieceMateBot` (UA).
+
 
 ## Meta Mode
 
