@@ -1,5 +1,5 @@
 """
-arena_threaded.py — багатопотокова арена між двома агентами.
+arena.py — послідовна арена між двома агентами (без потоків).
 
 Фічі:
 - Друк діаграм ТІЛЬКИ у визначні моменти (та фінальну): фази, capture/retake, hanging, fork.
@@ -7,7 +7,6 @@ arena_threaded.py — багатопотокова арена між двома 
 - DIAGRAM_UNICODE=True: ♔♕♖♗♘♙ / ♚♛♜♝♞♟ у консолі.
 - Usage-статистика DynamicBot (якщо агент її надає).
 - Перф-метрики: середній branching factor L та L^2 за гру.
-- Потокобезпечний запис у спільну статистику.
 """
 
 from __future__ import annotations
@@ -15,7 +14,6 @@ from utils.usage_logger import record_usage
 record_usage(__file__)
 
 import time
-import threading
 import logging
 from typing import Dict, Tuple, List, Optional
 
@@ -29,8 +27,7 @@ from core.pst_trainer import update_from_board, update_from_history
 from main import annotated_board
 
 # ---------- Налаштування ----------
-THREADS = 1
-GAMES_PER_THREAD = 2
+GAMES = 2
 
 # Default internal vs internal. Override to pit against external engine.
 WHITE_AGENT = "DynamicBot"
@@ -54,12 +51,9 @@ PRINT_ON_FORK     = True   # knight/bishop double-attack (після нашог�
 MIDGAME_NONKING_PIECES_MAX   = 20   # >20 = opening
 ENDGAME_NONKING_PIECES_MAX   = 12   # <=12 = endgame
 
-# ---------- Потокобезпека ----------
-STATS_LOCK = threading.Lock()   # запис у спільний stats_out
-
 # ---------- Логгер ----------
 def _setup_logging():
-    fmt = "%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s"
+    fmt = "%(asctime)s [%(levelname)s] %(message)s"
     logging.basicConfig(level=LOG_LEVEL, format=fmt)
 
 logger = logging.getLogger(__name__)
@@ -187,14 +181,13 @@ def is_fork_after_move(board: chess.Board, last_move: chess.Move, mover_color: b
     attacked_syms.sort(key=lambda s: "KQRBN".index(s))
     return f"{'N' if p.piece_type==chess.KNIGHT else 'B'}:{attacked_syms[0]}+{attacked_syms[1]}"
 
-# ---------- Ігри у потоці ----------
+# ---------- Ігри (послідовно) ----------
 
-def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,int]]):
+def play_games(games: int) -> Tuple[int, int, int]:
     logger = logging.getLogger()
 
     wins = losses = draws = 0
 
-    # У кожному потоці — СВОЇ інстанси агентів (без спільного стану між потоками)
     white_agent = make_agent(WHITE_AGENT, chess.WHITE)
     black_agent = make_agent(BLACK_AGENT, chess.BLACK)
 
@@ -408,9 +401,7 @@ def play_games(thread_id: int, games: int, stats_out: Dict[int, Tuple[int,int,in
                 indent=2,
             )
 
-    # Запис підсумків потоку — під Lock
-    with STATS_LOCK:
-        stats_out[thread_id] = (wins, losses, draws)
+    return wins, losses, draws
 
 # ---------- Запуск ----------
 
@@ -423,36 +414,15 @@ def main():
         logger.warning(f"Agents list: {sorted(names)}")
         raise SystemExit(f"Unknown agent(s). WHITE={WHITE_AGENT} BLACK={BLACK_AGENT}")
 
-    stats: Dict[int, Tuple[int,int,int]] = {}
-
     t0 = time.time()
-    if THREADS <= 1:
-        # Послідовний режим (без потоків)
-        play_games(1, GAMES_PER_THREAD, stats)
-    else:
-        threads: List[threading.Thread] = []
-        for i in range(1, THREADS + 1):
-            t = threading.Thread(
-                target=play_games,
-                name=f"Arena-{i}",
-                args=(i, GAMES_PER_THREAD, stats),
-                daemon=True,
-            )
-            threads.append(t)
-            t.start()
-
-        for t in threads:
-            t.join()
-
+    wins, losses, draws = play_games(GAMES)
     total_time = time.time() - t0
-    total_games = sum(sum(s) for s in stats.values())
-    wins = sum(s[0] for s in stats.values())
-    losses = sum(s[1] for s in stats.values())
-    draws = sum(s[2] for s in stats.values())
+    total_games = GAMES
 
     logger.info("")
-    logger.info(f"Total games: {total_games} in {total_time:.1f}s  |  per thread: {GAMES_PER_THREAD} × {THREADS}")
+    logger.info(f"Total games: {total_games} in {total_time:.1f}s")
     logger.info(f"Wins: {wins}, Losses: {losses}, Draws: {draws}")
 
 if __name__ == "__main__":
     main()
+
