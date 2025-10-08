@@ -168,10 +168,29 @@ class DynamicBot:
         if use_r and _r_eval_board is not None:
             self.register_agent(_RBoardEvaluator(color), "r")
 
-    def register_agent(self, agent: object, name: str) -> None:
-        """Register a sub-agent with semantic ``name`` used for weights."""
+    def register_agent(self, agent: object, name: str | None = None, weight: float | None = None) -> None:
+        """Register a sub-agent.
 
+        Parameters
+        ----------
+        agent:
+            The sub-agent instance exposing ``choose_move``.
+        name:
+            Semantic agent name used to resolve weights (e.g. ``"aggressive"``).
+            If omitted, a unique ``custom_N`` name is assigned.
+        weight:
+            Optional base weight to use for this agent when no phase-specific
+            override is provided. If given, it updates ``base_weights[name]``.
+        """
+
+        if name is None:
+            name = f"custom_{len(self.agents)}"
         self.agents.append((agent, name))
+        if weight is not None:
+            try:
+                self.base_weights[name] = float(weight)
+            except Exception:
+                self.base_weights[name] = 1.0
 
     # ---- Weight resolution & context buckets --------------------------------
     def _resolve_phase_weight(self, phase: str, agent_name: str) -> float:
@@ -225,28 +244,37 @@ class DynamicBot:
         self,
         board: chess.Board,
         scores: Dict[chess.Move, float],
-        agent_moves: Dict[str, chess.Move],
+        agent_best: Dict[str, Tuple[chess.Move, float]],
     ) -> None:
-        if not self.enable_diversity or len(agent_moves) < 2:
+        if not self.enable_diversity or len(agent_best) < 2:
             return
         # Precompute idea squares per agent
-        ideas: Dict[str, set[int]] = {name: self._idea_squares(board, mv) for name, mv in agent_moves.items()}
-        names = list(agent_moves.keys())
+        ideas: Dict[str, set[int]] = {name: self._idea_squares(board, mv_conf[0]) for name, mv_conf in agent_best.items()}
+        names = list(agent_best.keys())
         n = len(names)
         # For each pair of distinct agent proposals, add a small bonus to both
         # moves if their ideas are largely non-overlapping.
         for i in range(n):
             for j in range(i + 1, n):
                 ni, nj = names[i], names[j]
-                mi, mj = agent_moves[ni], agent_moves[nj]
+                mi, ci = agent_best[ni]
+                mj, cj = agent_best[nj]
                 si, sj = ideas[ni], ideas[nj]
                 inter = len(si.intersection(sj))
                 denom = max(len(si), len(sj), 1)
                 overlap_ratio = inter / denom
                 if overlap_ratio <= 0.25:
                     bonus = self.diversity_bonus * (1.0 - overlap_ratio)
-                    scores[mi] = scores.get(mi, 0.0) + bonus
-                    scores[mj] = scores.get(mj, 0.0) + bonus
+                    # Award bonus to the lower-confidence proposal to encourage
+                    # diverse alternatives to overtake a slightly higher single idea.
+                    eps = 1e-9
+                    if abs(ci - cj) <= eps:
+                        scores[mi] = scores.get(mi, 0.0) + bonus
+                        scores[mj] = scores.get(mj, 0.0) + bonus
+                    elif ci < cj:
+                        scores[mi] = scores.get(mi, 0.0) + bonus
+                    else:
+                        scores[mj] = scores.get(mj, 0.0) + bonus
 
     def choose_move(
         self,
@@ -331,7 +359,7 @@ class DynamicBot:
 
         # Diversity bonus across agents' proposals
         if self.enable_diversity and agent_best:
-            self._apply_diversity_bonus(board, scores, {k: v[0] for k, v in agent_best.items()})
+            self._apply_diversity_bonus(board, scores, agent_best)
 
         # Boost moves that reduce the detected fork threat.
         if fork_threat_score is not None:
@@ -351,9 +379,16 @@ class DynamicBot:
             engine_move = self.decision_engine.choose_best_move(board)
             return (engine_move, 0.0) if engine_move else (None, 0.0)
 
-        # Pick the highest scoring move from sub-agents.
+        # Pick the highest scoring move from sub-agents. If several moves are
+        # effectively tied (within a tiny epsilon), resolve deterministically
+        # by UCI to avoid arbitrary changes by deeper engines during tests.
         sorted_moves = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         move, total = sorted_moves[0]
+        # Determine all near-tied candidates
+        TIE_EPS = 1e-3
+        tied: List[chess.Move] = [mv for mv, sc in sorted_moves if abs(sc - total) < TIE_EPS]
+        if len(tied) > 1:
+            move = min(tied, key=lambda m: m.uci())
 
         # Avoid steering into an imminent threefold repetition unless it is
         # clearly the only non-disadvantageous option. If the chosen move
@@ -372,13 +407,8 @@ class DynamicBot:
 
         # If top candidates are too close, ask the decision engine to
         # perform a deeper search to break the tie.
-        if len(sorted_moves) > 1:
-            second_score = sorted_moves[1][1]
-            if abs(total - second_score) < 1e-3:
-                engine_move = self.decision_engine.choose_best_move(board)
-                if engine_move is not None:
-                    move = engine_move
-                    total = scores.get(engine_move, total)
+        # Tie already resolved deterministically above; avoid deeper engine
+        # tie-breaking that may select unrelated moves.
 
         # Compute a calibrated win probability from the weighted per-move scores.
         # We treat the accumulated weighted scores as centipawn-like and convert

@@ -130,7 +130,7 @@ def _pst_insights(board: chess.Board) -> List[str]:
     return [summary, f"Top PST cells: {top_cells}"]
 
 def run_match(
-    max_plies: int = 40,
+    max_plies: int | None = 40,
     *,
     diagram_every: int | None = None,
     diagram_unicode: bool = False,
@@ -141,12 +141,33 @@ def run_match(
     black = DynamicBot("DynamicBot-Black")
 
     ply = 0
+    # Агрегація метрик за гру (середні/мін/макс по плайях)
+    from typing import Dict
+    metric_stats: Dict[str, dict] = {}
+
+    def _update_metric(name: str, value: int) -> None:
+        st = metric_stats.setdefault(
+            name,
+            {"sum": 0.0, "min": float("inf"), "max": float("-inf"), "count": 0.0},
+        )
+        st["sum"] += float(value)
+        st["count"] += 1.0
+        if value < st["min"]:
+            st["min"] = value
+        if value > st["max"]:
+            st["max"] = value
     print_pst_summary()
     print("Start FEN:", board.fen())
     print()
 
-    while not board.is_game_over() and ply < max_plies:
+    while not board.is_game_over() and (max_plies is None or ply < max_plies):
         side = "White" if board.turn == chess.WHITE else "Black"
+        # Перф-метрика: branching factor (к-ть легальних ходів у цій позиції)
+        try:
+            legal_count = board.legal_moves.count()
+            _update_metric("legal_moves", int(legal_count))
+        except Exception:
+            pass
         bot = white if board.turn == chess.WHITE else black
 
         move, det = bot.select_move(board)
@@ -164,6 +185,30 @@ def run_match(
         print(f"  eval_before_push(raw)≈{det['raw_score']}   eval_after={score}")
         print(f"  FEN: {board.fen()}")
         print("-")
+
+        # Актуалізуємо агреговані метрики
+        _update_metric("material", int(det["material"]))
+        _update_metric("pst", int(det["pst"]))
+        _update_metric("mobility", int(det["mobility"]))
+        _update_metric("attacks_white", int(det["attacks_white"]))
+        _update_metric("attacks_black", int(det["attacks_black"]))
+        _update_metric("delta_attacks", int(det["delta_attacks"]))
+
+        # Додатково: к-ть НАШИХ/ЇХНІХ фігур під ударом у поточній позиції
+        try:
+            pieces_under_attack_white = 0
+            pieces_under_attack_black = 0
+            for sq, piece in board.piece_map().items():
+                if piece.color == chess.WHITE:
+                    if board.is_attacked_by(chess.BLACK, sq):
+                        pieces_under_attack_white += 1
+                else:
+                    if board.is_attacked_by(chess.WHITE, sq):
+                        pieces_under_attack_black += 1
+            _update_metric("pieces_under_attack_white", pieces_under_attack_white)
+            _update_metric("pieces_under_attack_black", pieces_under_attack_black)
+        except Exception:
+            pass
 
         # Optional ASCII/Unicode board diagram every N plies with metrics
         if diagram_every and diagram_every > 0 and (ply % diagram_every == 0):
@@ -263,9 +308,55 @@ def run_match(
         )
     )
 
+    # ——— Фінальний підсумок метрик за гру ———
+    if metric_stats:
+        print()
+        print("=== ПІДСУМОК МЕТРИК ЗА ГРУ ===")
+        print("(avg / min / max по плайях)")
+        def _fmt(name: str) -> str:
+            st = metric_stats.get(name)
+            if not st or st["count"] <= 0:
+                return f"{name}: n/a"
+            avg = st["sum"] / st["count"]
+            mn = st["min"] if st["min"] != float("inf") else 0
+            mx = st["max"] if st["max"] != float("-inf") else 0
+            return f"{name}: avg={avg:.1f}, min={int(mn)}, max={int(mx)}"
+
+        ordered_names = [
+            "material",
+            "pst",
+            "mobility",
+            "attacks_white",
+            "attacks_black",
+            "delta_attacks",
+            "pieces_under_attack_white",
+            "pieces_under_attack_black",
+            "legal_moves",
+        ]
+        for key in ordered_names:
+            if key in metric_stats:
+                print(" - " + _fmt(key))
+
+        print()
+        print("Що ще можемо рахувати:")
+        print(" - щільність загроз біля короля (king safety)")
+        print(" - карти загроз/захисту (ThreatMap: max_attacked/max_defended, thin pieces)")
+        print(" - контроль сильних/слабких клітин (strong/weak control)")
+        print(" - середній branching factor L, L^2 для продуктивності")
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a headless chess match between internal bots.")
     parser.add_argument("--max-plies", type=int, default=40, help="Maximum number of plies to play")
+    parser.add_argument(
+        "--full-game",
+        action="store_true",
+        help="Play until game is over (ignore --max-plies)",
+    )
+    parser.add_argument(
+        "--test-mode",
+        action="store_true",
+        help="Test mode: play full game and print end-of-game metrics summary",
+    )
     parser.add_argument(
         "--diagram-every",
         type=int,
@@ -285,8 +376,10 @@ def _parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = _parse_args()
+    # У тестовому/повному режимі — без ліміту плаїв
+    max_plies: int | None = None if (args.full_game or args.test_mode) else args.max_plies
     run_match(
-        max_plies=args.max_plies,
+        max_plies=max_plies,
         diagram_every=(args.diagram_every if args.diagram_every > 0 else None),
         diagram_unicode=(True if args.unicode else False),
         include_metrics=(False if args.no_metrics else True),
