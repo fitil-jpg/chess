@@ -65,6 +65,7 @@ class CriticalBot:
         # 3) Fallback: target critical enemy pieces, plus forks/hanging
         critical = evaluator.criticality(board, self.color)
         critical_squares = {sq for sq, _ in (critical or [])}
+        top_crit_sq = next(iter(critical_squares)) if critical_squares else None
 
         best_move = None
         best_score = float("-inf")
@@ -87,6 +88,9 @@ class CriticalBot:
 
             # Prefer capturing a critical piece
             if move.to_square in critical_squares and board.piece_at(move.to_square):
+                score += self.capture_bonus
+            # Strong preference for directly capturing the most critical piece
+            if top_crit_sq is not None and move.to_square == top_crit_sq and board.piece_at(top_crit_sq):
                 score += self.capture_bonus
 
             # Capture undefended (hanging) targets

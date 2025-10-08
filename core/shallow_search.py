@@ -125,8 +125,11 @@ class ShallowSearch:
 	) -> Tuple[int, Optional[chess.Move]]:
 		alpha_orig = alpha
 
-		# TT probe
-		key = board.transposition_key()
+		# TT probe (python-chess 1.11+ has no transposition_key; use fen hash)
+		try:
+			key = board.transposition_key()
+		except Exception:
+			key = hash(board.fen())
 		entry = self._tt_get(key)
 		hash_move: Optional[chess.Move] = None
 		if entry and entry.depth >= depth:
