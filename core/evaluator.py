@@ -760,54 +760,141 @@ class Evaluator:
 
     @staticmethod
     def king_safety(board: chess.Board, color: bool) -> int:
-        """Return a simple king safety score for ``color``.
+        """Return an enriched king safety score for ``color``.
 
-        The score penalizes missing pawn shield squares directly in front of
-        the king as well as nearby enemy attackers.  A smaller (possibly
-        negative) score indicates a more vulnerable king.
+        Components (higher magnitude = more danger, negative values):
+        - Missing pawn shield directly in front of the king
+        - Open/semi-open files in the king's sector (file and adjacent files)
+        - Rook/queen file pressure with clear lines toward the king
+        - Attacker pressure in a radius around the king (via cached attack map)
+        - Pawn storm presence and proximity on adjacent files
+        - Short-range proximity of enemy minor/major pieces
+
+        Weights can be tuned via environment variables:
+        CHESS_KS_MISSING_PAWN_PENALTY, CHESS_KS_SEMI_OPEN_FILE_PENALTY,
+        CHESS_KS_OPEN_FILE_PENALTY, CHESS_KS_FILE_ROOKQ_PRESSURE,
+        CHESS_KS_ATTACK_RADIUS, CHESS_KS_ATTACKER_NEAR_WEIGHT,
+        CHESS_KS_PAWN_STORM_BASE, CHESS_KS_PAWN_STORM_CLOSE,
+        CHESS_KS_PROX_RADIUS, CHESS_KS_PROX_KNIGHT, CHESS_KS_PROX_BISHOP,
+        CHESS_KS_PROX_ROOK, CHESS_KS_PROX_QUEEN.
         """
+
         king_sq = board.king(color)
         if king_sq is None:
             return 0
 
-        file = chess.square_file(king_sq)
-        rank = chess.square_rank(king_sq)
+        enemy = not color
+        kf = chess.square_file(king_sq)
+        kr = chess.square_rank(king_sq)
 
-        # --- Pawn shield check -------------------------------------------------
-        shield_rank = rank + (1 if color == chess.WHITE else -1)
-        missing_pawns = 0
+        # Tunables (env overrides)
+        def _env_int(name: str, default: int) -> int:
+            try:
+                v = os.getenv(name)
+                return int(v) if v is not None else default
+            except Exception:
+                return default
+
+        W_MISSING = _env_int("CHESS_KS_MISSING_PAWN_PENALTY", 2)
+        W_SEMI_OPEN = _env_int("CHESS_KS_SEMI_OPEN_FILE_PENALTY", 2)
+        W_OPEN = _env_int("CHESS_KS_OPEN_FILE_PENALTY", 3)
+        W_FILE_PRESSURE = _env_int("CHESS_KS_FILE_ROOKQ_PRESSURE", 2)
+        ATTACK_RADIUS = max(1, _env_int("CHESS_KS_ATTACK_RADIUS", 2))
+        W_ATTACKER_NEAR = _env_int("CHESS_KS_ATTACKER_NEAR_WEIGHT", 1)
+        W_STORM_BASE = _env_int("CHESS_KS_PAWN_STORM_BASE", 2)
+        W_STORM_CLOSE = _env_int("CHESS_KS_PAWN_STORM_CLOSE", 1)
+        PROX_RADIUS = max(1, _env_int("CHESS_KS_PROX_RADIUS", 3))
+        W_PROX = {
+            chess.KNIGHT: _env_int("CHESS_KS_PROX_KNIGHT", 2),
+            chess.BISHOP: _env_int("CHESS_KS_PROX_BISHOP", 1),
+            chess.ROOK: _env_int("CHESS_KS_PROX_ROOK", 2),
+            chess.QUEEN: _env_int("CHESS_KS_PROX_QUEEN", 3),
+        }
+
+        total_penalty = 0
+
+        # 1) Pawn shield directly in front of the king
+        shield_rank = kr + (1 if color == chess.WHITE else -1)
         if 0 <= shield_rank < 8:
+            missing_pawns = 0
             for df in (-1, 0, 1):
-                f = file + df
+                f = kf + df
                 if 0 <= f < 8:
                     sq = chess.square(f, shield_rank)
-                    piece = board.piece_at(sq)
-                    if not (piece and piece.piece_type == chess.PAWN and piece.color == color):
+                    pc = board.piece_at(sq)
+                    if not (pc and pc.piece_type == chess.PAWN and pc.color == color):
                         missing_pawns += 1
+            total_penalty += W_MISSING * missing_pawns
 
-        # --- Enemy attackers near the king ------------------------------------
-        attackers: set[int] = set()
-        for df in range(-2, 3):
-            for dr in range(-2, 3):
-                f = file + df
-                r = rank + dr
-                if 0 <= f < 8 and 0 <= r < 8:
-                    sq = chess.square(f, r)
-                    attackers.update(board.attackers(not color, sq))
-        for df in range(-3, 4):
-            for dr in range(-3, 4):
-                if max(abs(df), abs(dr)) == 3:
-                    f = file + df
-                    r = rank + dr
-                    if 0 <= f < 8 and 0 <= r < 8:
-                        sq = chess.square(f, r)
-                        attackers.update(board.attackers(not color, sq))
+        # 2) Open/semi-open files around the king and rook/queen file pressure
+        for df in (-1, 0, 1):
+            f = kf + df
+            if not (0 <= f < 8):
+                continue
+            own_pawns_on_file = [sq for sq in board.pieces(chess.PAWN, color) if chess.square_file(sq) == f]
+            enemy_pawns_on_file = [sq for sq in board.pieces(chess.PAWN, enemy) if chess.square_file(sq) == f]
+            if not own_pawns_on_file:
+                total_penalty += W_SEMI_OPEN
+                if not enemy_pawns_on_file:
+                    total_penalty += W_OPEN
 
-        attackers_count = len(attackers)
+            # R/Q pressure along the file toward the king with no blockers
+            for sq, pc in board.piece_map().items():
+                if pc.color != enemy or pc.piece_type not in (chess.ROOK, chess.QUEEN):
+                    continue
+                if chess.square_file(sq) != f:
+                    continue
+                rf = chess.square_file(sq)
+                rr = chess.square_rank(sq)
+                if rf != f:
+                    continue
+                step = 1 if rr < kr else -1
+                r = rr + step
+                blocked = False
+                while 0 <= r < 8 and r != kr:
+                    inter_sq = chess.square(f, r)
+                    if board.piece_at(inter_sq) is not None:
+                        blocked = True
+                        break
+                    r += step
+                if not blocked:
+                    total_penalty += W_FILE_PRESSURE
 
-        # Less pawns and more attackers reduce the score.
-        king_safety_score = 0 - missing_pawns - attackers_count
-        return king_safety_score
+        # 3) Attacker pressure in radius around the king (via cached attack map)
+        counts = attack_count_per_square(board)
+        attackers_total = 0
+        for sq in chess.SQUARES:
+            if chess.square_distance(sq, king_sq) <= ATTACK_RADIUS:
+                attackers_total += counts[enemy][sq]
+        total_penalty += W_ATTACKER_NEAR * attackers_total
+
+        # 4) Pawn storms on adjacent files in front of the king (nearby ranks)
+        for ep in board.pieces(chess.PAWN, enemy):
+            pf = chess.square_file(ep)
+            pr = chess.square_rank(ep)
+            if abs(pf - kf) > 1:
+                continue
+            # Enemy pawn advanced toward our king side
+            if (color == chess.WHITE and pr <= kr) or (color == chess.BLACK and pr >= kr):
+                continue
+            dist = abs(pr - kr)
+            if dist <= 3:
+                total_penalty += W_STORM_BASE + (3 - dist) * W_STORM_CLOSE
+
+        # 5) Proximity of enemy minor/major pieces within short radius
+        for sq, pc in board.piece_map().items():
+            if pc.color != enemy:
+                continue
+            if pc.piece_type not in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN):
+                continue
+            dist = chess.square_distance(sq, king_sq)
+            if dist <= PROX_RADIUS:
+                weight = W_PROX.get(pc.piece_type, 0)
+                # closer pieces penalize more (at dist==PROX_RADIUS -> 1x)
+                total_penalty += weight * (PROX_RADIUS - dist + 1)
+
+        # Negative values indicate danger; 0 means neutral safety
+        return -int(total_penalty)
 
 def game_incident_tags(board):
     tags = []
