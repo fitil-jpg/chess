@@ -3,3 +3,24 @@
 use_dummy_model: false
 # weights: optional path to a trained model's state_dict
 weights: chess_ai/nn/simple_model.pth
+
+# Inference and calibration
+# Temperature applied to policy logits before softmax (>=1e-3)
+policy_temperature: 1.0
+# Linear calibration for value head: value' = scale * value + bias, then clamped to [-1,1]
+value_scale: 1.0
+value_bias: 0.0
+clamp_value: true
+
+# Caching (LRU) of evaluations by FEN; 0 disables cache
+cache_size: 4096
+
+# Precision/quantization options
+half_precision: false       # use FP16 on CUDA
+quantize_dynamic: false     # dynamic quantization (CPU only)
+
+# Optional shallow search blending in NeuralBot
+shallow_search:
+  depth: 0        # e.g. 2
+  topk: 0         # e.g. 5
+  blend_lambda: 0.5  # weight on policy vs search score
