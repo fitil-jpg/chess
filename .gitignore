@@ -67,6 +67,7 @@ runs/
 
 # Output artifacts
 output/
+output/ratings_latest.json
 
 # Analysis single-file outputs
 analysis/agent_metrics.json
