@@ -342,10 +342,23 @@ class DynamicBot:
         except Exception:
             pass
 
+        # Optional: compute a crude win-probability from ensemble total using a logistic.
+        def _logistic_winprob(cp: float) -> float:
+            # Scale centipawn-like totals to a modest range before logistic
+            # Typical mapping: p = 1 / (1 + exp(-cp / s)); s ~ 120
+            s = 120.0
+            x = max(-1000.0, min(1000.0, cp)) / s
+            try:
+                return 1.0 / (1.0 + math.exp(-x))
+            except OverflowError:
+                return 0.0 if x < 0 else 1.0
+
+        win_prob = _logistic_winprob(float(total))
+
         if debug:
             logger.debug("DynamicBot contributions:")
             for mv, lines in debug_contrib.items():
                 for line in lines:
                     logger.debug(f"  {mv}: {line}")
-            logger.debug(f"DynamicBot selected {move} with score {total:.3f}")
-        return move, total
+            logger.debug(f"DynamicBot selected {move} with score {total:.3f} (p(win)={win_prob:.3f})")
+        return move, float(total)
