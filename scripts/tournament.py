@@ -19,6 +19,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import traceback
 import itertools
 import os
 import sys
@@ -47,6 +48,25 @@ if ROOT not in sys.path:
 import chess
 
 from chess_ai.bot_agent import make_agent, get_agent_names
+
+# --- Runtime diagnostics for last game/move ---
+# LAST_MOVE_STATUS is a short-lived status set by move selection helpers
+# for the most recent agent call. Structure:
+#   {"kind": "ok"|"timeout"|"agent_error", "error": str | None}
+LAST_MOVE_STATUS: Optional[Dict[str, object]] = None
+
+# LAST_GAME_META is populated by play_single_game when a technical loss occurs.
+# Structure example (keys optional depending on failure kind):
+#   {
+#     "kind": "timeout"|"illegal_move"|"agent_error",
+#     "side": "white"|"black",
+#     "agent": str,
+#     "move_uci": str,
+#     "elapsed": float,
+#     "budget": float,
+#     "error": str,
+#   }
+LAST_GAME_META: Optional[Dict[str, object]] = None
 
 
 @dataclass
@@ -174,7 +194,27 @@ def print_game_result(result: str) -> None:
         "0-1": "Перемога чорних",
         "1/2-1/2": "Нічия",
     }.get(result, result)
-    print(f"Результат: {result} ({tag})")
+    # If the last game ended via technical loss, append concise reason
+    reason_suffix = ""
+    try:
+        if result in ("1-0", "0-1") and LAST_GAME_META and LAST_GAME_META.get("kind"):
+            k = str(LAST_GAME_META.get("kind"))
+            side = str(LAST_GAME_META.get("side", "?"))
+            agent = str(LAST_GAME_META.get("agent", "?"))
+            if k == "timeout":
+                reason_suffix = f" | тех. поразка: TIMEOUT ({side}, {agent})"
+            elif k == "illegal_move":
+                mv = LAST_GAME_META.get("move_uci")
+                reason_suffix = f" | тех. поразка: ILLEGAL MOVE {mv} ({side}, {agent})"
+            elif k == "agent_error":
+                err = str(LAST_GAME_META.get("error", ""))
+                if len(err) > 120:
+                    err = err[:117] + "..."
+                reason_suffix = f" | тех. поразка: ERROR ({side}, {agent}) {err}"
+    except Exception:
+        # Never let logging fail
+        reason_suffix = ""
+    print(f"Результат: {result} ({tag}){reason_suffix}")
 
 
 def print_standings(standings: Dict[str, PlayerStats]) -> None:
@@ -280,6 +320,7 @@ class TournamentOutputWriter:
         game_index: int,
         result: str,
         tiebreak: bool = False,
+        meta: Optional[Dict[str, object]] = None,
     ) -> None:
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
@@ -290,6 +331,19 @@ class TournamentOutputWriter:
             "result": result,
             "tiebreak": bool(tiebreak),
         }
+        if meta is not None:
+            try:
+                # Ensure JSON-serializable, fall back to str on failure per field
+                safe_meta: Dict[str, object] = {}
+                for k, v in meta.items():
+                    try:
+                        json.dumps(v)
+                        safe_meta[k] = v
+                    except Exception:
+                        safe_meta[k] = str(v)
+                entry["meta"] = safe_meta
+            except Exception:
+                entry["meta"] = {"error": "failed to serialize meta"}
         with open(self.logs_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry))
             f.write("\n")
@@ -414,14 +468,20 @@ def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int
 
     Returns a chess.Move or None on timeout/error. Uses a daemon thread to avoid blocking.
     """
+    global LAST_MOVE_STATUS
     if not timeout_s or timeout_s <= 0:
         try:
-            return agent.choose_move(board)
-        except Exception:
+            mv = agent.choose_move(board)
+            LAST_MOVE_STATUS = {"kind": "ok", "error": None}
+            return mv
+        except Exception as exc:
+            # Agent crashed
+            LAST_MOVE_STATUS = {"kind": "agent_error", "error": f"{type(exc).__name__}: {exc}"}
             return None
 
     result = {"move": None}
     done = threading.Event()
+    status = {"kind": "ok", "error": None}
 
     # Work on a lightweight copy to avoid any accidental cross-thread mutations.
     board_copy = board.copy(stack=False)
@@ -430,15 +490,23 @@ def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int
         try:
             mv = agent.choose_move(board_copy)
             result["move"] = mv
-        except Exception:
+        except Exception as exc:
             result["move"] = None
+            status["kind"] = "agent_error"
+            # Capture concise exception summary for logs
+            status["error"] = f"{type(exc).__name__}: {exc}"
         finally:
             done.set()
 
     t = threading.Thread(target=_worker, daemon=True)
     t.start()
     done.wait(timeout=timeout_s)
-    return result["move"] if done.is_set() else None
+    if done.is_set():
+        LAST_MOVE_STATUS = status
+        return result["move"]
+    else:
+        LAST_MOVE_STATUS = {"kind": "timeout", "error": None}
+        return None
 
 
 def _choose_move_with_budget(agent, board: chess.Board, budget_s: float) -> Tuple[Optional[chess.Move], float, bool]:
@@ -447,19 +515,24 @@ def _choose_move_with_budget(agent, board: chess.Board, budget_s: float) -> Tupl
     Returns (move or None, elapsed_seconds, finished_in_time).
     If finished_in_time is False, caller should treat as flag-fall.
     """
+    global LAST_MOVE_STATUS
     if budget_s <= 0:
+        LAST_MOVE_STATUS = {"kind": "timeout", "error": None}
         return None, 0.0, False
 
     result: Dict[str, Optional[chess.Move]] = {"move": None}
     done = threading.Event()
     board_copy = board.copy(stack=False)
+    status = {"kind": "ok", "error": None}
 
     def _worker():
         try:
             mv = agent.choose_move(board_copy)
             result["move"] = mv
-        except Exception:
+        except Exception as exc:
             result["move"] = None
+            status["kind"] = "agent_error"
+            status["error"] = f"{type(exc).__name__}: {exc}"
         finally:
             done.set()
 
@@ -468,6 +541,10 @@ def _choose_move_with_budget(agent, board: chess.Board, budget_s: float) -> Tupl
     t.start()
     finished = done.wait(timeout=budget_s)
     elapsed = time.monotonic() - t0
+    if finished:
+        LAST_MOVE_STATUS = status
+    else:
+        LAST_MOVE_STATUS = {"kind": "timeout", "error": None}
     return (result["move"] if finished else None), elapsed, finished
 
 
@@ -488,6 +565,9 @@ def play_single_game(
     board = chess.Board()
     white_agent = make_agent(white_agent_name, chess.WHITE)
     black_agent = make_agent(black_agent_name, chess.BLACK)
+    # Reset last game diagnostics at start
+    global LAST_GAME_META
+    LAST_GAME_META = None
 
     try:
         # Per-player clock mode
@@ -512,16 +592,60 @@ def play_single_game(
 
                 # Flag-fall if not finished in time or clock dipped below zero
                 if not finished or (time_left_w < -1e-6 if mover_is_white else time_left_b < -1e-6):
+                    LAST_GAME_META = {
+                        "kind": "timeout",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "elapsed": float(elapsed),
+                        "budget": float(budget),
+                    }
                     return "0-1" if mover_is_white else "1-0"
 
                 # If agent returned None despite finishing (error), technical loss
                 if move is None:
+                    # Determine agent error vs. no-move
+                    kind = "agent_error"
+                    err = None
+                    if LAST_MOVE_STATUS and LAST_MOVE_STATUS.get("kind") == "agent_error":
+                        kind = "agent_error"
+                        err = LAST_MOVE_STATUS.get("error")
+                    LAST_GAME_META = {
+                        "kind": kind,
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "elapsed": float(elapsed),
+                        "budget": float(budget),
+                        "error": err,
+                    }
                     return "0-1" if mover_is_white else "1-0"
 
+                # Validate legality before pushing
+                if not board.is_legal(move):
+                    try:
+                        mv_uci = move.uci() if move is not None else None
+                    except Exception:
+                        mv_uci = None
+                    LAST_GAME_META = {
+                        "kind": "illegal_move",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "move_uci": mv_uci,
+                    }
+                    return "0-1" if mover_is_white else "1-0"
                 try:
                     board.push(move)
                 except Exception:
-                    # Illegal move => technical loss for mover
+                    # Defensive: treat any push error as illegal
+                    try:
+                        mv_uci = move.uci() if move is not None else None
+                    except Exception:
+                        mv_uci = None
+                    LAST_GAME_META = {
+                        "kind": "illegal_move",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "move_uci": mv_uci,
+                    }
                     return "0-1" if mover_is_white else "1-0"
 
                 # Apply increment after a legal move
@@ -538,19 +662,71 @@ def play_single_game(
                 move = _choose_move_with_timeout(agent, board, time_per_move)
                 if move is None:
                     # Immediate loss for side to move
-                    return "0-1" if board.turn == chess.WHITE else "1-0"
+                    mover_is_white = (board.turn == chess.WHITE)
+                    kind = None
+                    err = None
+                    if LAST_MOVE_STATUS:
+                        k = LAST_MOVE_STATUS.get("kind")
+                        if k == "timeout":
+                            kind = "timeout"
+                        elif k == "agent_error":
+                            kind = "agent_error"
+                            err = LAST_MOVE_STATUS.get("error")
+                    LAST_GAME_META = {
+                        "kind": kind or "agent_error",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "error": err,
+                        "budget": float(time_per_move) if time_per_move else None,
+                    }
+                    return "0-1" if mover_is_white else "1-0"
+                # Validate legality before pushing
+                mover_is_white = (board.turn == chess.WHITE)
+                if not board.is_legal(move):
+                    try:
+                        mv_uci = move.uci() if move is not None else None
+                    except Exception:
+                        mv_uci = None
+                    LAST_GAME_META = {
+                        "kind": "illegal_move",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "move_uci": mv_uci,
+                    }
+                    return "0-1" if mover_is_white else "1-0"
                 try:
                     board.push(move)
                 except Exception:
-                    # Illegal move => technical loss for mover
-                    return "0-1" if board.turn == chess.WHITE else "1-0"
+                    # Defensive: treat any push error as illegal
+                    try:
+                        mv_uci = move.uci() if move is not None else None
+                    except Exception:
+                        mv_uci = None
+                    LAST_GAME_META = {
+                        "kind": "illegal_move",
+                        "side": "white" if mover_is_white else "black",
+                        "agent": white_agent_name if mover_is_white else black_agent_name,
+                        "move_uci": mv_uci,
+                    }
+                    return "0-1" if mover_is_white else "1-0"
     except Exception:
         # Any unexpected exception from agent => their loss
-        return "0-1" if board.turn == chess.WHITE else "1-0"
+        mover_is_white = (board.turn == chess.WHITE)
+        # Capture traceback excerpt for diagnostics
+        exc_str = traceback.format_exc(limit=1)
+        LAST_GAME_META = {
+            "kind": "agent_error",
+            "side": "white" if mover_is_white else "black",
+            "agent": white_agent_name if mover_is_white else black_agent_name,
+            "error": exc_str.strip(),
+        }
+        return "0-1" if mover_is_white else "1-0"
 
     if board.is_game_over():
+        LAST_GAME_META = None
         return board.result()
     # Safety draw if exceeded max plies
+    LAST_GAME_META = None
     return "1/2-1/2"
 
 
@@ -591,7 +767,7 @@ def play_series(
 
         # Per-game log and live bracket update
         if writer is not None:
-            writer.log_game(a=a, b=b, white=white, black=black, game_index=i + 1, result=res, tiebreak=False)
+            writer.log_game(a=a, b=b, white=white, black=black, game_index=i + 1, result=res, tiebreak=False, meta=LAST_GAME_META)
 
         # Update points
         if res == "1-0":
@@ -650,7 +826,7 @@ def play_series(
                 pts_a += 0.5
                 pts_b += 0.5
             if writer is not None:
-                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
+                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True, meta=LAST_GAME_META)
                 writer.update_pair(a, b, results, pts_a, pts_b)
 
         # If still tied, Armageddon: W 60s vs B 45s, draw → Black
@@ -672,7 +848,7 @@ def play_series(
             print_game_result(res)
             results.append(res)
             if writer is not None:
-                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
+                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True, meta=LAST_GAME_META)
             if res == "1-0":
                 if white == a:
                     pts_a += 1.0
