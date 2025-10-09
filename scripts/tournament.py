@@ -24,6 +24,9 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
+from pathlib import Path
+from datetime import datetime
+import json
 import threading
 
 # Fix sys.path so stdlib modules are not shadowed by 'scripts/'
@@ -127,6 +130,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="on",
         help="Play a single deciding game if a series ends tied",
     )
+    parser.add_argument(
+        "--out-root",
+        type=str,
+        default="output/tournaments",
+        help="Directory to place timestamped tournament outputs (default: output/tournaments)",
+    )
+    parser.add_argument(
+        "--tag",
+        type=str,
+        default=None,
+        help="Optional tag to include in metadata for easier identification",
+    )
     return parser.parse_args(argv)
 
 
@@ -161,6 +176,128 @@ def print_standings(standings: Dict[str, PlayerStats]) -> None:
             f"{i:>5}  {s.name:<{name_w}}  {s.points:>5.1f}  {s.wins:>3}  {s.draws:>3}  {s.losses:>3}  {s.played:>4}"
         )
 
+
+class TournamentOutputWriter:
+    """Manages writing live bracket and per-game logs to a timestamped directory."""
+
+    def __init__(self, out_root: Path, tag: Optional[str] = None) -> None:
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        self.outdir = out_root / timestamp
+        self.outdir.mkdir(parents=True, exist_ok=True)
+        self.bracket_path = self.outdir / "bracket.json"
+        self.logs_path = self.outdir / "match_logs.jsonl"
+        self.summary_path = self.outdir / "summary.txt"
+        self.tag = tag
+
+        self._pairs: Dict[str, Dict[str, object]] = {}
+        self.bracket: Dict[str, object] = {
+            "type": "",
+            "format": "",
+            "agents": [],
+            "games_per_pair": None,
+            "tiebreaks": False,
+            "max_plies": None,
+            "time_per_move": None,
+            "started_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat(),
+            "tag": tag,
+            "pairs": [],
+        }
+        # Initialize on disk
+        self._write_bracket()
+
+    def set_round_robin_metadata(
+        self,
+        *,
+        agents: List[str],
+        format_label: str,
+        games_per_pair: int,
+        tiebreaks: bool,
+        max_plies: int,
+        time_per_move: Optional[int],
+    ) -> None:
+        self.bracket["type"] = "round_robin"
+        self.bracket["format"] = format_label
+        self.bracket["agents"] = list(agents)
+        self.bracket["games_per_pair"] = int(games_per_pair)
+        self.bracket["tiebreaks"] = bool(tiebreaks)
+        self.bracket["max_plies"] = int(max_plies)
+        self.bracket["time_per_move"] = int(time_per_move) if time_per_move else None
+        self._touch_and_write()
+
+    def ensure_pair(self, a: str, b: str) -> None:
+        key = f"{a}__vs__{b}"
+        if key not in self._pairs:
+            self._pairs[key] = {
+                "a": a,
+                "b": b,
+                "results": [],
+                "points_a": 0.0,
+                "points_b": 0.0,
+            }
+            self._sync_pairs_and_write()
+
+    def update_pair(self, a: str, b: str, results: List[str], pts_a: float, pts_b: float) -> None:
+        key = f"{a}__vs__{b}"
+        self._pairs[key] = {
+            "a": a,
+            "b": b,
+            "results": list(results),
+            "points_a": float(pts_a),
+            "points_b": float(pts_b),
+        }
+        self._sync_pairs_and_write()
+
+    def log_game(
+        self,
+        *,
+        a: str,
+        b: str,
+        white: str,
+        black: str,
+        game_index: int,
+        result: str,
+        tiebreak: bool = False,
+    ) -> None:
+        entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "pair": {"a": a, "b": b},
+            "game_index": int(game_index),
+            "white": white,
+            "black": black,
+            "result": result,
+            "tiebreak": bool(tiebreak),
+        }
+        with open(self.logs_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry))
+            f.write("\n")
+
+    def write_summary(self, standings: Dict[str, PlayerStats]) -> None:
+        # Build a simple aligned table similar to print_standings
+        ordered = sorted(standings.values(), key=lambda s: (-s.points, -s.wins, s.name))
+        name_w = max(5, max(len(s.name) for s in ordered)) if ordered else 5
+        header = f"{'Місце':>5}  {'Гравець':<{name_w}}  {'Очки':>5}  {'W':>3}  {'D':>3}  {'L':>3}  {'Ігор':>4}"
+        lines: List[str] = []
+        lines.append("Фінальна таблиця:")
+        lines.append(header)
+        lines.append("-" * len(header))
+        for i, s in enumerate(ordered, start=1):
+            lines.append(
+                f"{i:>5}  {s.name:<{name_w}}  {s.points:>5.1f}  {s.wins:>3}  {s.draws:>3}  {s.losses:>3}  {s.played:>4}"
+            )
+        self.summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def _sync_pairs_and_write(self) -> None:
+        self.bracket["pairs"] = list(self._pairs.values())
+        self._touch_and_write()
+
+    def _touch_and_write(self) -> None:
+        self.bracket["updated_at"] = datetime.utcnow().isoformat()
+        self._write_bracket()
+
+    def _write_bracket(self) -> None:
+        with open(self.bracket_path, "w", encoding="utf-8") as f:
+            json.dump(self.bracket, f, indent=2, ensure_ascii=False)
 
 def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int]):
     """Call agent.choose_move(board) with a soft timeout.
@@ -224,7 +361,16 @@ def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies:
     return "1/2-1/2"
 
 
-def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_move: Optional[int], tiebreaks: bool) -> Tuple[float, float, List[str]]:
+def play_series(
+    a: str,
+    b: str,
+    series_games: int,
+    *,
+    max_plies: int,
+    time_per_move: Optional[int],
+    tiebreaks: bool,
+    writer: Optional["TournamentOutputWriter"] = None,
+) -> Tuple[float, float, List[str]]:
     """Play a series of games with alternating colors.
     Returns (points_a, points_b, list_of_results_in_order).
     If series_games is odd, early stop when one reaches majority.
@@ -240,6 +386,10 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_m
         res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
         print_game_result(res)
         results.append(res)
+
+        # Per-game log and live bracket update
+        if writer is not None:
+            writer.log_game(a=a, b=b, white=white, black=black, game_index=i + 1, result=res, tiebreak=False)
 
         # Update points
         if res == "1-0":
@@ -258,7 +408,12 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_m
 
         # Best-of early stop
         if needed is not None and (pts_a >= needed or pts_b >= needed):
+            if writer is not None:
+                writer.update_pair(a, b, results, pts_a, pts_b)
             break
+
+        if writer is not None:
+            writer.update_pair(a, b, results, pts_a, pts_b)
 
     # Optional single tiebreak game if the series ended tied on points
     if tiebreaks and abs(pts_a - pts_b) < 1e-9:
@@ -270,6 +425,8 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_m
         res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
         print_game_result(res)
         results.append(res)
+        if writer is not None:
+            writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
         if res == "1-0":
             if white == a:
                 pts_a += 1.0
@@ -285,15 +442,28 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_m
             pts_a += 0.5
             pts_b += 0.5
 
+    # Final bracket update for this pair
+    if writer is not None:
+        writer.update_pair(a, b, results, pts_a, pts_b)
     return pts_a, pts_b, results
 
 
-def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: int, time_per_move: Optional[int], tiebreaks: bool) -> Dict[str, PlayerStats]:
+def run_round_robin(
+    agent_names: List[str],
+    games_per_pair: int,
+    *,
+    max_plies: int,
+    time_per_move: Optional[int] = None,
+    tiebreaks: bool = False,
+    writer: Optional["TournamentOutputWriter"] = None,
+) -> Dict[str, PlayerStats]:
     standings: Dict[str, PlayerStats] = {name: PlayerStats(name) for name in agent_names}
 
     pairs = list(itertools.combinations(agent_names, 2))
     for a, b in pairs:
         print_pairing_header(a, b, games_per_pair)
+        if writer is not None:
+            writer.ensure_pair(a, b)
         pts_a, pts_b, series_results = play_series(
             a,
             b,
@@ -301,6 +471,7 @@ def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: i
             max_plies=max_plies,
             time_per_move=time_per_move,
             tiebreaks=tiebreaks,
+            writer=writer,
         )
 
         # Per-game standings update with correct colors
@@ -350,16 +521,31 @@ def main(argv: Optional[List[str]] = None) -> int:
     tb_label = "ON" if args.tiebreaks == "on" else "OFF"
     print(f"Формат: {fmt_label} | Без потоків | Макс. пліїв: {args.max_plies} | Ліміт на хід: {time_label} | Тай-брейки: {tb_label}")
 
+    # Prepare output writer
+    out_root = Path(ROOT) / args.out_root
+    writer = TournamentOutputWriter(out_root=out_root, tag=args.tag)
+    writer.set_round_robin_metadata(
+        agents=requested,
+        format_label=fmt_label,
+        games_per_pair=games_per_pair,
+        tiebreaks=(args.tiebreaks == "on"),
+        max_plies=args.max_plies,
+        time_per_move=(args.time if args.time and args.time > 0 else None),
+    )
+
     standings = run_round_robin(
         requested,
         games_per_pair,
         max_plies=args.max_plies,
         time_per_move=(args.time if args.time and args.time > 0 else None),
         tiebreaks=(args.tiebreaks == "on"),
+        writer=writer,
     )
 
     print("\nФінальна таблиця:")
     print_standings(standings)
+    # Persist summary
+    writer.write_summary(standings)
     return 0
 
 
