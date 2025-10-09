@@ -22,6 +22,9 @@ import argparse
 import itertools
 import os
 import sys
+import json
+from datetime import datetime
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
 
@@ -69,6 +72,147 @@ class PlayerStats:
             self.draws += 1; self.points += 0.5
 
 
+class TournamentWriters:
+    """Handles writing live bracket snapshots and per-game logs.
+
+    Files:
+      - output/tournaments/<timestamp>/bracket.json
+      - output/tournaments/<timestamp>/match_logs.jsonl
+    """
+
+    def __init__(
+        self,
+        out_dir: Path,
+        agent_names: List[str],
+        games_per_pair: int,
+        *,
+        max_plies: int,
+    ) -> None:
+        self.out_dir = Path(out_dir)
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        self.bracket_path = self.out_dir / "bracket.json"
+        self.logs_path = self.out_dir / "match_logs.jsonl"
+
+        self.agent_names = list(agent_names)
+        self.games_per_pair = int(games_per_pair)
+        self.max_plies = int(max_plies)
+        self.started_at = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+        # Initialize series map for all unique pairs
+        self.series_map: Dict[str, Dict[str, object]] = {}
+        for a, b in itertools.combinations(self.agent_names, 2):
+            key = self._pair_key(a, b)
+            self.series_map[key] = {
+                "a": a,
+                "b": b,
+                "games_scheduled": self.games_per_pair,
+                "games": [],  # list[{"white": str, "black": str, "result": str}]
+                "points": {a: 0.0, b: 0.0},
+            }
+
+        # Write initial empty bracket
+        self._write_bracket_snapshot()
+
+    @staticmethod
+    def _pair_key(a: str, b: str) -> str:
+        x, y = sorted([a, b])
+        return f"{x}__vs__{y}"
+
+    def _compute_standings(self) -> Dict[str, Dict[str, object]]:
+        # Reconstruct standings from recorded games
+        standings: Dict[str, PlayerStats] = {name: PlayerStats(name) for name in self.agent_names}
+        for series in self.series_map.values():
+            games = series["games"]  # type: ignore[assignment]
+            for g in games:  # type: ignore[assignment]
+                white = g["white"]
+                black = g["black"]
+                result = g["result"]
+                standings[white].record(result, as_white=True)
+                standings[black].record(result, as_white=False)
+
+        return {
+            name: {
+                "played": s.played,
+                "wins": s.wins,
+                "draws": s.draws,
+                "losses": s.losses,
+                "points": s.points,
+            }
+            for name, s in standings.items()
+        }
+
+    def _write_bracket_snapshot(self) -> None:
+        total_pairs = len(self.series_map)
+        completed_games = sum(len(series["games"]) for series in self.series_map.values())
+        total_games = total_pairs * self.games_per_pair
+
+        bracket = {
+            "tournament": {
+                "type": "round_robin",
+                "agents": self.agent_names,
+                "games_per_pair": self.games_per_pair,
+                "max_plies": self.max_plies,
+                "started_at": self.started_at,
+            },
+            "series": [
+                {
+                    "a": series["a"],
+                    "b": series["b"],
+                    "games_scheduled": series["games_scheduled"],
+                    "results": [g["result"] for g in series["games"]],
+                    "points": series["points"],
+                }
+                for series in self.series_map.values()
+            ],
+            "standings": self._compute_standings(),
+            "progress": {
+                "completed_games": completed_games,
+                "total_games": total_games,
+            },
+        }
+        self.bracket_path.write_text(json.dumps(bracket, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def record_game(
+        self,
+        a: str,
+        b: str,
+        game_index: int,
+        white: str,
+        black: str,
+        result: str,
+    ) -> None:
+        # Update series state
+        key = self._pair_key(a, b)
+        series = self.series_map[key]
+        series_games: List[Dict[str, str]] = series["games"]  # type: ignore[assignment]
+        series_games.append({"white": white, "black": black, "result": result})
+
+        points: Dict[str, float] = series["points"]  # type: ignore[assignment]
+        if result == "1-0":
+            points[white] = points.get(white, 0.0) + 1.0
+        elif result == "0-1":
+            points[black] = points.get(black, 0.0) + 1.0
+        else:
+            points[a] = points.get(a, 0.0) + 0.5
+            points[b] = points.get(b, 0.0) + 0.5
+
+        # Append per-game log line
+        event = {
+            "ts": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "pair": {"a": a, "b": b},
+            "game_index": game_index,
+            "white": white,
+            "black": black,
+            "result": result,
+            "series_points": {a: points.get(a, 0.0), b: points.get(b, 0.0)},
+        }
+        with open(self.logs_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+        # Write updated bracket snapshot
+        self._write_bracket_snapshot()
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sequential round-robin tournament runner")
     parser.add_argument(
@@ -95,6 +239,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=int,
         default=600,
         help="Safety cap: maximum plies per game (to avoid infinite games)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default=None,
+        help="Optional output directory. Default: output/tournaments/<timestamp>",
     )
     return parser.parse_args(argv)
 
@@ -161,7 +311,15 @@ def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies:
     return "1/2-1/2"
 
 
-def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[float, float, List[str]]:
+def play_series(
+    a: str,
+    b: str,
+    series_games: int,
+    *,
+    max_plies: int,
+    standings: Optional[Dict[str, PlayerStats]] = None,
+    writers: Optional[TournamentWriters] = None,
+) -> Tuple[float, float, List[str]]:
     """Play a series of games with alternating colors.
     Returns (points_a, points_b, list_of_results_in_order).
     If series_games is odd, early stop when one reaches majority.
@@ -193,6 +351,15 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[f
             pts_a += 0.5
             pts_b += 0.5
 
+        # Live standings update and write logs if configured
+        if standings is not None:
+            standings[a].record(res, as_white=(white == a))
+            standings[b].record(res, as_white=(white == b))
+            print_standings(standings)
+
+        if writers is not None:
+            writers.record_game(a, b, i + 1, white, black, res)
+
         # Best-of early stop
         if needed is not None and (pts_a >= needed or pts_b >= needed):
             break
@@ -200,20 +367,26 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[f
     return pts_a, pts_b, results
 
 
-def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: int) -> Dict[str, PlayerStats]:
+def run_round_robin(
+    agent_names: List[str],
+    games_per_pair: int,
+    *,
+    max_plies: int,
+    writers: Optional[TournamentWriters] = None,
+) -> Dict[str, PlayerStats]:
     standings: Dict[str, PlayerStats] = {name: PlayerStats(name) for name in agent_names}
 
     pairs = list(itertools.combinations(agent_names, 2))
     for a, b in pairs:
         print_pairing_header(a, b, games_per_pair)
-        pts_a, pts_b, series_results = play_series(a, b, games_per_pair, max_plies=max_plies)
-
-        # Per-game standings update with correct colors
-        for i, res in enumerate(series_results):
-            white, black = (a, b) if i % 2 == 0 else (b, a)
-            standings[a].record(res, as_white=(white == a))
-            standings[b].record(res, as_white=(white == b))
-            print_standings(standings)
+        _pts_a, _pts_b, _series_results = play_series(
+            a,
+            b,
+            games_per_pair,
+            max_plies=max_plies,
+            standings=standings,
+            writers=writers,
+        )
 
     return standings
 
@@ -242,7 +415,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("Учасники:", ", ".join(requested))
     print(f"Формат: {'Bo'+str(games_per_pair) if games_per_pair % 2 == 1 else str(games_per_pair)+' ігор'} | Без потоків | Макс. пліїв: {args.max_plies}")
 
-    standings = run_round_robin(requested, games_per_pair, max_plies=args.max_plies)
+    # Prepare timestamped output directory
+    if args.out_dir:
+        out_dir = Path(args.out_dir)
+    else:
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_dir = Path(ROOT) / "output" / "tournaments" / ts
+
+    writers = TournamentWriters(out_dir, requested, games_per_pair, max_plies=args.max_plies)
+
+    standings = run_round_robin(
+        requested,
+        games_per_pair,
+        max_plies=args.max_plies,
+        writers=writers,
+    )
 
     print("\nФінальна таблиця:")
     print_standings(standings)
