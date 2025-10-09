@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
 import math
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import json
 import threading
@@ -236,7 +236,7 @@ class TournamentOutputWriter:
     """Manages writing live bracket and per-game logs to a timestamped directory."""
 
     def __init__(self, out_root: Path, tag: Optional[str] = None) -> None:
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         self.outdir = out_root / timestamp
         self.outdir.mkdir(parents=True, exist_ok=True)
         self.bracket_path = self.outdir / "bracket.json"
@@ -253,8 +253,8 @@ class TournamentOutputWriter:
             "tiebreaks": False,
             "max_plies": None,
             "time_per_move": None,
-            "started_at": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
             "tag": tag,
             "pairs": [],
             "seeds": [],
@@ -323,7 +323,7 @@ class TournamentOutputWriter:
         meta: Optional[Dict[str, object]] = None,
     ) -> None:
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "pair": {"a": a, "b": b},
             "game_index": int(game_index),
             "white": white,
@@ -368,7 +368,7 @@ class TournamentOutputWriter:
         self._touch_and_write()
 
     def _touch_and_write(self) -> None:
-        self.bracket["updated_at"] = datetime.utcnow().isoformat()
+        self.bracket["updated_at"] = datetime.now(timezone.utc).isoformat()
         self._write_bracket()
 
     def _write_bracket(self) -> None:
