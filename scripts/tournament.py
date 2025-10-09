@@ -24,6 +24,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
+import threading
 
 # Fix sys.path so stdlib modules are not shadowed by 'scripts/'
 SCRIPT_DIR = os.path.dirname(__file__)
@@ -77,6 +78,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default="DynamicBot,FortifyBot,AggressiveBot,EndgameBot,KingValueBot,RandomBot",
         help="Comma-separated list of agent names (see chess_ai.bot_agent.get_agent_names)",
     )
+    dyn_group = parser.add_mutually_exclusive_group()
+    dyn_group.add_argument(
+        "--include-dynamic",
+        action="store_true",
+        help="Ensure DynamicBot is included in the agents list",
+    )
+    dyn_group.add_argument(
+        "--exclude-dynamic",
+        action="store_true",
+        help="Remove DynamicBot from the agents list",
+    )
     parser.add_argument(
         "--games",
         type=int,
@@ -91,10 +103,29 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Best-of-N series length for each pairing (odd)",
     )
     parser.add_argument(
+        "--format",
+        type=str,
+        choices=["bo3", "bo5", "bo7"],
+        help="Series format; overrides --bo when provided",
+    )
+    parser.add_argument(
         "--max-plies",
         type=int,
         default=600,
         help="Safety cap: maximum plies per game (to avoid infinite games)",
+    )
+    parser.add_argument(
+        "--time",
+        type=int,
+        default=60,
+        help="Per-move time limit in seconds (0 disables)",
+    )
+    parser.add_argument(
+        "--tiebreaks",
+        type=str,
+        choices=["on", "off"],
+        default="on",
+        help="Play a single deciding game if a series ends tied",
     )
     return parser.parse_args(argv)
 
@@ -131,7 +162,39 @@ def print_standings(standings: Dict[str, PlayerStats]) -> None:
         )
 
 
-def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies: int) -> str:
+def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int]):
+    """Call agent.choose_move(board) with a soft timeout.
+
+    Returns a chess.Move or None on timeout/error. Uses a daemon thread to avoid blocking.
+    """
+    if not timeout_s or timeout_s <= 0:
+        try:
+            return agent.choose_move(board)
+        except Exception:
+            return None
+
+    result = {"move": None}
+    done = threading.Event()
+
+    # Work on a lightweight copy to avoid any accidental cross-thread mutations.
+    board_copy = board.copy(stack=False)
+
+    def _worker():
+        try:
+            mv = agent.choose_move(board_copy)
+            result["move"] = mv
+        except Exception:
+            result["move"] = None
+        finally:
+            done.set()
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    done.wait(timeout=timeout_s)
+    return result["move"] if done.is_set() else None
+
+
+def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies: int, time_per_move: Optional[int]) -> str:
     """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
     Technical loss is applied if an agent returns None or makes illegal move.
     """
@@ -142,7 +205,7 @@ def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies:
     try:
         while not board.is_game_over() and len(board.move_stack) < max_plies:
             agent = white_agent if board.turn == chess.WHITE else black_agent
-            move = agent.choose_move(board)
+            move = _choose_move_with_timeout(agent, board, time_per_move)
             if move is None:
                 # Immediate loss for side to move
                 return "0-1" if board.turn == chess.WHITE else "1-0"
@@ -161,7 +224,7 @@ def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies:
     return "1/2-1/2"
 
 
-def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[float, float, List[str]]:
+def play_series(a: str, b: str, series_games: int, *, max_plies: int, time_per_move: Optional[int], tiebreaks: bool) -> Tuple[float, float, List[str]]:
     """Play a series of games with alternating colors.
     Returns (points_a, points_b, list_of_results_in_order).
     If series_games is odd, early stop when one reaches majority.
@@ -174,7 +237,7 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[f
     for i in range(series_games):
         white, black = (a, b) if i % 2 == 0 else (b, a)
         print_game_header(i + 1, white, black)
-        res = play_single_game(white, black, max_plies=max_plies)
+        res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
         print_game_result(res)
         results.append(res)
 
@@ -197,16 +260,48 @@ def play_series(a: str, b: str, series_games: int, *, max_plies: int) -> Tuple[f
         if needed is not None and (pts_a >= needed or pts_b >= needed):
             break
 
+    # Optional single tiebreak game if the series ended tied on points
+    if tiebreaks and abs(pts_a - pts_b) < 1e-9:
+        tiebreak_idx = len(results)
+        white, black = (a, b) if tiebreak_idx % 2 == 0 else (b, a)
+        print_pairing_header(a, b, 1)
+        print("Тай-брейк: 1 гра для визначення переможця")
+        print_game_header(tiebreak_idx + 1, white, black)
+        res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
+        print_game_result(res)
+        results.append(res)
+        if res == "1-0":
+            if white == a:
+                pts_a += 1.0
+            else:
+                pts_b += 1.0
+        elif res == "0-1":
+            if white == a:
+                pts_b += 1.0
+            else:
+                pts_a += 1.0
+        else:
+            # If tiebreak still draws, leave points equal (overall tie persists)
+            pts_a += 0.5
+            pts_b += 0.5
+
     return pts_a, pts_b, results
 
 
-def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: int) -> Dict[str, PlayerStats]:
+def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: int, time_per_move: Optional[int], tiebreaks: bool) -> Dict[str, PlayerStats]:
     standings: Dict[str, PlayerStats] = {name: PlayerStats(name) for name in agent_names}
 
     pairs = list(itertools.combinations(agent_names, 2))
     for a, b in pairs:
         print_pairing_header(a, b, games_per_pair)
-        pts_a, pts_b, series_results = play_series(a, b, games_per_pair, max_plies=max_plies)
+        pts_a, pts_b, series_results = play_series(
+            a,
+            b,
+            games_per_pair,
+            max_plies=max_plies,
+            time_per_move=time_per_move,
+            tiebreaks=tiebreaks,
+        )
 
         # Per-game standings update with correct colors
         for i, res in enumerate(series_results):
@@ -224,6 +319,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     all_known = set(get_agent_names())
     requested = [a.strip() for a in args.agents.split(",") if a.strip()]
 
+    # Include/Exclude DynamicBot per flags
+    if args.include_dynamic and "DynamicBot" not in requested:
+        requested.append("DynamicBot")
+    if args.exclude_dynamic:
+        requested = [a for a in requested if a != "DynamicBot"]
+
     unknown = [a for a in requested if a not in all_known]
     if unknown:
         print("Невідомі агенти:", ", ".join(unknown))
@@ -237,12 +338,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("--games має бути > 0")
             return 2
     else:
-        games_per_pair = int(args.bo)
+        if args.format:
+            fmt_map = {"bo3": 3, "bo5": 5, "bo7": 7}
+            games_per_pair = fmt_map[args.format]
+        else:
+            games_per_pair = int(args.bo)
 
     print("Учасники:", ", ".join(requested))
-    print(f"Формат: {'Bo'+str(games_per_pair) if games_per_pair % 2 == 1 else str(games_per_pair)+' ігор'} | Без потоків | Макс. пліїв: {args.max_plies}")
+    fmt_label = f"Bo{games_per_pair}" if games_per_pair % 2 == 1 else f"{games_per_pair} ігор"
+    time_label = f"{args.time}s" if args.time and args.time > 0 else "без ліміту"
+    tb_label = "ON" if args.tiebreaks == "on" else "OFF"
+    print(f"Формат: {fmt_label} | Без потоків | Макс. пліїв: {args.max_plies} | Ліміт на хід: {time_label} | Тай-брейки: {tb_label}")
 
-    standings = run_round_robin(requested, games_per_pair, max_plies=args.max_plies)
+    standings = run_round_robin(
+        requested,
+        games_per_pair,
+        max_plies=args.max_plies,
+        time_per_move=(args.time if args.time and args.time > 0 else None),
+        tiebreaks=(args.tiebreaks == "on"),
+    )
 
     print("\nФінальна таблиця:")
     print_standings(standings)
