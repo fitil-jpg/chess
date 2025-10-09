@@ -1,107 +1,119 @@
 # Tournament Mode
 
-This document describes the headless tournament mode for internal agents, including formats, time control, seeding, and how to run two variants (with and without DynamicBot).
+This document describes the current headless round‑robin tournament runner and how to compute Elo seeding. It also provides exact CLI usage and artifact examples.
 
 ## Formats
 
-- Match formats: Bo3, Bo5, Bo7 (first to 2 / 3 / 4 points).
-- Scoring: win=1, draw=0.5, loss=0.
-- Colors: alternate each game. For odd-length series, the higher seed has White in G1 and the last game if needed.
-- Tie-breaks: if tied after all scheduled games:
-  - Two extra blitz games 1|0 alternating colors.
-  - If still tied, Armageddon: White 60s vs Black 45s, draw counts as a win for Black.
-- Technical loss: illegal move or agent error/timeout loses the game.
+- Scoring: win=1.0, draw=0.5, loss=0.0
+- Colors: alternate each game within a series
+- Series length: either best‑of odd N (`--bo`, 1/3/5/7) with early stop, or a fixed number of games via `--games`
+- Technical loss: illegal move, agent error, or returning `None` loses the game
 
-## Time control (headless)
+## Time control (current)
 
-- Default tournament control: 1|0 (60 seconds per player, no increment).
-- The framework tracks per-agent remaining time; the time spent inside `choose_move` is charged against the agent's clock. Hitting 0 seconds loses on time.
-
-## Bracket and live table
-
-Example 8-player single-elimination bracket:
-
-```text
-Quarterfinals                      Semifinals                        Final
-[QF1] (1) Seed1 ───────┐
-                       ├─ [SF1] Winner QF1 ───┐
-[QF2] (4) Seed4 ───┐   │                      ├─ [F] Champion
-                   └───┤                      │
-[QF3] (3) Seed3 ───┐   │   [SF2] Winner QF3 ──┘
-                   └───┤
-[QF4] (2) Seed2 ───────┘
-```
-
-Per‑match live card (updated after each game):
-
-```text
-[QF1] Seed1 vs Seed8  | Bo5 | Score: 2.0–1.0 | G4 next: Seed1 (Black)
-  - G1: 1-0 (mate)     T: W 12.3s / B 3.2s
-  - G2: ½-½ (repetition)  T: W 7.8s  / B 9.5s
-  - G3: 1-0 (time)     T: W 4.1s  / B 0.0s
-```
-
-Summary table:
-
-```text
-Match   Format Result  Advances
-QF1     Bo5    3–1     Seed1
-QF2     Bo5    2.5–1.5 Seed4
-QF3     Bo5    3–0     Seed3
-QF4     Bo5    3–2     Seed2
-SF1     Bo5    3–2     Seed1
-SF2     Bo5    3–1     Seed2
-Final   Bo7    4–2     Seed1 (Champion)
-```
+- The headless runner does not track clocks yet. Use `--max-plies` (default 600) as a safety cap; exceeding the cap results in a draw.
 
 ## Participants and variants
 
 We support running two tournaments:
 
-- With DynamicBot: `DynamicBot, NeuralBot, FortifyBot, AggressiveBot, EndgameBot, CriticalBot, KingValueBot, TrapBot`
-- Without DynamicBot: `NeuralBot, FortifyBot, AggressiveBot, EndgameBot, CriticalBot, KingValueBot, TrapBot, RandomBot`
+- With DynamicBot: `DynamicBot, FortifyBot, AggressiveBot, EndgameBot, KingValueBot, PieceMateBot, RandomBot, ChessBot`
+- Without DynamicBot: `FortifyBot, AggressiveBot, EndgameBot, KingValueBot, PieceMateBot, RandomBot, ChessBot, HybridBot`
 
-Seeds are determined by the latest self-play Elo ratings (see below).
+For planned bracket play, seeds can be determined by the latest self‑play Elo ratings (see below).
 
-## Elo seeding
+## Elo seeding (artifact example)
 
 Use the round‑robin Elo script to compute current ratings and seed the bracket accordingly:
 
 ```bash
 python scripts/selfplay_elo.py \
-  --agents DynamicBot,AggressiveBot,FortifyBot,EndgameBot,KingValueBot,NeuralBot,TrapBot,RandomBot \
+  --agents DynamicBot,AggressiveBot,FortifyBot,EndgameBot,KingValueBot,PieceMateBot,RandomBot,ChessBot \
   --rounds 6 \
   --runs output
 ```
 
-The script writes `output/selfplay_elo_YYYYmmdd_HHMMSS.json` containing a `ratings` map. The tournament runner will optionally look for the latest such file to build seeds automatically.
+The script writes a JSON artifact at `output/selfplay_elo_YYYYmmdd_HHMMSS.json`. Minimal example:
 
-## Running (planned interface)
+```json
+{
+  "schema_version": 1,
+  "task": "selfplay_elo",
+  "timestamp": "20250101_120000",
+  "agents": ["DynamicBot","FortifyBot","AggressiveBot"],
+  "k_factor": 24.0,
+  "ratings": {"DynamicBot": 1542.1, "FortifyBot": 1510.3, "AggressiveBot": 1447.6},
+  "games": [
+    {"white": "DynamicBot", "black": "FortifyBot", "result": "1-0", "round": 0, "color": "Awhite"}
+  ]
+}
+```
 
-Headless tournament runner (to be added under `scripts/tournament.py`):
+## Running (current CLI)
+
+Headless round‑robin runner is implemented at `scripts/tournament.py`.
+
+Usage:
 
 ```bash
-# With DynamicBot, Bo5, 1|0
 python scripts/tournament.py \
-  --format bo5 \
-  --time 60 \
-  --agents DynamicBot,NeuralBot,FortifyBot,AggressiveBot,EndgameBot,CriticalBot,KingValueBot,TrapBot
+  --agents DynamicBot,FortifyBot,AggressiveBot \
+  [--games 2 | --bo 3] \
+  [--max-plies 600]
+```
+
+```bash
+# With DynamicBot, Bo5
+python scripts/tournament.py \
+  --agents DynamicBot,FortifyBot,AggressiveBot,EndgameBot,KingValueBot,PieceMateBot,RandomBot,ChessBot \
+  --bo 5
 
 # Without DynamicBot
 python scripts/tournament.py \
-  --format bo5 \
-  --time 60 \
-  --agents NeuralBot,FortifyBot,AggressiveBot,EndgameBot,CriticalBot,KingValueBot,TrapBot,RandomBot
+  --agents FortifyBot,AggressiveBot,EndgameBot,KingValueBot,PieceMateBot,RandomBot,ChessBot,HybridBot \
+  --bo 5
+
+# Quick smoke test: fixed 2 games per pairing, lower plies cap
+python scripts/tournament.py \
+  --agents DynamicBot,FortifyBot,AggressiveBot \
+  --games 2 \
+  --max-plies 300
 ```
 
-Outputs:
+Example live output (truncated):
 
-- `output/tournaments/<timestamp>/bracket.json` — bracket with per‑match results and seeds.
-- `output/tournaments/<timestamp>/match_logs.jsonl` — per‑game results, times, SAN snippets.
-- `output/tournaments/<timestamp>/summary.txt` — final standings and results.
+```text
+Учасники: DynamicBot, FortifyBot, AggressiveBot
+Формат: Bo3 | Без потоків | Макс. пліїв: 600
+
+=== Пара: DynamicBot vs FortifyBot | Серія: 3 ігор ===
+Гра 1: DynamicBot (білі) — FortifyBot (чорні)
+Результат: 1-0 (Перемога білих)
+...
+Поточна турнірна таблиця:
+Місце  Гравець        Очки   W   D   L  Ігор
+    1  DynamicBot      2.0   2   0   0    2
+    2  FortifyBot      0.0   0   0   2    2
+```
+
+## Artifacts
+
+- The tournament runner currently prints progress and standings to the terminal and does not write files.
+- To persist logs, redirect output, for example:
+
+```bash
+ts=$(date +%Y%m%d_%H%M%S)
+out_dir=output/tournaments/$ts
+mkdir -p "$out_dir"
+python scripts/tournament.py \
+  --agents DynamicBot,FortifyBot,AggressiveBot \
+  --bo 3 \
+  --max-plies 600 | tee "$out_dir/summary.txt"
+```
 
 ## Notes
 
-- Matches alternate colors each game; Armageddon uses White 60s vs Black 45s, draw → Black.
-- Illegal move, invalid return, or timeout results in a loss for that game.
+- Colors alternate each game.
+- Illegal move or invalid return results in a technical loss for that game.
+- Exceeding `--max-plies` draws the game.
 - For reproducibility, deterministic agents are preferred; stochastic agents should fix seeds.
