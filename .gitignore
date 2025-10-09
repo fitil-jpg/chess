@@ -54,18 +54,16 @@ heatmaps/heatmap_P_bins8.json
 heatmaps/heatmap_Q_bins8.json
 heatmaps/heatmap_R_bins8.json
 
-# Run logs
-runs/20251005_234748_852173.json
-runs/20251005_234804_261736.json
-runs/20251005_234819_487123.json
-runs/20251005_234854_706995.json
+## Run logs
+# Ignore entire run logs directory but keep placeholder
+runs/
+!runs/.gitkeep
 
-# Ignore entire data directories (keep dirs via .gitkeep)
+## Ignore entire data directories (keep dirs via .gitkeep)
 analysis/heatmaps/*
 !analysis/heatmaps/.gitkeep
 heatmaps/*
 !heatmaps/.gitkeep
-runs/
 
 # Output artifacts (keep dir via .gitkeep)
 output/*
