@@ -74,7 +74,26 @@ python scripts/selfplay_elo.py \
   --runs output
 ```
 
-The script writes `output/selfplay_elo_YYYYmmdd_HHMMSS.json` containing a `ratings` map. The tournament runner will optionally look for the latest such file to build seeds automatically.
+The script writes `output/selfplay_elo_YYYYmmdd_HHMMSS.json` containing a `ratings` map. The tournament runner can now automatically seed from the latest such file.
+
+### Automatic seeding from latest ratings
+
+Use the new flags in `scripts/tournament.py`:
+
+```bash
+python scripts/tournament.py \
+  --agents DynamicBot,NeuralBot,FortifyBot,AggressiveBot,EndgameBot,CriticalBot,KingValueBot,TrapBot \
+  --bo 5 \
+  --seed-from-elo \
+  --elo-dir output
+```
+
+- `--seed-from-elo`: reorder the provided `--agents` list by rating (desc)
+  from the latest `selfplay_elo_*.json`.
+- `--elo-dir`: directory to scan for `selfplay_elo_*.json` files; defaults to `output`.
+
+Agents missing in the ratings file are assigned a default rating of 1500 and
+are placed after rated agents when possible; ties break by name.
 
 ## Running (planned interface)
 
