@@ -692,9 +692,75 @@ def run_round_robin(
     return standings
 
 
+def _find_latest_selfplay_elo_file(search_dir: Path) -> Optional[Path]:
+    """Return the newest selfplay Elo JSON file in search_dir, if any.
+
+    Filenames are of the form selfplay_elo_YYYYmmdd_HHMMSS.json, which
+    sort lexicographically by timestamp, so name ordering is sufficient.
+    """
+    try:
+        candidates = sorted(search_dir.glob("selfplay_elo_*.json"), key=lambda p: p.name)
+    except Exception:
+        candidates = []
+    return candidates[-1] if candidates else None
+
+
+def _load_latest_elo_ratings(search_dir: Path) -> Optional[Dict[str, float]]:
+    """Load ratings from the most recent selfplay Elo JSON, if available.
+
+    Returns a mapping from agent name to Elo rating, or None if unavailable.
+    """
+    latest = _find_latest_selfplay_elo_file(search_dir)
+    if latest is None:
+        return None
+    try:
+        with open(latest, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        raw = payload.get("ratings")
+        if not isinstance(raw, dict):
+            return None
+        ratings: Dict[str, float] = {}
+        for name, value in raw.items():
+            try:
+                ratings[str(name)] = float(value)
+            except Exception:
+                # Skip non-numeric entries gracefully
+                continue
+        if not ratings:
+            return None
+        print(f"Seeding from Elo file: {latest}")
+        return ratings
+    except Exception:
+        return None
+
+
 def _seed_bracket_participants(agent_names: List[str]) -> List[str]:
-    # For now, use the order provided as seed order
-    return list(agent_names)
+    """Return seed order for single-elimination.
+
+    If a latest selfplay Elo JSON exists under ROOT/output, seed by
+    descending Elo for the requested agents; otherwise, preserve input
+    order.
+    """
+    ratings = _load_latest_elo_ratings(Path(ROOT) / "output")
+    if not ratings:
+        return list(agent_names)
+
+    index_by_input_order = {name: idx for idx, name in enumerate(agent_names)}
+
+    def sort_key(name: str) -> Tuple[float, int]:
+        r = ratings.get(name)
+        # Higher Elo first. Unrated agents are placed at the end, keeping input order.
+        primary = -float(r) if isinstance(r, (int, float)) else float("inf")
+        return (primary, index_by_input_order[name])
+
+    seeds = sorted(agent_names, key=sort_key)
+    # Brief preview for transparency
+    try:
+        ordered_preview = ", ".join(f"{n}({ratings.get(n, '?')})" for n in seeds)
+        print(f"Seeds (high→low Elo): {ordered_preview}")
+    except Exception:
+        pass
+    return seeds
 
 
 def _round_name(num_players: int) -> str:
