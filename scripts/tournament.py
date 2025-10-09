@@ -24,6 +24,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
+import math
 from pathlib import Path
 from datetime import datetime
 import json
@@ -74,7 +75,14 @@ class PlayerStats:
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sequential round-robin tournament runner")
+    parser = argparse.ArgumentParser(description="Sequential headless tournament runner (RR or SE)")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["rr", "se"],
+        default="rr",
+        help="Tournament mode: rr (round-robin) or se (single-elimination)",
+    )
     parser.add_argument(
         "--agents",
         type=str,
@@ -202,6 +210,8 @@ class TournamentOutputWriter:
             "updated_at": datetime.utcnow().isoformat(),
             "tag": tag,
             "pairs": [],
+            "seeds": [],
+            "rounds": [],
         }
         # Initialize on disk
         self._write_bracket()
@@ -299,6 +309,90 @@ class TournamentOutputWriter:
         with open(self.bracket_path, "w", encoding="utf-8") as f:
             json.dump(self.bracket, f, indent=2, ensure_ascii=False)
 
+    # --- Single-elimination helpers ---
+    def set_single_elimination_metadata(
+        self,
+        *,
+        agents: List[str],
+        format_label: str,
+        tiebreaks: bool,
+        max_plies: int,
+        time_per_move: Optional[int],
+        seeds: List[str],
+    ) -> None:
+        self.bracket["type"] = "single_elimination"
+        self.bracket["format"] = format_label
+        self.bracket["agents"] = list(agents)
+        self.bracket["tiebreaks"] = bool(tiebreaks)
+        self.bracket["max_plies"] = int(max_plies)
+        self.bracket["time_per_move"] = int(time_per_move) if time_per_move else None
+        self.bracket["pairs"] = []  # unused in SE
+        self.bracket["seeds"] = list(seeds)
+        self.bracket["rounds"] = []
+        self._touch_and_write()
+
+    def _get_or_create_round(self, round_name: str) -> Dict[str, object]:
+        rounds: List[Dict[str, object]] = self.bracket.get("rounds", [])  # type: ignore[assignment]
+        for r in rounds:
+            if r.get("name") == round_name:
+                return r
+        new_round = {"name": round_name, "matches": []}
+        rounds.append(new_round)
+        self.bracket["rounds"] = rounds
+        self._touch_and_write()
+        return new_round
+
+    def update_match(
+        self,
+        *,
+        round_name: str,
+        match_index: int,
+        a: Optional[str],
+        b: Optional[str],
+        results: List[str],
+        pts_a: float,
+        pts_b: float,
+        winner: Optional[str],
+    ) -> None:
+        r = self._get_or_create_round(round_name)
+        matches: List[Dict[str, object]] = r["matches"]  # type: ignore[assignment]
+        # Ensure list large enough
+        while len(matches) <= match_index:
+            matches.append({
+                "a": None,
+                "b": None,
+                "results": [],
+                "points_a": 0.0,
+                "points_b": 0.0,
+                "winner": None,
+            })
+        matches[match_index] = {
+            "a": a,
+            "b": b,
+            "results": list(results),
+            "points_a": float(pts_a),
+            "points_b": float(pts_b),
+            "winner": winner,
+        }
+        self._touch_and_write()
+
+    def write_se_summary(self, champion: Optional[str]) -> None:
+        lines: List[str] = []
+        lines.append("Single-elimination results")
+        if champion:
+            lines.append(f"Champion: {champion}")
+        # Compact overview of rounds
+        for r in self.bracket.get("rounds", []):  # type: ignore[index]
+            lines.append(f"\n{r.get('name')}")
+            for idx, m in enumerate(r.get("matches", [])):
+                a = m.get("a")
+                b = m.get("b")
+                pa = m.get("points_a")
+                pb = m.get("points_b")
+                w = m.get("winner")
+                lines.append(f"  M{idx+1}: {a} vs {b} -> {pa}-{pb} | {w}")
+        self.summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int]):
     """Call agent.choose_move(board) with a soft timeout.
 
@@ -331,7 +425,13 @@ def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int
     return result["move"] if done.is_set() else None
 
 
-def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies: int, time_per_move: Optional[int]) -> str:
+def play_single_game(
+    white_agent_name: str,
+    black_agent_name: str,
+    *,
+    max_plies: int,
+    time_per_move: Optional[int] = None,
+) -> str:
     """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
     Technical loss is applied if an agent returns None or makes illegal move.
     """
@@ -367,8 +467,8 @@ def play_series(
     series_games: int,
     *,
     max_plies: int,
-    time_per_move: Optional[int],
-    tiebreaks: bool,
+    time_per_move: Optional[int] = None,
+    tiebreaks: bool = False,
     writer: Optional["TournamentOutputWriter"] = None,
 ) -> Tuple[float, float, List[str]]:
     """Play a series of games with alternating colors.
@@ -484,6 +584,123 @@ def run_round_robin(
     return standings
 
 
+def _seed_bracket_participants(agent_names: List[str]) -> List[str]:
+    # For now, use the order provided as seed order
+    return list(agent_names)
+
+
+def _round_name(num_players: int) -> str:
+    if num_players >= 8 and ((num_players & (num_players - 1)) == 0):
+        if num_players == 8:
+            return "Quarterfinals"
+        if num_players == 16:
+            return "Round of 16"
+        if num_players == 32:
+            return "Round of 32"
+    if num_players == 4:
+        return "Semifinals"
+    if num_players == 2:
+        return "Final"
+    return f"Round of {num_players}"
+
+
+def run_single_elimination(
+    agent_names: List[str],
+    *,
+    games_per_match: int,
+    max_plies: int,
+    time_per_move: Optional[int] = None,
+    tiebreaks: bool = False,
+    writer: Optional["TournamentOutputWriter"] = None,
+) -> str:
+    """Run a single-elimination bracket and return champion name.
+
+    Pairings are seeded 1 vs N, 2 vs N-1, etc. Colors alternate by game.
+    """
+    assert len(agent_names) >= 2, "Need at least 2 agents for single-elimination"
+    seeds = _seed_bracket_participants(agent_names)
+
+    if writer is not None:
+        fmt_label = f"Bo{games_per_match}" if games_per_match % 2 == 1 else f"{games_per_match} games"
+        writer.set_single_elimination_metadata(
+            agents=agent_names,
+            format_label=fmt_label,
+            tiebreaks=tiebreaks,
+            max_plies=max_plies,
+            time_per_move=time_per_move,
+            seeds=seeds,
+        )
+
+    current = list(seeds)
+    round_idx = 0
+    while len(current) > 1:
+        round_idx += 1
+        round_name = _round_name(len(current))
+        print(f"\n=== {round_name} ({len(current)} players) ===")
+        next_round: List[str] = []
+        # 1 vs N, 2 vs N-1, ...
+        pair_count = len(current) // 2
+        for m_idx in range(pair_count):
+            a = current[m_idx]
+            b = current[-(m_idx + 1)]
+            print_pairing_header(a, b, games_per_match)
+            pts_a, pts_b, series_results = play_series(
+                a,
+                b,
+                games_per_match,
+                max_plies=max_plies,
+                time_per_move=time_per_move,
+                tiebreaks=tiebreaks,
+                writer=writer,
+            )
+            winner: Optional[str]
+            if pts_a > pts_b:
+                winner = a
+            elif pts_b > pts_a:
+                winner = b
+            else:
+                # If still tied, pick higher seed (earlier in original list)
+                idx_a = seeds.index(a)
+                idx_b = seeds.index(b)
+                winner = a if idx_a < idx_b else b
+            next_round.append(winner)
+            if writer is not None:
+                writer.update_match(
+                    round_name=round_name,
+                    match_index=m_idx,
+                    a=a,
+                    b=b,
+                    results=series_results,
+                    pts_a=pts_a,
+                    pts_b=pts_b,
+                    winner=winner,
+                )
+        # Handle BYE for odd-sized rounds: the middle seed advances automatically
+        if len(current) % 2 == 1:
+            bye_seed = current[pair_count]
+            print(f"BYE: {bye_seed} advances")
+            next_round.append(bye_seed)
+            if writer is not None:
+                # Record a bye as a match with no opponent
+                writer.update_match(
+                    round_name=round_name,
+                    match_index=pair_count,
+                    a=bye_seed,
+                    b=None,
+                    results=[],
+                    pts_a=0.0,
+                    pts_b=0.0,
+                    winner=bye_seed,
+                )
+        current = next_round
+
+    champion = current[0]
+    print(f"\n=== Champion: {champion} ===")
+    if writer is not None:
+        writer.write_se_summary(champion)
+    return champion
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
 
@@ -521,32 +738,41 @@ def main(argv: Optional[List[str]] = None) -> int:
     tb_label = "ON" if args.tiebreaks == "on" else "OFF"
     print(f"Формат: {fmt_label} | Без потоків | Макс. пліїв: {args.max_plies} | Ліміт на хід: {time_label} | Тай-брейки: {tb_label}")
 
-    # Prepare output writer
     out_root = Path(ROOT) / args.out_root
     writer = TournamentOutputWriter(out_root=out_root, tag=args.tag)
-    writer.set_round_robin_metadata(
-        agents=requested,
-        format_label=fmt_label,
-        games_per_pair=games_per_pair,
-        tiebreaks=(args.tiebreaks == "on"),
-        max_plies=args.max_plies,
-        time_per_move=(args.time if args.time and args.time > 0 else None),
-    )
 
-    standings = run_round_robin(
-        requested,
-        games_per_pair,
-        max_plies=args.max_plies,
-        time_per_move=(args.time if args.time and args.time > 0 else None),
-        tiebreaks=(args.tiebreaks == "on"),
-        writer=writer,
-    )
-
-    print("\nФінальна таблиця:")
-    print_standings(standings)
-    # Persist summary
-    writer.write_summary(standings)
-    return 0
+    if args.mode == "rr":
+        writer.set_round_robin_metadata(
+            agents=requested,
+            format_label=fmt_label,
+            games_per_pair=games_per_pair,
+            tiebreaks=(args.tiebreaks == "on"),
+            max_plies=args.max_plies,
+            time_per_move=(args.time if args.time and args.time > 0 else None),
+        )
+        standings = run_round_robin(
+            requested,
+            games_per_pair,
+            max_plies=args.max_plies,
+            time_per_move=(args.time if args.time and args.time > 0 else None),
+            tiebreaks=(args.tiebreaks == "on"),
+            writer=writer,
+        )
+        print("\nФінальна таблиця:")
+        print_standings(standings)
+        writer.write_summary(standings)
+        return 0
+    else:
+        champion = run_single_elimination(
+            requested,
+            games_per_match=games_per_pair,
+            max_plies=args.max_plies,
+            time_per_move=(args.time if args.time and args.time > 0 else None),
+            tiebreaks=(args.tiebreaks == "on"),
+            writer=writer,
+        )
+        print(f"Переможець турніру: {champion}")
+        return 0
 
 
 if __name__ == "__main__":
