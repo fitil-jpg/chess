@@ -172,8 +172,27 @@ def ab_search(
 
     alpha_orig = alpha
 
-    # Transposition table lookup
-    key = board.transposition_key()
+    # Transposition table lookup (compatible across python-chess versions)
+    def _coerce_key(value) -> int:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, (str, bytes, bytearray)):
+            return hash(value)
+        try:
+            return hash(tuple(value))
+        except TypeError:
+            return hash(repr(value))
+
+    def _position_key(b: chess.Board) -> int:
+        tk = getattr(b, "transposition_key", None)
+        if tk is not None:
+            return _coerce_key(tk() if callable(tk) else tk)
+        priv = getattr(b, "_transposition_key", None)
+        if priv is not None:
+            return _coerce_key(priv())
+        return hash(b.fen())
+
+    key = _position_key(board)
     tt_move: Optional[chess.Move] = None
     entry = TT.get(key)
     if entry and entry.depth >= depth:

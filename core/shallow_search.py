@@ -22,6 +22,34 @@ _MVV_LVA_VALUES = {
 }
 
 
+def _coerce_key(value) -> int:
+    """Coerce various key shapes (int/tuple/bytes/str) to a stable int.
+
+    Some python-chess versions expose a private ``_transposition_key`` helper
+    that may return a non-int value. We hash to a compact integer key.
+    """
+    if isinstance(value, int):
+        return value
+    if isinstance(value, (str, bytes, bytearray)):
+        return hash(value)
+    try:
+        return hash(tuple(value))
+    except TypeError:
+        return hash(repr(value))
+
+
+def _position_key(board: chess.Board) -> int:
+    """Return a stable key for the position with broad version compatibility."""
+    if hasattr(board, "transposition_key"):
+        tk = board.transposition_key
+        if callable(tk):
+            return _coerce_key(tk())
+        return _coerce_key(tk)
+    if hasattr(board, "_transposition_key"):
+        return _coerce_key(board._transposition_key())
+    return hash(board.fen())
+
+
 def _material_eval(board: chess.Board) -> int:
 	"""Very small evaluation function: material only, from side-to-move perspective."""
 	score = 0
@@ -126,7 +154,7 @@ class ShallowSearch:
 		alpha_orig = alpha
 
 		# TT probe
-		key = board.transposition_key()
+		key = _position_key(board)
 		entry = self._tt_get(key)
 		hash_move: Optional[chess.Move] = None
 		if entry and entry.depth >= depth:

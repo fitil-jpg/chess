@@ -44,7 +44,27 @@ def _cache_put(key: Tuple[int, bool], value: float) -> None:
 def evaluate_position(board: chess.Board) -> float:
     """Evaluate ``board`` from the side to move perspective with caching."""
 
-    key: Tuple[int, bool] = (board.transposition_key(), board.turn)
+    # Version-tolerant position key
+    def _coerce_key(value) -> int:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, (str, bytes, bytearray)):
+            return hash(value)
+        try:
+            return hash(tuple(value))
+        except TypeError:
+            return hash(repr(value))
+
+    def _position_key(b: chess.Board) -> int:
+        tk = getattr(b, "transposition_key", None)
+        if tk is not None:
+            return _coerce_key(tk() if callable(tk) else tk)
+        priv = getattr(b, "_transposition_key", None)
+        if priv is not None:
+            return _coerce_key(priv())
+        return hash(b.fen())
+
+    key: Tuple[int, bool] = (_position_key(board), board.turn)
     cached = _cache_get(key)
     if cached is not None:
         return cached
