@@ -27,6 +27,7 @@ from typing import Dict, List, Tuple, Optional
 import math
 from pathlib import Path
 from datetime import datetime
+import time
 import json
 import threading
 
@@ -132,6 +133,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Per-move time limit in seconds (0 disables)",
     )
     parser.add_argument(
+        "--clock",
+        type=str,
+        default=None,
+        help="Per-player chess clock in the form 'M|inc', e.g., 1|0 for 1+0 blitz. Overrides --time when provided.",
+    )
+    parser.add_argument(
         "--tiebreaks",
         type=str,
         choices=["on", "off"],
@@ -225,6 +232,8 @@ class TournamentOutputWriter:
         tiebreaks: bool,
         max_plies: int,
         time_per_move: Optional[int],
+        clock_initial: Optional[float] = None,
+        clock_increment: Optional[float] = None,
     ) -> None:
         self.bracket["type"] = "round_robin"
         self.bracket["format"] = format_label
@@ -233,6 +242,9 @@ class TournamentOutputWriter:
         self.bracket["tiebreaks"] = bool(tiebreaks)
         self.bracket["max_plies"] = int(max_plies)
         self.bracket["time_per_move"] = int(time_per_move) if time_per_move else None
+        # Optional per-player clock
+        self.bracket["clock_initial"] = float(clock_initial) if clock_initial else None
+        self.bracket["clock_increment"] = float(clock_increment) if clock_increment else None
         self._touch_and_write()
 
     def ensure_pair(self, a: str, b: str) -> None:
@@ -318,6 +330,8 @@ class TournamentOutputWriter:
         tiebreaks: bool,
         max_plies: int,
         time_per_move: Optional[int],
+        clock_initial: Optional[float] = None,
+        clock_increment: Optional[float] = None,
         seeds: List[str],
     ) -> None:
         self.bracket["type"] = "single_elimination"
@@ -326,6 +340,8 @@ class TournamentOutputWriter:
         self.bracket["tiebreaks"] = bool(tiebreaks)
         self.bracket["max_plies"] = int(max_plies)
         self.bracket["time_per_move"] = int(time_per_move) if time_per_move else None
+        self.bracket["clock_initial"] = float(clock_initial) if clock_initial else None
+        self.bracket["clock_increment"] = float(clock_increment) if clock_increment else None
         self.bracket["pairs"] = []  # unused in SE
         self.bracket["seeds"] = list(seeds)
         self.bracket["rounds"] = []
@@ -425,12 +441,44 @@ def _choose_move_with_timeout(agent, board: chess.Board, timeout_s: Optional[int
     return result["move"] if done.is_set() else None
 
 
+def _choose_move_with_budget(agent, board: chess.Board, budget_s: float) -> Tuple[Optional[chess.Move], float, bool]:
+    """Run agent.choose_move(board) on a copy with a hard budget.
+
+    Returns (move or None, elapsed_seconds, finished_in_time).
+    If finished_in_time is False, caller should treat as flag-fall.
+    """
+    if budget_s <= 0:
+        return None, 0.0, False
+
+    result: Dict[str, Optional[chess.Move]] = {"move": None}
+    done = threading.Event()
+    board_copy = board.copy(stack=False)
+
+    def _worker():
+        try:
+            mv = agent.choose_move(board_copy)
+            result["move"] = mv
+        except Exception:
+            result["move"] = None
+        finally:
+            done.set()
+
+    t0 = time.monotonic()
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    finished = done.wait(timeout=budget_s)
+    elapsed = time.monotonic() - t0
+    return (result["move"] if finished else None), elapsed, finished
+
+
 def play_single_game(
     white_agent_name: str,
     black_agent_name: str,
     *,
     max_plies: int,
     time_per_move: Optional[int] = None,
+    clock_initial: Optional[float] = None,
+    clock_increment: float = 0.0,
 ) -> str:
     """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
     Technical loss is applied if an agent returns None or makes illegal move.
@@ -440,17 +488,57 @@ def play_single_game(
     black_agent = make_agent(black_agent_name, chess.BLACK)
 
     try:
-        while not board.is_game_over() and len(board.move_stack) < max_plies:
-            agent = white_agent if board.turn == chess.WHITE else black_agent
-            move = _choose_move_with_timeout(agent, board, time_per_move)
-            if move is None:
-                # Immediate loss for side to move
-                return "0-1" if board.turn == chess.WHITE else "1-0"
-            try:
-                board.push(move)
-            except Exception:
-                # Illegal move => technical loss for mover
-                return "0-1" if board.turn == chess.WHITE else "1-0"
+        # Per-player clock mode (e.g., 1|0) if an initial clock is provided
+        if clock_initial is not None and clock_initial > 0:
+            time_left_w = float(clock_initial)
+            time_left_b = float(clock_initial)
+
+            while not board.is_game_over() and len(board.move_stack) < max_plies:
+                mover_is_white = board.turn == chess.WHITE
+                agent = white_agent if mover_is_white else black_agent
+                budget = time_left_w if mover_is_white else time_left_b
+
+                move, elapsed, finished = _choose_move_with_budget(agent, board, budget)
+                # Deduct actual elapsed from mover's clock
+                if mover_is_white:
+                    time_left_w -= elapsed
+                else:
+                    time_left_b -= elapsed
+
+                # Flag-fall if not finished in time or clock dipped below zero
+                if not finished or (time_left_w < -1e-6 if mover_is_white else time_left_b < -1e-6):
+                    return "0-1" if mover_is_white else "1-0"
+
+                # If agent returned None despite finishing (error), technical loss
+                if move is None:
+                    return "0-1" if mover_is_white else "1-0"
+
+                try:
+                    board.push(move)
+                except Exception:
+                    # Illegal move => technical loss for mover
+                    return "0-1" if mover_is_white else "1-0"
+
+                # Apply increment after a legal move
+                if clock_increment > 0:
+                    if mover_is_white:
+                        time_left_w += clock_increment
+                    else:
+                        time_left_b += clock_increment
+
+        else:
+            # Legacy per-move timeout mode
+            while not board.is_game_over() and len(board.move_stack) < max_plies:
+                agent = white_agent if board.turn == chess.WHITE else black_agent
+                move = _choose_move_with_timeout(agent, board, time_per_move)
+                if move is None:
+                    # Immediate loss for side to move
+                    return "0-1" if board.turn == chess.WHITE else "1-0"
+                try:
+                    board.push(move)
+                except Exception:
+                    # Illegal move => technical loss for mover
+                    return "0-1" if board.turn == chess.WHITE else "1-0"
     except Exception:
         # Any unexpected exception from agent => their loss
         return "0-1" if board.turn == chess.WHITE else "1-0"
@@ -468,6 +556,8 @@ def play_series(
     *,
     max_plies: int,
     time_per_move: Optional[int] = None,
+    clock_initial: Optional[float] = None,
+    clock_increment: float = 0.0,
     tiebreaks: bool = False,
     writer: Optional["TournamentOutputWriter"] = None,
 ) -> Tuple[float, float, List[str]]:
@@ -483,7 +573,14 @@ def play_series(
     for i in range(series_games):
         white, black = (a, b) if i % 2 == 0 else (b, a)
         print_game_header(i + 1, white, black)
-        res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
+        res = play_single_game(
+            white,
+            black,
+            max_plies=max_plies,
+            time_per_move=time_per_move,
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
+        )
         print_game_result(res)
         results.append(res)
 
@@ -522,7 +619,14 @@ def play_series(
         print_pairing_header(a, b, 1)
         print("Тай-брейк: 1 гра для визначення переможця")
         print_game_header(tiebreak_idx + 1, white, black)
-        res = play_single_game(white, black, max_plies=max_plies, time_per_move=time_per_move)
+        res = play_single_game(
+            white,
+            black,
+            max_plies=max_plies,
+            time_per_move=time_per_move,
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
+        )
         print_game_result(res)
         results.append(res)
         if writer is not None:
@@ -554,6 +658,8 @@ def run_round_robin(
     *,
     max_plies: int,
     time_per_move: Optional[int] = None,
+    clock_initial: Optional[float] = None,
+    clock_increment: float = 0.0,
     tiebreaks: bool = False,
     writer: Optional["TournamentOutputWriter"] = None,
 ) -> Dict[str, PlayerStats]:
@@ -570,6 +676,8 @@ def run_round_robin(
             games_per_pair,
             max_plies=max_plies,
             time_per_move=time_per_move,
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
             tiebreaks=tiebreaks,
             writer=writer,
         )
@@ -610,6 +718,8 @@ def run_single_elimination(
     games_per_match: int,
     max_plies: int,
     time_per_move: Optional[int] = None,
+    clock_initial: Optional[float] = None,
+    clock_increment: float = 0.0,
     tiebreaks: bool = False,
     writer: Optional["TournamentOutputWriter"] = None,
 ) -> str:
@@ -628,6 +738,8 @@ def run_single_elimination(
             tiebreaks=tiebreaks,
             max_plies=max_plies,
             time_per_move=time_per_move,
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
             seeds=seeds,
         )
 
@@ -650,6 +762,8 @@ def run_single_elimination(
                 games_per_match,
                 max_plies=max_plies,
                 time_per_move=time_per_move,
+                clock_initial=clock_initial,
+                clock_increment=clock_increment,
                 tiebreaks=tiebreaks,
                 writer=writer,
             )
@@ -732,9 +846,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             games_per_pair = int(args.bo)
 
+    # Parse optional per-player clock like "1|0" (minutes|increment seconds)
+    clock_initial: Optional[float] = None
+    clock_increment: float = 0.0
+    if args.clock:
+        try:
+            mins_str, inc_str = str(args.clock).split("|", 1)
+            clock_initial = float(mins_str) * 60.0
+            clock_increment = float(inc_str)
+        except Exception:
+            print("Невалідний формат --clock. Очікується M|inc, напр. 1|0")
+            return 2
+
     print("Учасники:", ", ".join(requested))
     fmt_label = f"Bo{games_per_pair}" if games_per_pair % 2 == 1 else f"{games_per_pair} ігор"
-    time_label = f"{args.time}s" if args.time and args.time > 0 else "без ліміту"
+    if clock_initial is not None:
+        time_label = f"годинник: {int(clock_initial)}s + {clock_increment}s"
+    else:
+        time_label = f"{args.time}s" if args.time and args.time > 0 else "без ліміту"
     tb_label = "ON" if args.tiebreaks == "on" else "OFF"
     print(f"Формат: {fmt_label} | Без потоків | Макс. пліїв: {args.max_plies} | Ліміт на хід: {time_label} | Тай-брейки: {tb_label}")
 
@@ -748,13 +877,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             games_per_pair=games_per_pair,
             tiebreaks=(args.tiebreaks == "on"),
             max_plies=args.max_plies,
-            time_per_move=(args.time if args.time and args.time > 0 else None),
+            time_per_move=(None if clock_initial is not None else (args.time if args.time and args.time > 0 else None)),
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
         )
         standings = run_round_robin(
             requested,
             games_per_pair,
             max_plies=args.max_plies,
-            time_per_move=(args.time if args.time and args.time > 0 else None),
+            time_per_move=(None if clock_initial is not None else (args.time if args.time and args.time > 0 else None)),
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
             tiebreaks=(args.tiebreaks == "on"),
             writer=writer,
         )
@@ -767,7 +900,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             requested,
             games_per_match=games_per_pair,
             max_plies=args.max_plies,
-            time_per_move=(args.time if args.time and args.time > 0 else None),
+            time_per_move=(None if clock_initial is not None else (args.time if args.time and args.time > 0 else None)),
+            clock_initial=clock_initial,
+            clock_increment=clock_increment,
             tiebreaks=(args.tiebreaks == "on"),
             writer=writer,
         )
