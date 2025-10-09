@@ -3,13 +3,13 @@
 
 Usage:
   # cProfile evaluator.mobility on random positions
-  python scripts/profile.py --target mobility --iters 2000 --out output/profile.prof
+  python scripts/profiling.py --target mobility --iters 2000 --out output/profile.prof
 
   # Run a mini-ladder and profile the run function
-  python scripts/profile.py --target ladder --agents DynamicBot,AggressiveBot --rounds 2 --out output/ladder.prof
+  python scripts/profiling.py --target ladder --agents DynamicBot,AggressiveBot --rounds 2 --out output/ladder.prof
 
   # Generate a flamegraph with py-spy (if installed)
-  python scripts/profile.py --py-spy --target ladder --agents DynamicBot,AggressiveBot --rounds 2 --flame output/ladder.svg
+  python scripts/profiling.py --py-spy --target ladder --agents DynamicBot,AggressiveBot --rounds 2 --flame output/ladder.svg
 """
 from __future__ import annotations
 
@@ -109,4 +109,3 @@ def main() -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
-
