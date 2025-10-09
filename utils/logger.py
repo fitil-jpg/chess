@@ -2,7 +2,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 class GameLogger:
     def __init__(self):
@@ -14,7 +14,7 @@ class GameLogger:
             "by": color,
             "evaluation": round(evaluation, 2),
             "phase": phase,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
 
     def save_to_file(self, filename):
