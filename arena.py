@@ -15,11 +15,12 @@ record_usage(__file__)
 
 import time
 import logging
-from typing import Dict, Tuple, List, Optional
+from typing import Dict, Tuple, List, Optional, Any
 
 import chess
 import os
 import json
+import traceback
 from datetime import datetime
 
 from chess_ai.bot_agent import make_agent, get_agent_names
@@ -34,6 +35,8 @@ WHITE_AGENT = "DynamicBot"
 BLACK_AGENT = "FortifyBot"
 
 LOG_LEVEL = logging.INFO
+# Optional per-move time limit in seconds. If <= 0, disabled.
+MOVE_TIME_LIMIT_S: float = float(os.getenv("CHESS_MOVE_TIME_LIMIT_S", "0"))
 PERF_METRICS = True       # середній branching factor L та L^2 за гру
 SAN_AFTER_EACH_GAME = True
 
@@ -214,6 +217,9 @@ def play_games(games: int) -> Tuple[int, int, int]:
         last_capture_square: Optional[int] = None  # для детекту retake (розміну)
         last_move_san: Optional[str] = None
         last_reason: str = ""
+        # Результат/збій для цієї гри
+        res: Optional[str] = None
+        failure_info_game: Optional[Dict[str, Any]] = None
 
         # Основний цикл гри
         while not board.is_game_over():
@@ -227,28 +233,161 @@ def play_games(games: int) -> Tuple[int, int, int]:
             color_to_move = board.turn
             agent = white_agent if color_to_move == chess.WHITE else black_agent
 
-            move = agent.choose_move(board)
-            if move is None:
+            # --- Вибір ходу з тайм-аутом та обробкою помилок ---
+            technical_result: Optional[str] = None
+            failure_info: Optional[Dict[str, Any]] = None
+
+            start_choose = time.time()
+            try:
+                move = agent.choose_move(board)
+            except Exception as ex:
+                # Краш агента → технічна поразка сторони, що ходила
+                tb = traceback.format_exc()
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "crash",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                    "message": str(ex),
+                    "traceback": tb,
+                }
+                logger.exception(
+                    "Agent crash by %s (%s); awarding technical loss",
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
+                )
+                # Finalize outside the loop
+                reason = ""
+                last_reason = "Agent crash"
+                last_move_san = None
+                # Jump to end-of-game handling
+                res = technical_result
+                failure_info_game = failure_info
                 break
+            elapsed_choose = time.time() - start_choose
+
+            if MOVE_TIME_LIMIT_S > 0 and elapsed_choose > MOVE_TIME_LIMIT_S:
+                # Перевищення ліміту часу → технічна поразка
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "timeout",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                    "elapsed": elapsed_choose,
+                    "limit": MOVE_TIME_LIMIT_S,
+                }
+                logger.error(
+                    "Timeout %.3fs > %.3fs by %s (%s); awarding technical loss",
+                    elapsed_choose, MOVE_TIME_LIMIT_S,
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
+                )
+                reason = ""
+                last_reason = "Timeout"
+                last_move_san = None
+                res = technical_result
+                failure_info_game = failure_info
+                break
+
+            if move is None:
+                # Агент не повернув хід → технічна поразка
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "no_move",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                }
+                logger.error(
+                    "Agent returned None move by %s (%s); awarding technical loss",
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
+                )
+                reason = ""
+                last_reason = "No move"
+                last_move_san = None
+                res = technical_result
+                failure_info_game = failure_info
+                break
+
+            # Перевірка легальності ДО розрахунку SAN
+            if move not in board.legal_moves:
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "illegal_move",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                    "move": getattr(move, "uci", lambda: str(move))(),
+                }
+                logger.error(
+                    "Illegal move (pre-check) %s by %s (%s); awarding technical loss",
+                    failure_info["move"],
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
+                )
+                reason = ""
+                last_reason = "Illegal move"
+                last_move_san = None
+                res = technical_result
+                failure_info_game = failure_info
+                break
+
             reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else ""
 
             # --- ВСЕ, ЩО ПОТРЕБУЄ СТАРОЇ ПОЗИЦІЇ — РАХУЄМО ДО PUSH ---
             is_cap = board.is_capture(move)
             will_retake = bool(is_cap and last_capture_square is not None and move.to_square == last_capture_square)
             # ВАЖЛИВО: SAN тільки ДО push!
-            san_before = board.san(move)
+            try:
+                san_before = board.san(move)
+            except Exception as ex:
+                # SAN обчислення впало — трактуємо як нелегальний хід
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "illegal_move",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                    "move": getattr(move, "uci", lambda: str(move))(),
+                    "message": str(ex),
+                }
+                logger.exception(
+                    "Illegal move (SAN) %s by %s (%s); awarding technical loss",
+                    failure_info.get("move"),
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
+                )
+                reason = ""
+                last_reason = "Illegal move"
+                last_move_san = None
+                res = technical_result
+                failure_info_game = failure_info
+                break
 
             # --- ХІД ---
             try:
                 board.push(move)
-            except Exception:
-                # На всяк випадок, якщо агент повернув нелегальний Move
+            except Exception as ex:
+                # Якщо push не вдався — технічна поразка
+                loser_is_white = (color_to_move == chess.WHITE)
+                technical_result = "0-1" if loser_is_white else "1-0"
+                failure_info = {
+                    "kind": "illegal_move",
+                    "side": "white" if loser_is_white else "black",
+                    "agent": getattr(agent, "__class__", type(agent)).__name__,
+                    "move": getattr(move, "uci", lambda: str(move))(),
+                    "message": str(ex),
+                }
                 logger.exception(
-                    "Illegal move %s by %s (%s); ending game",
-                    move,
-                    "white" if color_to_move == chess.WHITE else "black",
-                    agent.__class__.__name__,
+                    "Illegal move %s by %s (%s); awarding technical loss",
+                    failure_info.get("move"),
+                    "white" if loser_is_white else "black",
+                    failure_info["agent"],
                 )
+                res = technical_result
                 break
 
             moves_log.append(san_before)
@@ -321,7 +460,9 @@ def play_games(games: int) -> Tuple[int, int, int]:
 
         # Підсумки
         total_time = time.time() - start_game
-        res = board.result()
+        # Якщо сталася технічна поразка — res вже визначено вище
+        if res is None:
+            res = board.result()
         full_moves = board.fullmove_number
         plys = len(board.move_stack)
 
@@ -362,6 +503,16 @@ def play_games(games: int) -> Tuple[int, int, int]:
                 reason_parts = reason_text.splitlines()
                 final_info.append(f"Reason: {reason_parts[0]}")
                 final_info.extend(reason_parts[1:])
+            # If technical failure occurred, include concise details
+            if failure_info_game:
+                final_info.append(
+                    f"Failure: {failure_info_game.get('kind')} by {failure_info_game.get('side')} ({failure_info_game.get('agent')})"
+                )
+                msg = failure_info_game.get('message')
+                if msg:
+                    final_info.append(f"Error: {msg}")
+                if failure_info_game.get('kind') in ('illegal_move',) and failure_info_game.get('move'):
+                    final_info.append(f"Move: {failure_info_game.get('move')}")
             final_info.append(f"Moves played: {full_moves} ({plys} ply)")
             final_info.append(f"Elapsed: {total_time:.2f}s")
             logger.info(
@@ -388,14 +539,17 @@ def play_games(games: int) -> Tuple[int, int, int]:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         run_path = os.path.join("runs", f"{ts}.json")
         with open(run_path, "w", encoding="utf-8") as f:
+            run_payload: Dict[str, Any] = {
+                "moves": moves_log,
+                "fens": fens_log,
+                "modules_w": modules_w,
+                "modules_b": modules_b,
+                "result": res,
+            }
+            if failure_info_game:
+                run_payload["failure"] = failure_info_game
             json.dump(
-                {
-                    "moves": moves_log,
-                    "fens": fens_log,
-                    "modules_w": modules_w,
-                    "modules_b": modules_b,
-                    "result": res,
-                },
+                run_payload,
                 f,
                 ensure_ascii=False,
                 indent=2,
