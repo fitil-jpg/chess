@@ -143,7 +143,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=str,
         choices=["on", "off"],
         default="on",
-        help="Play a single deciding game if a series ends tied",
+        help="Tie-breaks on tie: two 1|0 blitz games, then Armageddon (W 60s vs B 45s, draw → Black)",
     )
     parser.add_argument(
         "--out-root",
@@ -479,6 +479,8 @@ def play_single_game(
     time_per_move: Optional[int] = None,
     clock_initial: Optional[float] = None,
     clock_increment: float = 0.0,
+    clock_initial_white: Optional[float] = None,
+    clock_initial_black: Optional[float] = None,
 ) -> str:
     """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
     Technical loss is applied if an agent returns None or makes illegal move.
@@ -488,10 +490,13 @@ def play_single_game(
     black_agent = make_agent(black_agent_name, chess.BLACK)
 
     try:
-        # Per-player clock mode (e.g., 1|0) if an initial clock is provided
-        if clock_initial is not None and clock_initial > 0:
-            time_left_w = float(clock_initial)
-            time_left_b = float(clock_initial)
+        # Per-player clock mode
+        # Priority: explicit per-side initial clocks (e.g., Armageddon), otherwise symmetric initial
+        if (clock_initial_white is not None) or (clock_initial_black is not None) or (clock_initial is not None and clock_initial > 0):
+            init_w = float(clock_initial_white) if clock_initial_white is not None else (float(clock_initial) if clock_initial is not None else 0.0)
+            init_b = float(clock_initial_black) if clock_initial_black is not None else (float(clock_initial) if clock_initial is not None else 0.0)
+            time_left_w = init_w
+            time_left_b = init_b
 
             while not board.is_game_over() and len(board.move_stack) < max_plies:
                 mover_is_white = board.turn == chess.WHITE
@@ -612,39 +617,78 @@ def play_series(
         if writer is not None:
             writer.update_pair(a, b, results, pts_a, pts_b)
 
-    # Optional single tiebreak game if the series ended tied on points
+    # Tie-break sequence if the series ended tied on points
     if tiebreaks and abs(pts_a - pts_b) < 1e-9:
-        tiebreak_idx = len(results)
-        white, black = (a, b) if tiebreak_idx % 2 == 0 else (b, a)
-        print_pairing_header(a, b, 1)
-        print("Тай-брейк: 1 гра для визначення переможця")
-        print_game_header(tiebreak_idx + 1, white, black)
-        res = play_single_game(
-            white,
-            black,
-            max_plies=max_plies,
-            time_per_move=time_per_move,
-            clock_initial=clock_initial,
-            clock_increment=clock_increment,
-        )
-        print_game_result(res)
-        results.append(res)
-        if writer is not None:
-            writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
-        if res == "1-0":
-            if white == a:
-                pts_a += 1.0
+        print("Тай-брейки: 2 бліц-ігри 1|0; якщо рівність — Армагеддон (Білі 60s, Чорні 45s; нічия → Чорні)")
+
+        # Two extra blitz games 1|0, alternating colors
+        for _ in range(2):
+            tiebreak_idx = len(results)
+            white, black = (a, b) if tiebreak_idx % 2 == 0 else (b, a)
+            print_game_header(tiebreak_idx + 1, white, black)
+            res = play_single_game(
+                white,
+                black,
+                max_plies=max_plies,
+                time_per_move=None,  # force clock mode
+                clock_initial=60.0,
+                clock_increment=0.0,
+            )
+            print_game_result(res)
+            results.append(res)
+            if res == "1-0":
+                if white == a:
+                    pts_a += 1.0
+                else:
+                    pts_b += 1.0
+            elif res == "0-1":
+                if white == a:
+                    pts_b += 1.0
+                else:
+                    pts_a += 1.0
             else:
-                pts_b += 1.0
-        elif res == "0-1":
-            if white == a:
-                pts_b += 1.0
+                pts_a += 0.5
+                pts_b += 0.5
+            if writer is not None:
+                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
+                writer.update_pair(a, b, results, pts_a, pts_b)
+
+        # If still tied, Armageddon: W 60s vs B 45s, draw → Black
+        if abs(pts_a - pts_b) < 1e-9:
+            tiebreak_idx = len(results)
+            white, black = (a, b) if tiebreak_idx % 2 == 0 else (b, a)
+            print("Армагеддон: Білі 60s проти Чорних 45s; нічия рахується як перемога Чорних")
+            print_game_header(tiebreak_idx + 1, white, black)
+            res = play_single_game(
+                white,
+                black,
+                max_plies=max_plies,
+                time_per_move=None,
+                clock_initial=None,
+                clock_increment=0.0,
+                clock_initial_white=60.0,
+                clock_initial_black=45.0,
+            )
+            print_game_result(res)
+            results.append(res)
+            if writer is not None:
+                writer.log_game(a=a, b=b, white=white, black=black, game_index=tiebreak_idx + 1, result=res, tiebreak=True)
+            if res == "1-0":
+                if white == a:
+                    pts_a += 1.0
+                else:
+                    pts_b += 1.0
+            elif res == "0-1":
+                if white == a:
+                    pts_b += 1.0
+                else:
+                    pts_a += 1.0
             else:
-                pts_a += 1.0
-        else:
-            # If tiebreak still draws, leave points equal (overall tie persists)
-            pts_a += 0.5
-            pts_b += 0.5
+                # Draw counts as a win for Black (award 1 point to Black side)
+                if white == a:
+                    pts_b += 1.0
+                else:
+                    pts_a += 1.0
 
     # Final bracket update for this pair
     if writer is not None:
