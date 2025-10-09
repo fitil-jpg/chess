@@ -24,6 +24,8 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
+import time
+import traceback
 
 # Fix sys.path so stdlib modules are not shadowed by 'scripts/'
 SCRIPT_DIR = os.path.dirname(__file__)
@@ -139,17 +141,53 @@ def play_single_game(white_agent_name: str, black_agent_name: str, *, max_plies:
     white_agent = make_agent(white_agent_name, chess.WHITE)
     black_agent = make_agent(black_agent_name, chess.BLACK)
 
+    # Optional global move time limit in seconds; same env knob as arena.
+    try:
+        MOVE_TIME_LIMIT_S = float(os.getenv("CHESS_MOVE_TIME_LIMIT_S", "0"))
+    except Exception:
+        MOVE_TIME_LIMIT_S = 0.0
+
     try:
         while not board.is_game_over() and len(board.move_stack) < max_plies:
             agent = white_agent if board.turn == chess.WHITE else black_agent
-            move = agent.choose_move(board)
+            # Measure wall time spent inside choose_move
+            try:
+                t0 = time.time()
+                move = agent.choose_move(board)
+                elapsed = time.time() - t0
+            except Exception:
+                # Crash inside agent => technical loss for side to move
+                loser_white = (board.turn == chess.WHITE)
+                side = "White" if loser_white else "Black"
+                print(f"Technical loss: crash by {side} agent {agent.__class__.__name__}")
+                print(traceback.format_exc())
+                return "0-1" if loser_white else "1-0"
+
+            if MOVE_TIME_LIMIT_S > 0 and elapsed > MOVE_TIME_LIMIT_S:
+                # Timeout => technical loss
+                loser_white = (board.turn == chess.WHITE)
+                side = "White" if loser_white else "Black"
+                print(
+                    f"Technical loss: timeout by {side} agent {agent.__class__.__name__} (elapsed={elapsed:.3f}s > limit={MOVE_TIME_LIMIT_S:.3f}s)"
+                )
+                return "0-1" if loser_white else "1-0"
             if move is None:
                 # Immediate loss for side to move
-                return "0-1" if board.turn == chess.WHITE else "1-0"
+                loser_white = (board.turn == chess.WHITE)
+                side = "White" if loser_white else "Black"
+                print(f"Technical loss: {side} agent {agent.__class__.__name__} returned no move")
+                return "0-1" if loser_white else "1-0"
             try:
                 board.push(move)
             except Exception:
                 # Illegal move => technical loss for mover
+                loser_white = (board.turn == chess.WHITE)
+                side = "White" if loser_white else "Black"
+                try:
+                    mv = move.uci()
+                except Exception:
+                    mv = str(move)
+                print(f"Technical loss: illegal move by {side} agent {agent.__class__.__name__}: {mv}")
                 return "0-1" if board.turn == chess.WHITE else "1-0"
     except Exception:
         # Any unexpected exception from agent => their loss
