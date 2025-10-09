@@ -24,6 +24,8 @@ import os
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional
+from pathlib import Path
+import json
 
 # Fix sys.path so stdlib modules are not shadowed by 'scripts/'
 SCRIPT_DIR = os.path.dirname(__file__)
@@ -76,6 +78,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=str,
         default="DynamicBot,FortifyBot,AggressiveBot,EndgameBot,KingValueBot,RandomBot",
         help="Comma-separated list of agent names (see chess_ai.bot_agent.get_agent_names)",
+    )
+    parser.add_argument(
+        "--seed-from-elo",
+        action="store_true",
+        help="Order agents by latest selfplay_elo ratings JSON (see --elo-dir)",
+    )
+    parser.add_argument(
+        "--elo-dir",
+        type=str,
+        default="output",
+        help="Directory containing selfplay_elo_*.json files (default: output)",
     )
     parser.add_argument(
         "--games",
@@ -218,6 +231,50 @@ def run_round_robin(agent_names: List[str], games_per_pair: int, *, max_plies: i
     return standings
 
 
+def _find_latest_selfplay_elo_file(runs_dir: str | os.PathLike) -> Optional[Path]:
+    """Return the latest selfplay_elo_*.json file from runs_dir, if any.
+
+    Latest is determined lexicographically by the timestamp in the filename
+    (YYYYmmdd_HHMMSS), which is safe for string ordering.
+    """
+    base = Path(runs_dir)
+    if not base.exists() or not base.is_dir():
+        return None
+    files = sorted(base.glob("selfplay_elo_*.json"))
+    return files[-1] if files else None
+
+
+def _load_ratings_from_file(path: Path) -> Dict[str, float]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    raw = data.get("ratings", {})
+    # Ensure floats
+    return {str(k): float(v) for k, v in raw.items()}
+
+
+def seed_agents_from_latest_elo(
+    agent_names: List[str], runs_dir: str, *, default_rating: float = 1500.0
+) -> Tuple[List[str], Optional[str]]:
+    """Return (ordered_agents, source_path) seeded by latest Elo ratings.
+
+    Agents missing from the ratings are assigned *default_rating* and placed
+    after rated agents when possible. Ties are broken by agent name.
+    """
+    latest = _find_latest_selfplay_elo_file(runs_dir)
+    if latest is None:
+        return agent_names, None
+    ratings = _load_ratings_from_file(latest)
+
+    # Attach a score to each requested agent; higher first
+    scored: List[Tuple[float, str]] = []
+    for name in agent_names:
+        score = ratings.get(name, default_rating)
+        scored.append((score, name))
+
+    # Sort by score desc, then name asc for stability
+    ordered = [name for _, name in sorted(scored, key=lambda t: (-t[0], t[1]))]
+    return ordered, str(latest)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
 
@@ -238,6 +295,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 2
     else:
         games_per_pair = int(args.bo)
+
+    # Optional: reorder by latest Elo ratings JSON
+    if args.seed_from_elo:
+        seeded, src = seed_agents_from_latest_elo(requested, args.elo_dir)
+        if src is not None:
+            print(f"Seeding from: {src}")
+            requested = seeded
+        else:
+            print(f"No selfplay_elo_*.json found under '{args.elo_dir}'. Using provided order.")
 
     print("Учасники:", ", ".join(requested))
     print(f"Формат: {'Bo'+str(games_per_pair) if games_per_pair % 2 == 1 else str(games_per_pair)+' ігор'} | Без потоків | Макс. пліїв: {args.max_plies}")
