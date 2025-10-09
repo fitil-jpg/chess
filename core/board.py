@@ -36,7 +36,7 @@ class Board:
             return list(self.pieces)
         return [p for p in self.pieces if p.color == color]
 
-if chess:
+if chess and hasattr(chess, "C3"):
     CENTER_16 = {
         chess.C3, chess.D3, chess.E3, chess.F3,
         chess.C4, chess.D4, chess.E4, chess.F4,
@@ -166,7 +166,7 @@ if chess:
                 logger.debug(
                     "ChessBoard view %s has no repaint API", type(view)
                 )
-else:  # chess package not available
+else:  # chess package not available or stubbed without square constants
     CENTER_16 = set()
 
     class ChessBoard:  # pragma: no cover - simplified fallback
