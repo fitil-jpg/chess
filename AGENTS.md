@@ -13,3 +13,4 @@ The project includes several chess agents (bots). Each bot analyses the board an
 - **NeuralBot** – scores moves using a neural network evaluation.
 - **UtilityBot** – provides basic evaluation utilities used by other bots.
  - **PieceMateBot** – traps targeted enemy pieces by cutting off all safe escapes.
+ - **StockfishBot** – UCI engine‑backed bot using the Stockfish binary. Configure via `STOCKFISH_PATH` or pass `--sf-path` to CLI tools; otherwise it uses `stockfish` from your `PATH`.
