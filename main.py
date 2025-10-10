@@ -1,7 +1,7 @@
 # main.py
 import textwrap
 from itertools import zip_longest
-from typing import List, Sequence
+from typing import List, Sequence, Optional
 import argparse
 
 import chess
@@ -135,10 +135,12 @@ def run_match(
     diagram_every: int | None = None,
     diagram_unicode: bool = False,
     include_metrics: bool = True,
+    white_bot: Optional[object] = None,
+    black_bot: Optional[object] = None,
 ):
     board = chess.Board()
-    white = DynamicBot("DynamicBot-White")
-    black = DynamicBot("DynamicBot-Black")
+    white = white_bot or DynamicBot("DynamicBot-White")
+    black = black_bot or DynamicBot("DynamicBot-Black")
 
     ply = 0
     # Агрегація метрик за гру (середні/мін/макс по плайях)
@@ -170,29 +172,60 @@ def run_match(
             pass
         bot = white if board.turn == chess.WHITE else black
 
-        move, det = bot.select_move(board)
+        # Оцінка ДО ходу (raw)
+        try:
+            pre_score, det_before = evaluate(board)
+        except Exception:
+            pre_score, det_before = 0, {}
+
+        move, move_info = bot.select_move(board)
+        if move is None:
+            try:
+                move = next(iter(board.legal_moves))
+            except StopIteration:
+                move = None
+        if move is None:
+            # Немає легальних ходів — гра закінчилась.
+            break
+
         board.push(move)
         ply += 1
 
-        # Оцінка після зробленого ходу (позиція належить супернику):
-        score, _ = evaluate(board)
+        # Оцінка ПІСЛЯ ходу (позиція належить супернику):
+        try:
+            post_score, det_after = evaluate(board)
+        except Exception:
+            post_score, det_after = 0, {}
 
-        print(f"[Ply {ply:02d}] {side} {bot.name} played {board.peek().uci()}")
-        print(
-            f"  material={det['material']}  pst={det['pst']}  mobility={det['mobility']}  "
-            f"att_w={det['attacks_white']} att_b={det['attacks_black']}  delta_att={det['delta_attacks']}"
-        )
-        print(f"  eval_before_push(raw)≈{det['raw_score']}   eval_after={score}")
+        print(f"[Ply {ply:02d}] {side} {getattr(bot, 'name', type(bot).__name__)} played {board.peek().uci()}")
+        if det_after:
+            print(
+                f"  material={det_after.get('material', 'n/a')}  pst={det_after.get('pst', 'n/a')}  mobility={det_after.get('mobility', 'n/a')}  "
+                f"att_w={det_after.get('attacks_white', 'n/a')} att_b={det_after.get('attacks_black', 'n/a')}  delta_att={det_after.get('delta_attacks', 'n/a')}"
+            )
+        # Пояснення ходу (для StockfishBot то буде reason)
+        reason_text = ""
+        try:
+            if isinstance(move_info, dict) and move_info.get("reason"):
+                reason_text = f"  reason: {move_info['reason']}\n"
+        except Exception:
+            pass
+        print(f"  eval_before_push(raw)≈{pre_score}   eval_after={post_score}")
+        if reason_text:
+            print(reason_text, end="")
         print(f"  FEN: {board.fen()}")
         print("-")
 
-        # Актуалізуємо агреговані метрики
-        _update_metric("material", int(det["material"]))
-        _update_metric("pst", int(det["pst"]))
-        _update_metric("mobility", int(det["mobility"]))
-        _update_metric("attacks_white", int(det["attacks_white"]))
-        _update_metric("attacks_black", int(det["attacks_black"]))
-        _update_metric("delta_attacks", int(det["delta_attacks"]))
+        # Актуалізуємо агреговані метрики (за станом після ходу)
+        try:
+            _update_metric("material", int(det_after.get("material", 0)))
+            _update_metric("pst", int(det_after.get("pst", 0)))
+            _update_metric("mobility", int(det_after.get("mobility", 0)))
+            _update_metric("attacks_white", int(det_after.get("attacks_white", 0)))
+            _update_metric("attacks_black", int(det_after.get("attacks_black", 0)))
+            _update_metric("delta_attacks", int(det_after.get("delta_attacks", 0)))
+        except Exception:
+            pass
 
         # Додатково: к-ть НАШИХ/ЇХНІХ фігур під ударом у поточній позиції
         try:
@@ -213,10 +246,10 @@ def run_match(
         # Optional ASCII/Unicode board diagram every N plies with metrics
         if diagram_every and diagram_every > 0 and (ply % diagram_every == 0):
             info_lines: List[str] = [
-                f"Ply {ply:02d}: {side} {bot.name} {board.peek().uci()}",
-                f"material={det['material']}  pst={det['pst']}  mobility={det['mobility']}",
-                f"att_w={det['attacks_white']} att_b={det['attacks_black']}  delta_att={det['delta_attacks']}",
-                f"eval_after={score}  raw≈{det['raw_score']}",
+                f"Ply {ply:02d}: {side} {getattr(bot, 'name', type(bot).__name__)} {board.peek().uci()}",
+                f"material={det_after.get('material', 'n/a')}  pst={det_after.get('pst', 'n/a')}  mobility={det_after.get('mobility', 'n/a')}",
+                f"att_w={det_after.get('attacks_white', 'n/a')} att_b={det_after.get('attacks_black', 'n/a')}  delta_att={det_after.get('delta_attacks', 'n/a')}",
+                f"eval_after={post_score}  raw≈{pre_score}",
                 f"FEN: {board.fen()}",
             ]
             if include_metrics:
@@ -363,6 +396,8 @@ def _parse_args() -> argparse.Namespace:
         default=0,
         help="Print ASCII/Unicode board every N plies (0 disables)",
     )
+    parser.add_argument("--white", default="DynamicBot", help="White agent: DynamicBot or StockfishBot")
+    parser.add_argument("--black", default="DynamicBot", help="Black agent: DynamicBot or StockfishBot")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--unicode", action="store_true", help="Use Unicode chess symbols in diagrams")
     group.add_argument("--ascii", action="store_true", help="Force ASCII diagrams (default)")
@@ -371,16 +406,89 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not include sidebar metrics in diagrams",
     )
+    # Stockfish/engine options (used when either side is StockfishBot)
+    parser.add_argument("--sf-path", dest="sf_path", help="Path to stockfish binary")
+    parser.add_argument("--sf-elo", dest="sf_elo", type=int)
+    parser.add_argument("--sf-skill", dest="sf_skill", type=int)
+    parser.add_argument("--think-ms", dest="think_ms", type=int, default=200)
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--hash-mb", dest="hash_mb", type=int, default=128)
     return parser.parse_args()
+
+
+class _StockfishAdapter:
+    """Adapter exposing select_move(...) for the main loop."""
+
+    def __init__(
+        self,
+        color: bool,
+        name: str,
+        *,
+        path: Optional[str] = None,
+        think_time_ms: int = 200,
+        skill_level: Optional[int] = None,
+        uci_elo: Optional[int] = None,
+        threads: int = 1,
+        hash_mb: int = 128,
+    ) -> None:
+        from chess_ai.stockfish_bot import StockfishBot as _SF
+
+        self.impl = _SF(
+            color,
+            path=path,
+            think_time_ms=think_time_ms,
+            skill_level=skill_level,
+            uci_elo=uci_elo,
+            threads=threads,
+            hash_mb=hash_mb,
+        )
+        self.name = name
+
+    def select_move(self, board: chess.Board):
+        move, reason = self.impl.choose_move(board, debug=True)
+        return move, {"reason": reason}
+
+    def close(self) -> None:
+        try:
+            self.impl.close()
+        except Exception:
+            pass
+
+
+def _make_bot_for_main(name: str, color: bool, *, side_label: str, args: argparse.Namespace):
+    if name == "StockfishBot":
+        return _StockfishAdapter(
+            color,
+            f"Stockfish-{side_label}",
+            path=args.sf_path,
+            think_time_ms=args.think_ms,
+            skill_level=args.sf_skill,
+            uci_elo=args.sf_elo,
+            threads=args.threads,
+            hash_mb=args.hash_mb,
+        )
+    # Default/fallback: DynamicBot
+    return DynamicBot(f"DynamicBot-{side_label}")
 
 
 if __name__ == "__main__":
     args = _parse_args()
     # У тестовому/повному режимі — без ліміту плаїв
     max_plies: int | None = None if (args.full_game or args.test_mode) else args.max_plies
+    white_agent = _make_bot_for_main(getattr(args, "white", "DynamicBot"), chess.WHITE, side_label="White", args=args)
+    black_agent = _make_bot_for_main(getattr(args, "black", "DynamicBot"), chess.BLACK, side_label="Black", args=args)
     run_match(
         max_plies=max_plies,
         diagram_every=(args.diagram_every if args.diagram_every > 0 else None),
         diagram_unicode=(True if args.unicode else False),
         include_metrics=(False if args.no_metrics else True),
+        white_bot=white_agent,
+        black_bot=black_agent,
     )
+    try:
+        if hasattr(white_agent, "close"):
+            white_agent.close()
+        if hasattr(black_agent, "close"):
+            black_agent.close()
+    except Exception:
+        pass
