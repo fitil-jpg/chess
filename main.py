@@ -407,7 +407,13 @@ def _parse_args() -> argparse.Namespace:
         help="Do not include sidebar metrics in diagrams",
     )
     # Stockfish/engine options (used when either side is StockfishBot)
-    parser.add_argument("--sf-path", dest="sf_path", default="/usr/games/stockfish", help="Path to stockfish binary")
+    # If not provided, StockfishBot will use $STOCKFISH_PATH or 'stockfish' from PATH
+    parser.add_argument(
+        "--sf-path",
+        dest="sf_path",
+        default=None,
+        help="Path to stockfish binary (default: use $STOCKFISH_PATH or 'stockfish' on PATH)",
+    )
     parser.add_argument("--sf-elo", dest="sf_elo", type=int, default=1600)
     parser.add_argument("--sf-skill", dest="sf_skill", type=int)
     parser.add_argument("--think-ms", dest="think_ms", type=int, default=150)
