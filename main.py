@@ -379,7 +379,7 @@ def run_match(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a headless chess match between internal bots.")
-    parser.add_argument("--max-plies", type=int, default=40, help="Maximum number of plies to play")
+    parser.add_argument("--max-plies", type=int, default=20, help="Maximum number of plies to play")
     parser.add_argument(
         "--full-game",
         action="store_true",
@@ -397,7 +397,7 @@ def _parse_args() -> argparse.Namespace:
         help="Print ASCII/Unicode board every N plies (0 disables)",
     )
     parser.add_argument("--white", default="DynamicBot", help="White agent: DynamicBot or StockfishBot")
-    parser.add_argument("--black", default="DynamicBot", help="Black agent: DynamicBot or StockfishBot")
+    parser.add_argument("--black", default="StockfishBot", help="Black agent: DynamicBot or StockfishBot")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--unicode", action="store_true", help="Use Unicode chess symbols in diagrams")
     group.add_argument("--ascii", action="store_true", help="Force ASCII diagrams (default)")
@@ -407,12 +407,12 @@ def _parse_args() -> argparse.Namespace:
         help="Do not include sidebar metrics in diagrams",
     )
     # Stockfish/engine options (used when either side is StockfishBot)
-    parser.add_argument("--sf-path", dest="sf_path", help="Path to stockfish binary")
-    parser.add_argument("--sf-elo", dest="sf_elo", type=int)
+    parser.add_argument("--sf-path", dest="sf_path", default="/usr/games/stockfish", help="Path to stockfish binary")
+    parser.add_argument("--sf-elo", dest="sf_elo", type=int, default=1600)
     parser.add_argument("--sf-skill", dest="sf_skill", type=int)
-    parser.add_argument("--think-ms", dest="think_ms", type=int, default=200)
+    parser.add_argument("--think-ms", dest="think_ms", type=int, default=150)
     parser.add_argument("--threads", type=int, default=1)
-    parser.add_argument("--hash-mb", dest="hash_mb", type=int, default=128)
+    parser.add_argument("--hash-mb", dest="hash_mb", type=int, default=64)
     return parser.parse_args()
 
 
