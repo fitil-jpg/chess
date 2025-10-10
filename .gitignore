@@ -77,3 +77,6 @@ analysis/synergy.json
 # ML weights / checkpoints
 *.pth
 *.pt
+
+# PST training artifacts (keep minimal template in repo)
+pst.json

@@ -54,7 +54,12 @@ def load_pst(path: str = PST_FILE):
             return _ensure_structure(data)
         except Exception:
             pass
-    return {"phases": _empty_phase_table(), "steps": {}}
+    
+    # Create minimal working template if file doesn't exist
+    logger.info(f"PST file not found at {path}, creating minimal template")
+    data = {"phases": _empty_phase_table(), "steps": {}}
+    save_pst(path)
+    return data
 
 
 # Global PST loaded at import time
