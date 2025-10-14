@@ -2,9 +2,11 @@
 Chess.com API integration for ELO rating synchronization.
 
 This module provides functionality to:
-- Fetch user ratings from Chess.com
-- Play games against Chess.com bots
-- Update local ELO ratings based on external results
+- Fetch user ratings from Chess.com (READ-ONLY)
+- Update local ELO ratings based on external ratings
+
+NOTE: Chess.com does not allow bots to play games via API.
+This module only reads ratings from existing Chess.com accounts.
 """
 
 from __future__ import annotations
