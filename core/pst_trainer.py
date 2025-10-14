@@ -38,6 +38,12 @@ def _ensure_structure(data):
     return data
 
 
+def save_pst(data, path: str = PST_FILE):
+    """Persist PST data to JSON."""
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+
 def load_pst(path: str = PST_FILE):
     """Load PST from JSON; return empty structure if file missing."""
     if os.path.exists(path):
@@ -58,18 +64,12 @@ def load_pst(path: str = PST_FILE):
     # Create minimal working template if file doesn't exist
     logger.info(f"PST file not found at {path}, creating minimal template")
     data = {"phases": _empty_phase_table(), "steps": {}}
-    save_pst(path)
+    save_pst(data, path)
     return data
 
 
 # Global PST loaded at import time
 PST = load_pst()
-
-
-def save_pst(path: str = PST_FILE):
-    """Persist current PST to JSON."""
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(PST, f)
 
 
 def _apply_board_to_table(board: chess.Board, winner_color: bool, table):
@@ -85,7 +85,7 @@ def update_from_board(board: chess.Board, winner_color: bool):
     """Update phase tables from the final board of a decisive game."""
     phase = GamePhaseDetector.detect(board)
     _apply_board_to_table(board, winner_color, PST["phases"][phase])
-    save_pst()
+    save_pst(PST)
 
 
 def update_from_history(moves: Sequence[chess.Move], winner_color: bool, steps: Sequence[int]):
@@ -98,4 +98,4 @@ def update_from_history(moves: Sequence[chess.Move], winner_color: bool, steps: 
             _apply_board_to_table(temp, winner_color, PST["phases"][phase])
             step_tbl = PST["steps"].setdefault(str(i), _empty_piece_table())
             _apply_board_to_table(temp, winner_color, step_tbl)
-    save_pst()
+    save_pst(PST)
