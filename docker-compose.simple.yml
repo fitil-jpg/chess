@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  elo-sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple-elo
+    container_name: chess-elo-sync-simple
+    restart: unless-stopped
+    environment:
+      # Platform credentials (set these in .env file)
+      - LICHESS_TOKEN=${LICHESS_TOKEN:-}
+      - CHESSCOM_USERNAME=${CHESSCOM_USERNAME:-}
+      - CHESSCOM_PASSWORD=${CHESSCOM_PASSWORD:-}
+      
+      # Configuration
+      - RATINGS_FILE=/app/data/ratings.json
+    volumes:
+      # Persistent data storage
+      - elo-data:/app/data
+      - elo-logs:/app/logs
+    networks:
+      - chess-network
+
+volumes:
+  elo-data:
+    driver: local
+  elo-logs:
+    driver: local
+
+networks:
+  chess-network:
+    driver: bridge

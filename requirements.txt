@@ -3,3 +3,7 @@ python-chess
 rpy2
 torch
 py-spy
+aiohttp
+asyncio-mqtt
+schedule
+python-dotenv

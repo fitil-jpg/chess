@@ -1,0 +1,61 @@
+# Dockerfile for ELO synchronization service
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional dependencies for ELO sync
+RUN pip install --no-cache-dir \
+    aiohttp \
+    asyncio-mqtt \
+    schedule \
+    python-dotenv
+
+# Copy the chess AI code
+COPY chess_ai/ ./chess_ai/
+COPY core/ ./core/
+COPY utils/ ./utils/
+COPY vendors/ ./vendors/
+
+# Copy configuration files
+COPY configs/ ./configs/
+COPY weights/ ./weights/
+
+# Copy ELO sync scripts
+COPY scripts/elo_sync.py ./scripts/
+COPY scripts/start_elo_sync.sh ./scripts/
+
+# Create directories for data persistence
+RUN mkdir -p /app/data /app/logs /app/ratings
+
+# Set permissions
+RUN chmod +x ./scripts/start_elo_sync.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 elosync && \
+    chown -R elosync:elosync /app
+USER elosync
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8080/health', timeout=5)" || exit 1
+
+# Expose port for health checks
+EXPOSE 8080
+
+# Default command
+CMD ["./scripts/start_elo_sync.sh"]
