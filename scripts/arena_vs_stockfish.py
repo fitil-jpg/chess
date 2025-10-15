@@ -96,8 +96,8 @@ def play_game(white, black) -> Tuple[chess.Board, List[str], List[str], List[str
     return board, moves_log, fens_log, modules_w, modules_b
 
 
-def main() -> int:
-    args = _parse_args()
+def run_games(args: argparse.Namespace) -> int:
+    """Run the actual games with given arguments."""
     names = set(get_agent_names()) | {"StockfishBot"}
     if args.white not in names or args.black not in names:
         print(f"Unknown agent(s). Available: {sorted(names)}")
@@ -136,6 +136,151 @@ def main() -> int:
         print(f"Game {i+1}/{args.games} finished: {res} -> {out_path}")
 
     return 0
+
+
+def interactive_menu():
+    """Interactive console menu for running arena games."""
+    print("=== Chess Arena vs Stockfish ===")
+    print("Available configurations:")
+    print()
+    
+    # Predefined configurations
+    configs = [
+        {
+            "name": "Quick Test (2 games)",
+            "games": 2,
+            "white": "DynamicBot",
+            "black": "StockfishBot",
+            "sf_elo": 1200,
+            "think_ms": 100,
+            "description": "Fast test with weak Stockfish"
+        },
+        {
+            "name": "Standard Match (10 games)",
+            "games": 10,
+            "white": "DynamicBot", 
+            "black": "StockfishBot",
+            "sf_elo": 1800,
+            "think_ms": 200,
+            "description": "Standard match with intermediate Stockfish"
+        },
+        {
+            "name": "Championship (20 games)",
+            "games": 20,
+            "white": "DynamicBot",
+            "black": "StockfishBot", 
+            "sf_elo": 2200,
+            "think_ms": 500,
+            "description": "Long match with strong Stockfish"
+        },
+        {
+            "name": "Bot vs Bot (5 games)",
+            "games": 5,
+            "white": "NeuralBot",
+            "black": "AggressiveBot",
+            "sf_elo": None,
+            "think_ms": 200,
+            "description": "Our bots playing against each other"
+        },
+        {
+            "name": "Custom Configuration",
+            "games": None,
+            "white": None,
+            "black": None,
+            "sf_elo": None,
+            "think_ms": None,
+            "description": "Enter your own parameters"
+        }
+    ]
+    
+    while True:
+        print("\nSelect a configuration:")
+        for i, config in enumerate(configs, 1):
+            print(f"{i}. {config['name']} - {config['description']}")
+        print("0. Exit")
+        
+        try:
+            choice = input("\nEnter your choice (0-{}): ".format(len(configs)))
+            choice = int(choice)
+            
+            if choice == 0:
+                print("Goodbye!")
+                return 0
+            elif 1 <= choice <= len(configs):
+                config = configs[choice - 1]
+                
+                if config["name"] == "Custom Configuration":
+                    # Custom configuration
+                    print("\n=== Custom Configuration ===")
+                    try:
+                        games = int(input("Number of games (default 5): ") or "5")
+                        white = input("White agent (default DynamicBot): ") or "DynamicBot"
+                        black = input("Black agent (default StockfishBot): ") or "StockfishBot"
+                        sf_elo_input = input("Stockfish ELO (default 1800, press Enter to skip): ")
+                        sf_elo = int(sf_elo_input) if sf_elo_input else None
+                        think_ms = int(input("Think time in ms (default 200): ") or "200")
+                        runs_dir = input("Output directory (default runs): ") or "runs"
+                    except ValueError:
+                        print("Invalid input. Using defaults.")
+                        games, white, black, sf_elo, think_ms, runs_dir = 5, "DynamicBot", "StockfishBot", 1800, 200, "runs"
+                else:
+                    # Predefined configuration
+                    games = config["games"]
+                    white = config["white"]
+                    black = config["black"]
+                    sf_elo = config["sf_elo"]
+                    think_ms = config["think_ms"]
+                    runs_dir = "runs"
+                
+                # Create args object
+                class Args:
+                    def __init__(self):
+                        self.games = games
+                        self.white = white
+                        self.black = black
+                        self.sf_path = None
+                        self.sf_elo = sf_elo
+                        self.sf_skill = None
+                        self.think_ms = think_ms
+                        self.threads = 1
+                        self.hash_mb = 128
+                        self.runs = runs_dir
+                
+                args = Args()
+                
+                print(f"\n=== Running Configuration ===")
+                print(f"Games: {args.games}")
+                print(f"White: {args.white}")
+                print(f"Black: {args.black}")
+                if args.sf_elo:
+                    print(f"Stockfish ELO: {args.sf_elo}")
+                print(f"Think time: {args.think_ms}ms")
+                print(f"Output directory: {args.runs}")
+                
+                confirm = input("\nProceed? (y/N): ").lower()
+                if confirm in ['y', 'yes']:
+                    return run_games(args)
+                else:
+                    print("Cancelled.")
+                    continue
+            else:
+                print("Invalid choice. Please try again.")
+        except (ValueError, KeyboardInterrupt):
+            print("\nInvalid input or cancelled. Please try again.")
+        except EOFError:
+            print("\nGoodbye!")
+            return 0
+
+
+def main() -> int:
+    # Check if we have command line arguments
+    if len(sys.argv) > 1:
+        # Run with command line arguments
+        args = _parse_args()
+        return run_games(args)
+    else:
+        # Run interactive menu
+        return interactive_menu()
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI utility
