@@ -7,3 +7,4 @@ aiohttp
 asyncio-mqtt
 schedule
 python-dotenv
+PySide6
