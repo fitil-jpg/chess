@@ -16,10 +16,10 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
-    QListWidget, QScrollArea,
+    QListWidget, QScrollArea, QFileDialog,
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
-from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
+from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap
 
 from utils.error_handler import ErrorHandler
 
@@ -225,8 +225,9 @@ class ChessViewer(QWidget):
         self.btn_pause = QPushButton("⏸ Пауза")
         self.btn_copy_san = QPushButton("⧉ SAN")
         self.btn_copy_pgn = QPushButton("⧉ PGN")
+        self.btn_save_png = QPushButton("📷 PNG")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_copy_san, self.btn_copy_pgn, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
 
@@ -235,6 +236,7 @@ class ChessViewer(QWidget):
         self.btn_pause.clicked.connect(self.pause_auto)
         self.btn_copy_san.clicked.connect(self.copy_san)
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
+        self.btn_save_png.clicked.connect(self.save_png)
 
         # Статуси
         self.lbl_module   = QLabel("Модуль: —")
@@ -600,6 +602,141 @@ class ChessViewer(QWidget):
                 f"• Restart the application if the problem persists"
             )
 
+    def save_png(self):
+        """Save current board state as PNG image for XRPA analysis."""
+        # Get file path from user
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Зберегти PNG для XRPA",
+            f"xrpa_analysis_{len(self.board.move_stack)}.png",
+            "PNG Images (*.png);;All Files (*)"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            # Capture the board frame as pixmap
+            pixmap = self.board_frame.grab()
+            
+            # Add metadata overlay with current position info
+            painter = QPainter(pixmap)
+            painter.setPen(QPen(QColor(0, 0, 0), 2))
+            painter.setFont(QFont("Arial", 12))
+            
+            # Add position info
+            fen = self.board.fen()
+            move_count = len(self.board.move_stack)
+            turn = "White" if self.board.turn == chess.WHITE else "Black"
+            
+            info_text = f"Move: {move_count} | Turn: {turn}\nFEN: {fen[:50]}..."
+            painter.drawText(10, 20, info_text)
+            
+            # Add heatmap info if active
+            if self.drawer_manager.active_heatmap_piece:
+                heatmap_text = f"Heatmap: {self.drawer_manager.active_heatmap_piece}"
+                painter.drawText(10, 50, heatmap_text)
+            
+            painter.end()
+            
+            # Save the image
+            pixmap.save(file_path, "PNG")
+            
+            # Also save UI data as JSON for XRPA analysis
+            json_path = file_path.replace('.png', '_data.json')
+            ui_data = self.drawer_manager.export_ui_data()
+            ui_data.update({
+                "fen": fen,
+                "move_count": move_count,
+                "turn": turn,
+                "heatmap_piece": self.drawer_manager.active_heatmap_piece,
+                "heatmap_set": self.drawer_manager.active_heatmap_set,
+                "timestamp": QTimer().remainingTime()  # Simple timestamp
+            })
+            
+            import json
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(ui_data, f, indent=2, ensure_ascii=False)
+            
+            QMessageBox.information(
+                self, 
+                "Збережено", 
+                f"PNG збережено: {file_path}\nJSON дані: {json_path}"
+            )
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Помилка", f"Не вдалося зберегти PNG: {e}")
+
+    def _auto_save_xrpa_png(self, result):
+        """Automatically save PNG for XRPA analysis when game ends."""
+        import os
+        from datetime import datetime
+        
+        # Create XRPA output directory
+        xrpa_dir = "xrpa_analysis"
+        os.makedirs(xrpa_dir, exist_ok=True)
+        
+        # Generate filename with timestamp and result
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"xrpa_{timestamp}_{result.replace('-', '_')}_{len(self.board.move_stack)}moves.png"
+        file_path = os.path.join(xrpa_dir, filename)
+        
+        # Capture board as pixmap
+        pixmap = self.board_frame.grab()
+        
+        # Add metadata overlay
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(QColor(0, 0, 0), 2))
+        painter.setFont(QFont("Arial", 10))
+        
+        # Add game info
+        fen = self.board.fen()
+        move_count = len(self.board.move_stack)
+        turn = "White" if self.board.turn == chess.WHITE else "Black"
+        
+        info_lines = [
+            f"XRPA Analysis - {timestamp}",
+            f"Result: {result} | Moves: {move_count} | Turn: {turn}",
+            f"White: {WHITE_AGENT} | Black: {BLACK_AGENT}",
+            f"FEN: {fen[:60]}...",
+        ]
+        
+        if self.drawer_manager.active_heatmap_piece:
+            info_lines.append(f"Heatmap: {self.drawer_manager.active_heatmap_piece}")
+        
+        y_offset = 15
+        for line in info_lines:
+            painter.drawText(10, y_offset, line)
+            y_offset += 15
+        
+        painter.end()
+        
+        # Save PNG
+        pixmap.save(file_path, "PNG")
+        
+        # Save JSON data
+        json_path = file_path.replace('.png', '_data.json')
+        ui_data = self.drawer_manager.export_ui_data()
+        ui_data.update({
+            "fen": fen,
+            "result": result,
+            "move_count": move_count,
+            "turn": turn,
+            "white_agent": WHITE_AGENT,
+            "black_agent": BLACK_AGENT,
+            "heatmap_piece": self.drawer_manager.active_heatmap_piece,
+            "heatmap_set": self.drawer_manager.active_heatmap_set,
+            "timestamp": timestamp,
+            "moves_san": self._moves_san_string(),
+            "game_pgn": self._game_pgn_string()
+        })
+        
+        import json
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(ui_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"XRPA analysis saved: {file_path}")
+
     # ---------- Метрики / статуси ----------
 
     def _truthy_features_preview(self, feats: dict | None) -> str:
@@ -915,6 +1052,12 @@ class ChessViewer(QWidget):
                 heatmap_msg = (
                     f"\n\n✅ Heatmaps updated for set '{active_set}'."
                 )
+        
+        # Auto-save PNG for XRPA analysis
+        try:
+            self._auto_save_xrpa_png(res)
+        except Exception as exc:
+            print(f"Auto-save PNG failed: {exc}")
 
         QMessageBox.information(
             self,
