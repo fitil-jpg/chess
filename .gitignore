@@ -80,3 +80,7 @@ analysis/synergy.json
 
 # PST training artifacts (keep minimal template in repo)
 pst.json
+
+# Test screenshots (generated locally, not committed)
+test_screenshots/*
+!test_screenshots/.gitkeep
