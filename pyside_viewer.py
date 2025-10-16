@@ -9,6 +9,8 @@ record_usage(__file__)
 import sys
 import re
 import chess
+import logging
+import subprocess
 from collections import defaultdict
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -18,6 +20,15 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen
+
+from utils.error_handler import ErrorHandler
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 from core.pst_trainer import update_from_board, update_from_history
 from core.piece import piece_class_factory
@@ -104,10 +115,26 @@ class ChessViewer(QWidget):
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
 
-        # Логіка позиції
-        self.board = chess.Board()
-        self.piece_objects = {}
-        self.settings = QSettings("ChessViewer", "Preferences")
+        try:
+            # Логіка позиції
+            self.board = chess.Board()
+            self.piece_objects = {}
+            self.settings = QSettings("ChessViewer", "Preferences")
+        except Exception as exc:
+            ErrorHandler.handle_chess_error(exc, "board initialization")
+            self._show_critical_error(
+                "Chess Board Initialization Failed",
+                f"🚨 <b>Failed to initialize chess board:</b> {exc}\n\n"
+                f"<b>This usually indicates:</b>\n"
+                f"• Corrupted chess library installation\n"
+                f"• Missing required dependencies\n"
+                f"• System resource issues\n\n"
+                f"<b>Try:</b>\n"
+                f"• Reinstall chess library: pip install --upgrade chess\n"
+                f"• Restart the application\n"
+                f"• Check system memory availability"
+            )
+            return
         saved_set_raw = self.settings.value("heatmap/set")
         saved_set = str(saved_set_raw) if saved_set_raw is not None else None
         saved_piece_raw = self.settings.value("heatmap/piece")
@@ -139,8 +166,27 @@ class ChessViewer(QWidget):
                 default_heatmap_piece = self.drawer_manager.active_heatmap_piece
 
         # Агенти
-        self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
-        self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
+        try:
+            self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
+            self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
+        except Exception as exc:
+            ErrorHandler.handle_agent_error(exc, f"{WHITE_AGENT}/{BLACK_AGENT}")
+            self._show_critical_error(
+                "AI Agent Initialization Failed",
+                f"🤖 <b>Failed to create AI agents:</b> {exc}\n\n"
+                f"<b>Agent configuration:</b>\n"
+                f"• White: {WHITE_AGENT}\n"
+                f"• Black: {BLACK_AGENT}\n\n"
+                f"<b>Possible causes:</b>\n"
+                f"• Missing agent implementation files\n"
+                f"• Corrupted agent modules\n"
+                f"• Import path issues\n\n"
+                f"<b>Try:</b>\n"
+                f"• Check if chess_ai module is properly installed\n"
+                f"• Verify agent names are correct\n"
+                f"• Restart the application"
+            )
+            return
 
         # ThreatMap’и
         self.tmap_white = ThreatMap(chess.WHITE)
@@ -247,13 +293,21 @@ class ChessViewer(QWidget):
             )
         else:
             msg = QLabel(
-                "Heatmap data missing – generate files via "
-                "`utils.integration.generate_heatmaps` or "
-                "`analysis/heatmaps/generate_heatmaps.R`."
+                "🔍 <b>Heatmap Visualization Unavailable</b><br><br>"
+                "<b>What are heatmaps?</b><br>"
+                "Heatmaps show piece movement patterns and strategic hotspots on the chess board. "
+                "They help visualize where pieces are most likely to move or be most effective.<br><br>"
+                "<b>How to enable heatmaps:</b><br>"
+                "1. <b>Python method:</b> Run <code>utils.integration.generate_heatmaps</code><br>"
+                "2. <b>R script:</b> Execute <code>analysis/heatmaps/generate_heatmaps.R</code><br>"
+                "3. <b>Quick fix:</b> Click 'Generate heatmaps' button below<br><br>"
+                "<b>Requirements:</b> R or Wolfram Engine must be installed for heatmap generation."
             )
             msg.setWordWrap(True)
+            msg.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; }")
             right_col.addWidget(msg)
-            btn_gen_heatmaps = QPushButton("Generate heatmaps")
+            btn_gen_heatmaps = QPushButton("🔧 Generate heatmaps now")
+            btn_gen_heatmaps.setStyleSheet("QPushButton { background-color: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; }")
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
             right_col.addWidget(btn_gen_heatmaps)
 
@@ -302,40 +356,65 @@ class ChessViewer(QWidget):
                 self.cell_grid[row][col] = cell
 
     def _init_pieces(self):
-        self.piece_objects.clear()
-        for square in chess.SQUARES:
-            piece = self.board.piece_at(square)
-            if piece:
-                pos = (chess.square_rank(square), chess.square_file(square))
-                self.piece_objects[square] = piece_class_factory(piece, pos)
+        try:
+            self.piece_objects.clear()
+            for square in chess.SQUARES:
+                piece = self.board.piece_at(square)
+                if piece:
+                    pos = (chess.square_rank(square), chess.square_file(square))
+                    self.piece_objects[square] = piece_class_factory(piece, pos)
+        except Exception as exc:
+            logger.error(f"Failed to initialize pieces: {exc}")
+            QMessageBox.warning(
+                self,
+                "⚠️ Piece Initialization Error",
+                f"🔧 <b>Failed to initialize chess pieces:</b> {exc}\n\n"
+                f"<b>This may cause display issues.</b> Try refreshing the board."
+            )
 
     def _refresh_board(self):
-        # Оверлеї
-        for sq, obj in self.piece_objects.items():
-            name = obj.__class__.__name__
-            if name == "King":
-                obj.update_king_moves(self.board)
-            elif name == "Rook":
-                obj.update_defended(self.board)
-            elif name == "Knight":
-                obj.update_fork(self.board)
-            elif name == "Queen":
-                obj.update_hanging(self.board)
-                obj.update_pin_and_check(self.board)
+        try:
+            # Оверлеї
+            for sq, obj in self.piece_objects.items():
+                try:
+                    name = obj.__class__.__name__
+                    if name == "King":
+                        obj.update_king_moves(self.board)
+                    elif name == "Rook":
+                        obj.update_defended(self.board)
+                    elif name == "Knight":
+                        obj.update_fork(self.board)
+                    elif name == "Queen":
+                        obj.update_hanging(self.board)
+                        obj.update_pin_and_check(self.board)
+                except Exception as exc:
+                    logger.warning(f"Failed to update piece {obj.__class__.__name__} at square {sq}: {exc}")
 
-        self.drawer_manager.collect_overlays(self.piece_objects, self.board)
+            self.drawer_manager.collect_overlays(self.piece_objects, self.board)
 
-        # Символи та лічильники атак на клітинках
-        for row in range(8):
-            for col in range(8):
-                square = chess.square(col, 7 - row)
-                piece = self.board.piece_at(square)
-                cell = self.cell_grid[row][col]
-                cell.set_piece(piece.symbol() if piece else None)
-                attackers = self.board.attackers(not self.board.turn, square)
-                cell.set_attack_count(len(attackers))
-                cell.set_highlight(False)
-                cell.update()
+            # Символи та лічильники атак на клітинках
+            for row in range(8):
+                for col in range(8):
+                    try:
+                        square = chess.square(col, 7 - row)
+                        piece = self.board.piece_at(square)
+                        cell = self.cell_grid[row][col]
+                        cell.set_piece(piece.symbol() if piece else None)
+                        attackers = self.board.attackers(not self.board.turn, square)
+                        cell.set_attack_count(len(attackers))
+                        cell.set_highlight(False)
+                        cell.update()
+                    except Exception as exc:
+                        logger.warning(f"Failed to update cell at row {row}, col {col}: {exc}")
+                        
+        except Exception as exc:
+            logger.error(f"Failed to refresh board: {exc}")
+            QMessageBox.warning(
+                self,
+                "⚠️ Board Refresh Error",
+                f"🔧 <b>Failed to refresh the chess board:</b> {exc}\n\n"
+                f"<b>This may cause display issues.</b> Try restarting the game."
+            )
 
     # ---------- Контролери гри ----------
 
@@ -361,56 +440,96 @@ class ChessViewer(QWidget):
         self.auto_running = False
 
     def auto_step(self):
-        if self.board.is_game_over():
+        try:
+            if self.board.is_game_over():
+                self.pause_auto()
+                self._show_game_over()
+                return
+
+            mover_color = self.board.turn
+            agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
+
+            # Get move with error handling
+            try:
+                move = agent.choose_move(self.board)
+            except Exception as exc:
+                logger.error(f"Agent {agent.__class__.__name__} failed to choose move: {exc}")
+                self.pause_auto()
+                QMessageBox.warning(
+                    self,
+                    "⚠️ AI Agent Error",
+                    f"🤖 <b>Agent failed to choose a move:</b>\n\n"
+                    f"<b>Agent:</b> {agent.__class__.__name__}\n"
+                    f"<b>Error:</b> {exc}\n\n"
+                    f"<b>Game paused.</b> You can try resuming or resetting the game."
+                )
+                return
+
+            if move is None:
+                self.pause_auto()
+                self._show_game_over()
+                return
+
+            # Validate move before applying
+            if not self.board.is_legal(move):
+                logger.error(f"Agent {agent.__class__.__name__} returned illegal move: {move}")
+                self.pause_auto()
+                QMessageBox.warning(
+                    self,
+                    "⚠️ Invalid Move",
+                    f"🚫 <b>Agent returned an illegal move:</b> {move}\n\n"
+                    f"<b>Agent:</b> {agent.__class__.__name__}\n"
+                    f"<b>Game paused.</b> This may indicate a bug in the agent logic."
+                )
+                return
+
+            san = self.board.san(move)  # до push
+            move_no = self.board.fullmove_number
+            prefix = f"{move_no}. " if mover_color == chess.WHITE else f"{move_no}... "
+
+            self.board.push(move)
+            self.fen_history.append(self.board.fen())
+
+            self._init_pieces()
+            self._refresh_board()
+
+            reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
+            feats  = agent.get_last_features() if hasattr(agent, "get_last_features") else None
+
+            # Витягнути ключ/тег і оновити usage + таймлайн
+            key = self._extract_reason_key(reason)
+            if mover_color == chess.WHITE:
+                self.usage_w[key] += 1
+                self.timeline_w.append(key)
+            else:
+                self.usage_b[key] += 1
+                self.timeline_b.append(key)
+
+            # Консольний дебаг
+            if self.debug_verbose.isChecked():
+                print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
+
+            self._update_status(reason, feats)
+
+            # Append SAN move to list and highlight
+            self.moves_list.addItem(f"{prefix}{san}")
+            self.moves_list.setCurrentRow(self.moves_list.count() - 1)
+            self.moves_list.scrollToBottom()
+
+            if self.board.is_game_over():
+                self.pause_auto()
+                self._show_game_over()
+                
+        except Exception as exc:
+            logger.error(f"Unexpected error in auto_step: {exc}")
             self.pause_auto()
-            self._show_game_over()
-            return
-
-        mover_color = self.board.turn
-        agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
-
-        move = agent.choose_move(self.board)
-        if move is None:
-            self.pause_auto()
-            self._show_game_over()
-            return
-
-        san = self.board.san(move)  # до push
-        move_no = self.board.fullmove_number
-        prefix = f"{move_no}. " if mover_color == chess.WHITE else f"{move_no}... "
-
-        self.board.push(move)
-        self.fen_history.append(self.board.fen())
-
-        self._init_pieces()
-        self._refresh_board()
-
-        reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
-        feats  = agent.get_last_features() if hasattr(agent, "get_last_features") else None
-
-        # Витягнути ключ/тег і оновити usage + таймлайн
-        key = self._extract_reason_key(reason)
-        if mover_color == chess.WHITE:
-            self.usage_w[key] += 1
-            self.timeline_w.append(key)
-        else:
-            self.usage_b[key] += 1
-            self.timeline_b.append(key)
-
-        # Консольний дебаг
-        if self.debug_verbose.isChecked():
-            print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
-
-        self._update_status(reason, feats)
-
-        # Append SAN move to list and highlight
-        self.moves_list.addItem(f"{prefix}{san}")
-        self.moves_list.setCurrentRow(self.moves_list.count() - 1)
-        self.moves_list.scrollToBottom()
-
-        if self.board.is_game_over():
-            self.pause_auto()
-            self._show_game_over()
+            QMessageBox.critical(
+                self,
+                "❌ Game Error",
+                f"🚨 <b>An unexpected error occurred during gameplay:</b>\n\n"
+                f"<b>Error:</b> {exc}\n\n"
+                f"<b>Game paused.</b> You may need to restart the application."
+            )
 
     # ---------- Копі-кнопки ----------
 
@@ -438,12 +557,48 @@ class ChessViewer(QWidget):
         )
 
     def copy_san(self):
-        QApplication.clipboard().setText(self._moves_san_string(), QClipboard.Clipboard)
-        QMessageBox.information(self, "Копійовано", "SAN послідовність скопійовано у буфер.")
+        try:
+            san_text = self._moves_san_string()
+            QApplication.clipboard().setText(san_text, QClipboard.Clipboard)
+            QMessageBox.information(
+                self, 
+                "✅ Copied Successfully", 
+                f"📋 <b>SAN sequence copied to clipboard</b>\n\n"
+                f"<b>Moves:</b> {san_text[:100]}{'...' if len(san_text) > 100 else ''}"
+            )
+        except Exception as exc:
+            logger.error(f"Failed to copy SAN: {exc}")
+            QMessageBox.critical(
+                self,
+                "❌ Copy Failed",
+                f"🚨 <b>Failed to copy SAN sequence:</b> {exc}\n\n"
+                f"<b>Try:</b>\n"
+                f"• Check if clipboard is accessible\n"
+                f"• Try again in a moment\n"
+                f"• Restart the application if the problem persists"
+            )
 
     def copy_pgn(self):
-        QApplication.clipboard().setText(self._game_pgn_string(), QClipboard.Clipboard)
-        QMessageBox.information(self, "Копійовано", "PGN скопійовано у буфер.")
+        try:
+            pgn_text = self._game_pgn_string()
+            QApplication.clipboard().setText(pgn_text, QClipboard.Clipboard)
+            QMessageBox.information(
+                self, 
+                "✅ Copied Successfully", 
+                f"📋 <b>PGN game copied to clipboard</b>\n\n"
+                f"<b>Game:</b> {pgn_text[:200]}{'...' if len(pgn_text) > 200 else ''}"
+            )
+        except Exception as exc:
+            logger.error(f"Failed to copy PGN: {exc}")
+            QMessageBox.critical(
+                self,
+                "❌ Copy Failed",
+                f"🚨 <b>Failed to copy PGN game:</b> {exc}\n\n"
+                f"<b>Try:</b>\n"
+                f"• Check if clipboard is accessible\n"
+                f"• Try again in a moment\n"
+                f"• Restart the application if the problem persists"
+            )
 
     # ---------- Метрики / статуси ----------
 
@@ -497,8 +652,12 @@ class ChessViewer(QWidget):
 
     def _update_usage_charts(self) -> None:
         """Refresh per-side usage charts with current counts."""
-        self.chart_usage_w.set_data(self.usage_w)
-        self.chart_usage_b.set_data(self.usage_b)
+        try:
+            self.chart_usage_w.set_data(self.usage_w)
+            self.chart_usage_b.set_data(self.usage_b)
+        except Exception as exc:
+            logger.warning(f"Failed to update usage charts: {exc}")
+            # Charts will show empty data rather than crashing
 
     def _generate_heatmaps(self) -> None:
         """Invoke heatmap generation and notify the user."""
@@ -507,16 +666,77 @@ class ChessViewer(QWidget):
             if fens_file.exists():
                 with fens_file.open("r", encoding="utf-8") as fh:
                     fens = [line.strip() for line in fh if line.strip()]
+                logger.info(f"📁 Loaded {len(fens)} FEN positions from fens.txt")
             else:
                 fens = [self.board.fen()]
+                logger.info("📁 Using current board position for heatmap generation")
+            
+            logger.info("🔄 Starting heatmap generation...")
             generate_heatmaps(fens, pattern_set="default")
+            
             QMessageBox.information(
                 self,
-                "Heatmaps",
-                "Heatmaps generated. Restart viewer to load them.",
+                "✅ Heatmaps Generated Successfully",
+                f"🎉 Heatmap generation completed!\n\n"
+                f"📊 Generated heatmaps for {len(fens)} position(s)\n"
+                f"📁 Saved to: analysis/heatmaps/default/\n\n"
+                f"🔄 Please restart the viewer to load the new heatmaps.",
+            )
+        except FileNotFoundError as exc:
+            if "Rscript" in str(exc) or "wolframscript" in str(exc):
+                ErrorHandler.handle_heatmap_error(exc, "missing software")
+                QMessageBox.critical(
+                    self,
+                    "❌ Missing Required Software",
+                    f"🔧 <b>Required software not found:</b> {exc}\n\n"
+                    f"<b>To fix this:</b>\n"
+                    f"• Install R from https://www.r-project.org/\n"
+                    f"• OR install Wolfram Engine from https://www.wolfram.com/engine/\n\n"
+                    f"<b>After installation:</b>\n"
+                    f"• Restart your terminal/command prompt\n"
+                    f"• Try generating heatmaps again"
+                )
+            else:
+                ErrorHandler.handle_file_error(exc, "heatmap generation")
+                QMessageBox.critical(
+                    self,
+                    "❌ File Not Found",
+                    f"🔍 <b>Missing file:</b> {exc}\n\n"
+                    f"<b>Possible solutions:</b>\n"
+                    f"• Check if the file path is correct\n"
+                    f"• Ensure the file exists and is readable\n"
+                    f"• Try running the application from the correct directory"
+                )
+        except subprocess.CalledProcessError as exc:
+            ErrorHandler.handle_heatmap_error(exc, "script execution")
+            QMessageBox.critical(
+                self,
+                "❌ Script Execution Failed",
+                f"🔧 <b>Heatmap generation script failed:</b>\n\n"
+                f"<b>Error details:</b> {exc}\n\n"
+                f"<b>Common causes:</b>\n"
+                f"• R/Wolfram script has syntax errors\n"
+                f"• Missing required R packages\n"
+                f"• Insufficient permissions\n"
+                f"• Corrupted script files\n\n"
+                f"<b>Try:</b>\n"
+                f"• Check R package installation\n"
+                f"• Run the script manually to see detailed errors\n"
+                f"• Reinstall the application"
             )
         except Exception as exc:
-            QMessageBox.warning(self, "Heatmaps", f"Generation failed: {exc}")
+            ErrorHandler.handle_heatmap_error(exc, "unexpected error")
+            QMessageBox.critical(
+                self,
+                "❌ Unexpected Error",
+                f"🚨 <b>An unexpected error occurred:</b>\n\n"
+                f"<b>Error:</b> {exc}\n\n"
+                f"<b>Please try:</b>\n"
+                f"• Restart the application\n"
+                f"• Check available disk space\n"
+                f"• Verify file permissions\n"
+                f"• Report this issue if it persists"
+            )
 
     def _sync_heatmap_set_selection(self) -> None:
         """Ensure the set combo reflects :class:`DrawerManager` state."""
@@ -618,46 +838,70 @@ class ChessViewer(QWidget):
             self.moves_list.scrollToItem(self.moves_list.item(row))
 
     def _update_status(self, reason: str, feats: dict | None):
-        self.lbl_module.setText(f"Модуль: {reason}")
-        self.lbl_features.setText(f"Фічі: {self._truthy_features_preview(feats)}")
+        try:
+            self.lbl_module.setText(f"Модуль: {reason}")
+            self.lbl_features.setText(f"Фічі: {self._truthy_features_preview(feats)}")
 
-        metrics_lines = build_sidebar_metrics(
-            self.board,
-            {
-                chess.WHITE: self.tmap_white,
-                chess.BLACK: self.tmap_black,
-            },
-        )
+            try:
+                metrics_lines = build_sidebar_metrics(
+                    self.board,
+                    {
+                        chess.WHITE: self.tmap_white,
+                        chess.BLACK: self.tmap_black,
+                    },
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to build sidebar metrics: {exc}")
+                metrics_lines = ["ThreatMap: Error", "Attacks: Error", "Leaders: Error", "King: Error"]
 
-        # Ensure UI labels stay in sync even if helper adds/removes lines later.
-        labels = (
-            self.lbl_threat,
-            self.lbl_attacks,
-            self.lbl_leaders,
-            self.lbl_king,
-        )
-        for label, text in zip(labels, metrics_lines):
-            label.setText(text)
-        for label in labels[len(metrics_lines):]:
-            label.setText("")
+            # Ensure UI labels stay in sync even if helper adds/removes lines later.
+            labels = (
+                self.lbl_threat,
+                self.lbl_attacks,
+                self.lbl_leaders,
+                self.lbl_king,
+            )
+            for label, text in zip(labels, metrics_lines):
+                label.setText(text)
+            for label in labels[len(metrics_lines):]:
+                label.setText("")
 
-        # Оновити usage-діаграми і графік
-        self._update_usage_charts()
-        self.timeline.set_data(self.timeline_w, self.timeline_b)
+            # Оновити usage-діаграми і графік
+            self._update_usage_charts()
+            self.timeline.set_data(self.timeline_w, self.timeline_b)
+            
+        except Exception as exc:
+            logger.error(f"Failed to update status: {exc}")
+            # Don't show error dialog for status updates to avoid spam
+
+    def _show_critical_error(self, title: str, message: str):
+        """Display a critical error message and close the application."""
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec()
+        self.close()
 
     def _show_game_over(self):
         res = self.board.result()
         winner = chess.WHITE if res == "1-0" else chess.BLACK
         if res in {"1-0", "0-1"}:
-            update_from_board(self.board, winner)
-            update_from_history(list(self.board.move_stack), winner, steps=[15, 21, 35])
+            try:
+                update_from_board(self.board, winner)
+                update_from_history(list(self.board.move_stack), winner, steps=[15, 21, 35])
+            except Exception as exc:
+                logger.warning(f"Failed to update PST training data: {exc}")
+                
         heatmap_msg = ""
         if self.fen_history:
             active_set = self.drawer_manager.active_heatmap_set or "default"
             try:
                 generate_heatmaps(self.fen_history, pattern_set=active_set)
             except Exception as exc:  # pragma: no cover - UI notification
-                heatmap_msg = f"\n\nHeatmap update failed: {exc}"
+                heatmap_msg = f"\n\n⚠️ Heatmap update failed: {exc}"
+                logger.error(f"Heatmap generation failed: {exc}")
             else:
                 self.fen_history.clear()
                 self.drawer_manager.set_heatmap_set(active_set)
@@ -669,18 +913,72 @@ class ChessViewer(QWidget):
                 )
                 self._refresh_board()
                 heatmap_msg = (
-                    f"\n\nHeatmaps updated for set '{active_set}'."
+                    f"\n\n✅ Heatmaps updated for set '{active_set}'."
                 )
 
         QMessageBox.information(
             self,
-            "Гру завершено",
-            f"Результат: {res}\n\n{self._moves_san_string()}" + heatmap_msg,
+            "🎯 Game Complete",
+            f"🏁 <b>Result:</b> {res}\n\n"
+            f"📋 <b>Moves:</b> {self._moves_san_string()}" + heatmap_msg,
         )
 
 # ====== Запуск ======
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    viewer = ChessViewer()
-    viewer.show()
-    sys.exit(app.exec())
+    try:
+        # Initialize Qt Application with error handling
+        app = QApplication(sys.argv)
+        app.setApplicationName("Chess Viewer")
+        app.setApplicationVersion("1.0")
+        
+        # Set application style for better error visibility
+        app.setStyleSheet("""
+            QMessageBox {
+                background-color: #f8f9fa;
+            }
+            QMessageBox QLabel {
+                color: #212529;
+            }
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+        """)
+        
+        # Create and show the main window
+        viewer = ChessViewer()
+        viewer.show()
+        
+        # Start the event loop
+        sys.exit(app.exec())
+        
+    except ImportError as exc:
+        ErrorHandler.handle_import_error(exc, "application startup")
+        sys.exit(1)
+        
+    except FileNotFoundError as exc:
+        ErrorHandler.handle_file_error(exc, "application startup")
+        sys.exit(1)
+        
+    except PermissionError as exc:
+        ErrorHandler.handle_permission_error(exc, "application startup")
+        sys.exit(1)
+        
+    except Exception as exc:
+        ErrorHandler.log_error(exc, "application startup")
+        print("❌ Application Launch Failed")
+        print(f"🚨 Unexpected error: {exc}")
+        print("\n🔧 Troubleshooting steps:")
+        print("1. Check if all required files are present")
+        print("2. Verify Python version compatibility")
+        print("3. Try running from the project root directory")
+        print("4. Check file permissions")
+        print("\n📝 If the problem persists, please report this issue")
+        sys.exit(1)
