@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QListWidget, QScrollArea, QFileDialog,
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
-from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap
+from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
 
 from utils.error_handler import ErrorHandler
 

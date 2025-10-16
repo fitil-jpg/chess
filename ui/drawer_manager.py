@@ -93,15 +93,15 @@ class DrawerManager:
 
         path = Path(__file__).resolve().parent.parent / "analysis" / "agent_metrics.json"
         if path.exists():
-        try:
-            with path.open("r", encoding="utf-8") as fh:
-                return json.load(fh)
-        except json.JSONDecodeError as exc:
-            logger.warning(f"Invalid JSON in agent metrics file {path}: {exc}")
-            return {}
-        except Exception as exc:
-            logger.warning(f"Failed to load agent metrics from {path}: {exc}")
-            return {}
+            try:
+                with path.open("r", encoding="utf-8") as fh:
+                    return json.load(fh)
+            except json.JSONDecodeError as exc:
+                logger.warning(f"Invalid JSON in agent metrics file {path}: {exc}")
+                return {}
+            except Exception as exc:
+                logger.warning(f"Failed to load agent metrics from {path}: {exc}")
+                return {}
         return {}
 
     # ------------------------------------------------------------------
