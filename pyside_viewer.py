@@ -44,9 +44,16 @@ from ui.panels import create_heatmap_panel
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 
+# Set Stockfish path if available
+import os
+if not os.environ.get("STOCKFISH_PATH"):
+    stockfish_path = "/workspace/bin/stockfish-bin"
+    if os.path.exists(stockfish_path):
+        os.environ["STOCKFISH_PATH"] = stockfish_path
+
 # Фіксована пара ботів у в’ювері:
-WHITE_AGENT = "DynamicBot"
-BLACK_AGENT = "FortifyBot"
+WHITE_AGENT = "StockfishBot"
+BLACK_AGENT = "DynamicBot"
 
 class OverallUsageChart(QWidget):
     """Simple bar chart summarising module usage across multiple runs."""
