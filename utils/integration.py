@@ -28,7 +28,10 @@ def parse_fen(fen: str) -> List[List[str | None]]:
     name or ``None`` for empty squares.
     """
 
-    return fen_to_board_state(fen)
+    try:
+        return fen_to_board_state(fen)
+    except Exception as exc:
+        raise ValueError(f"❌ Failed to parse FEN string: {exc}\n\n<b>FEN:</b> {fen}") from exc
 
 
 def generate_heatmaps(
@@ -68,19 +71,62 @@ def generate_heatmaps(
         fail_msg = "Rscript failed"
 
     try:
-        subprocess.run(cmd, check=True)
+        logger.info(f"🔄 Executing heatmap generation: {' '.join(cmd)}")
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        logger.info("✅ Heatmap generation completed successfully")
     except FileNotFoundError as exc:
-        raise RuntimeError(missing) from exc
+        error_msg = f"{missing}\n\n<b>Installation instructions:</b>\n"
+        if use_wolfram:
+            error_msg += "• Download Wolfram Engine from https://www.wolfram.com/engine/\n"
+            error_msg += "• Install and ensure 'wolframscript' is in your PATH\n"
+        else:
+            error_msg += "• Install R from https://www.r-project.org/\n"
+            error_msg += "• Install required R packages: install.packages(c('jsonlite', 'ggplot2'))\n"
+        error_msg += f"\n<b>Command attempted:</b> {' '.join(cmd)}"
+        raise RuntimeError(error_msg) from exc
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError(f"{fail_msg}: {exc}") from exc
+        error_msg = f"{fail_msg}\n\n<b>Error details:</b>\n"
+        error_msg += f"• Exit code: {exc.returncode}\n"
+        if exc.stdout:
+            error_msg += f"• Output: {exc.stdout}\n"
+        if exc.stderr:
+            error_msg += f"• Error: {exc.stderr}\n"
+        error_msg += f"\n<b>Command:</b> {' '.join(cmd)}"
+        raise RuntimeError(error_msg) from exc
 
     heatmaps: Dict[str, List[List[int]]] = {}
     heatmap_files = list(out_path.glob("heatmap_*.json"))
     if not heatmap_files:
-        raise RuntimeError(f"No heatmap files generated in {out_path}")
+        error_msg = f"❌ No heatmap files generated in {out_path}\n\n"
+        error_msg += f"<b>Expected files:</b> heatmap_*.json\n"
+        error_msg += f"<b>Directory contents:</b>\n"
+        try:
+            files = list(out_path.iterdir())
+            if files:
+                error_msg += "\n".join(f"• {f.name}" for f in files)
+            else:
+                error_msg += "• (empty directory)"
+        except Exception:
+            error_msg += "• (cannot list directory)"
+        error_msg += f"\n\n<b>Possible causes:</b>\n"
+        error_msg += f"• Script failed to generate output files\n"
+        error_msg += f"• Wrong output directory specified\n"
+        error_msg += f"• Permission issues\n"
+        error_msg += f"• Script syntax errors"
+        raise RuntimeError(error_msg)
+    
     for json_file in heatmap_files:
-        with json_file.open("r", encoding="utf-8") as fh:
-            heatmaps[json_file.stem.replace("heatmap_", "")] = json.load(fh)
+        try:
+            with json_file.open("r", encoding="utf-8") as fh:
+                heatmaps[json_file.stem.replace("heatmap_", "")] = json.load(fh)
+        except Exception as exc:
+            logger.warning(f"Failed to load heatmap file {json_file}: {exc}")
+            continue
+    
+    if not heatmaps:
+        raise RuntimeError(f"❌ No valid heatmap files could be loaded from {out_path}")
+    
+    logger.info(f"✅ Loaded {len(heatmaps)} heatmap files")
     return {pattern_set: heatmaps}
 
 
@@ -91,10 +137,19 @@ def compute_metrics(fen: str) -> Dict[str, Dict[str, Any]]:
     ``long_term``, each mapping metric names to integer scores.
     """
 
-    board = chess.Board(fen)
-    mgr = MetricsManager(board)
-    mgr.update_all_metrics()
-    return mgr.get_metrics()
+    try:
+        board = chess.Board(fen)
+    except ValueError as exc:
+        raise ValueError(f"❌ Invalid FEN string: {exc}\n\n<b>FEN:</b> {fen}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"❌ Failed to create board from FEN: {exc}\n\n<b>FEN:</b> {fen}") from exc
+
+    try:
+        mgr = MetricsManager(board)
+        mgr.update_all_metrics()
+        return mgr.get_metrics()
+    except Exception as exc:
+        raise RuntimeError(f"❌ Failed to compute metrics: {exc}\n\n<b>FEN:</b> {fen}") from exc
 
 
 __all__ = ["parse_fen", "generate_heatmaps", "compute_metrics"]

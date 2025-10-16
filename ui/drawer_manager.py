@@ -32,9 +32,10 @@ class DrawerManager:
         base = Path(__file__).resolve().parent.parent / "analysis" / "heatmaps"
         if not base.exists():
             logger.warning(
-                "Heatmap data missing – generate files via "
-                "`utils.integration.generate_heatmaps` or "
-                "`analysis/heatmaps/generate_heatmaps.R`."
+                "🔍 Heatmap data directory missing at %s. "
+                "Heatmaps provide visual analysis of piece movement patterns. "
+                "To generate: run utils.integration.generate_heatmaps() or execute analysis/heatmaps/generate_heatmaps.R. "
+                "Requires R or Wolfram Engine installation.", base
             )
             self.heatmap_sets = {}
             self.heatmaps = {}
@@ -49,8 +50,10 @@ class DrawerManager:
                 try:
                     with file.open("r", encoding="utf-8") as fh:
                         mapping[file.stem] = json.load(fh)
-                except Exception:
-                    continue
+                except json.JSONDecodeError as exc:
+                    logger.warning(f"Invalid JSON in heatmap file {file}: {exc}")
+                except Exception as exc:
+                    logger.warning(f"Failed to load heatmap file {file}: {exc}")
             return mapping
 
         for subdir in sorted(p for p in base.iterdir() if p.is_dir()):
@@ -64,9 +67,10 @@ class DrawerManager:
 
         if not heatmap_sets:
             logger.warning(
-                "Heatmap data missing – generate files via "
-                "`utils.integration.generate_heatmaps` or "
-                "`analysis/heatmaps/generate_heatmaps.R`."
+                "🔍 No heatmap data found in %s. "
+                "Heatmaps show strategic piece movement patterns. "
+                "Generate them using: utils.integration.generate_heatmaps() or analysis/heatmaps/generate_heatmaps.R. "
+                "Install R or Wolfram Engine first.", base
             )
 
         self.heatmap_sets = heatmap_sets
@@ -89,11 +93,15 @@ class DrawerManager:
 
         path = Path(__file__).resolve().parent.parent / "analysis" / "agent_metrics.json"
         if path.exists():
-            try:
-                with path.open("r", encoding="utf-8") as fh:
-                    return json.load(fh)
-            except Exception:
-                return {}
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except json.JSONDecodeError as exc:
+            logger.warning(f"Invalid JSON in agent metrics file {path}: {exc}")
+            return {}
+        except Exception as exc:
+            logger.warning(f"Failed to load agent metrics from {path}: {exc}")
+            return {}
         return {}
 
     # ------------------------------------------------------------------
@@ -139,14 +147,17 @@ class DrawerManager:
         # scenario detection on current board
         try:
             for sc in detect_scenarios(board.fen()):
-                sq = chess.parse_square(sc.get("square"))
-                row = 7 - chess.square_rank(sq)
-                col = chess.square_file(sq)
-                color = sc.get("color", "purple")
-                self._add_overlay(row, col, "scenario", color)
-                self.scenarios.append({"row": row, "col": col, **sc})
-        except Exception:
-            pass
+                try:
+                    sq = chess.parse_square(sc.get("square"))
+                    row = 7 - chess.square_rank(sq)
+                    col = chess.square_file(sq)
+                    color = sc.get("color", "purple")
+                    self._add_overlay(row, col, "scenario", color)
+                    self.scenarios.append({"row": row, "col": col, **sc})
+                except Exception as exc:
+                    logger.warning(f"Failed to process scenario {sc}: {exc}")
+        except Exception as exc:
+            logger.warning(f"Scenario detection failed: {exc}")
 
         self._apply_heatmaps()
 
@@ -213,7 +224,8 @@ class DrawerManager:
             for c, val in enumerate(row):
                 try:
                     v = float(val)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
+                    logger.warning(f"Invalid heatmap value at ({r}, {c}): {val} - {exc}")
                     continue
                 self._add_gradient_overlay(r, c, v)
 
