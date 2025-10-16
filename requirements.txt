@@ -8,3 +8,4 @@ asyncio-mqtt
 schedule
 python-dotenv
 PySide6
+pyautogui
