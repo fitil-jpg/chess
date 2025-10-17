@@ -65,10 +65,22 @@ def generate_heatmaps(
         missing = "wolframscript not found; install Wolfram Engine to generate heatmaps"
         fail_msg = "wolframscript failed"
     else:
+        # Try R first, fallback to Python
         script = Path("analysis/heatmaps/generate_heatmaps.R")
         cmd = ["Rscript", str(script), str(csv_path)]
         missing = "Rscript not found; install R to generate heatmaps"
         fail_msg = "Rscript failed"
+        
+        # Check if R is available
+        try:
+            import subprocess
+            subprocess.run(["Rscript", "--version"], check=True, capture_output=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            # Fallback to Python implementation
+            script = Path("analysis/heatmaps/generate_heatmaps_python.py")
+            cmd = ["python3", str(script), str(csv_path)]
+            missing = "Python not found; install Python to generate heatmaps"
+            fail_msg = "Python heatmap generation failed"
 
     try:
         logger.info(f"🔄 Executing heatmap generation: {' '.join(cmd)}")
