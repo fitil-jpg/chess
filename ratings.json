@@ -1,0 +1,34 @@
+{
+  "bots": {
+    "StockfishBot": {
+      "elo": 1600.0,
+      "games_played": 1,
+      "last_updated": "2025-10-17T21:32:17.616140",
+      "platform_ratings": {},
+      "confidence": 1.0,
+      "last_update_reason": "Test update",
+      "last_update_platform": "local"
+    },
+    "DynamicBot": {
+      "elo": 1400.0,
+      "games_played": 1,
+      "last_updated": "2025-10-17T21:32:17.616838",
+      "platform_ratings": {},
+      "confidence": 1.0,
+      "last_update_reason": "Test update",
+      "last_update_platform": "local"
+    }
+  },
+  "platforms": {
+    "lichess": {
+      "enabled": false,
+      "mapping": {}
+    },
+    "chesscom": {
+      "enabled": false,
+      "mapping": {}
+    }
+  },
+  "sync_history": [],
+  "last_sync": null
+}
