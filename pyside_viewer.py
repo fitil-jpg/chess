@@ -43,6 +43,7 @@ from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
+from chess_ai.elo_sync_manager import ELOSyncManager
 
 # Set Stockfish path if available
 import os
@@ -172,6 +173,12 @@ class ChessViewer(QWidget):
             else:
                 default_heatmap_piece = self.drawer_manager.active_heatmap_piece
 
+        # ELO ratings manager
+        self.elo_manager = ELOSyncManager()
+        
+        # Register bots with initial ELO if not already registered
+        self._ensure_bots_registered()
+        
         # Агенти
         try:
             self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
@@ -222,9 +229,11 @@ class ChessViewer(QWidget):
         # ---- ПРАВА КОЛОНКА: КНОПКИ + СТАТУСИ ----
         right_col = QVBoxLayout()
 
-        title = QLabel(f"White: {WHITE_AGENT}    |    Black: {BLACK_AGENT}")
-        title.setWordWrap(True)
-        right_col.addWidget(title)
+        # Create title with ELO ratings
+        self.title_label = QLabel()
+        self.title_label.setWordWrap(True)
+        self._update_title_with_elo()
+        right_col.addWidget(self.title_label)
 
         # Кнопки
         btn_row = QHBoxLayout()
@@ -233,8 +242,10 @@ class ChessViewer(QWidget):
         self.btn_copy_san = QPushButton("⧉ SAN")
         self.btn_copy_pgn = QPushButton("⧉ PGN")
         self.btn_save_png = QPushButton("📷 PNG")
+        self.btn_refresh_elo = QPushButton("🔄 ELO")
+        self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
 
@@ -244,6 +255,7 @@ class ChessViewer(QWidget):
         self.btn_copy_san.clicked.connect(self.copy_san)
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
         self.btn_save_png.clicked.connect(self.save_png)
+        self.btn_refresh_elo.clicked.connect(self._refresh_elo_ratings)
 
         # Статуси
         self.lbl_module   = QLabel("Модуль: —")
@@ -354,8 +366,76 @@ class ChessViewer(QWidget):
             self.drawer_manager.collect_overlays(self.piece_objects, self.board)
         self._refresh_board()
         self._update_status("-", None)
+        
+        # Refresh ELO ratings display
+        self._refresh_elo_ratings()
 
     # ---------- UI helpers ----------
+
+    def _update_title_with_elo(self):
+        """Update the title to include ELO ratings for both bots."""
+        try:
+            # Get ELO ratings for both bots
+            white_rating = self.elo_manager.get_bot_rating(WHITE_AGENT)
+            black_rating = self.elo_manager.get_bot_rating(BLACK_AGENT)
+            
+            # Format ELO display with additional info
+            white_elo_text = ""
+            black_elo_text = ""
+            
+            if white_rating:
+                games_text = f" ({white_rating.games_played} games)" if white_rating.games_played > 0 else ""
+                white_elo_text = f" (ELO: {white_rating.elo:.0f}{games_text})"
+            if black_rating:
+                games_text = f" ({black_rating.games_played} games)" if black_rating.games_played > 0 else ""
+                black_elo_text = f" (ELO: {black_rating.elo:.0f}{games_text})"
+            
+            # Update title
+            title_text = f"White: {WHITE_AGENT}{white_elo_text}    |    Black: {BLACK_AGENT}{black_elo_text}"
+            self.title_label.setText(title_text)
+            
+        except Exception as exc:
+            logger.warning(f"Failed to load ELO ratings: {exc}")
+            # Fallback to basic title without ELO
+            self.title_label.setText(f"White: {WHITE_AGENT}    |    Black: {BLACK_AGENT}")
+
+    def _ensure_bots_registered(self):
+        """Ensure both bots are registered in the ELO system with initial ratings."""
+        try:
+            # Register bots with default ELO ratings if not already registered
+            if not self.elo_manager.get_bot_rating(WHITE_AGENT):
+                self.elo_manager.register_bot(WHITE_AGENT, 1500.0)
+                logger.info(f"Registered {WHITE_AGENT} with initial ELO 1500")
+            
+            if not self.elo_manager.get_bot_rating(BLACK_AGENT):
+                self.elo_manager.register_bot(BLACK_AGENT, 1500.0)
+                logger.info(f"Registered {BLACK_AGENT} with initial ELO 1500")
+                
+        except Exception as exc:
+            logger.warning(f"Failed to register bots: {exc}")
+
+    def _refresh_elo_ratings(self):
+        """Refresh ELO ratings from the ratings file and update display."""
+        try:
+            # Reload ratings from file
+            self.elo_manager.load_ratings()
+            self._update_title_with_elo()
+            logger.info("ELO ratings refreshed successfully")
+        except Exception as exc:
+            logger.error(f"Failed to refresh ELO ratings: {exc}")
+            QMessageBox.warning(
+                self,
+                "⚠️ ELO Refresh Failed",
+                f"🔧 <b>Failed to refresh ELO ratings:</b> {exc}\n\n"
+                f"<b>This may indicate:</b>\n"
+                f"• Ratings file is missing or corrupted\n"
+                f"• ELO sync manager is not properly initialized\n"
+                f"• File permission issues\n\n"
+                f"<b>Try:</b>\n"
+                f"• Check if ratings.json exists\n"
+                f"• Verify file permissions\n"
+                f"• Restart the application"
+            )
 
     def _draw_board_widgets(self):
         for row in range(8):
