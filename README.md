@@ -298,6 +298,48 @@ wolframscript -file analysis/heatmaps/generate_heatmaps.wl \
   --palette Reds --bins 8 --resolution 300 analysis/heatmaps/moves.csv
 ```
 
+### Wolfram Engine Integration
+
+The project includes advanced integration with Wolfram Engine for mathematical analysis:
+
+```python
+from chess_ai.wolfram_bot import WolframBot
+import chess
+
+# Create a WolframBot for advanced position analysis
+bot = WolframBot(
+    color=chess.WHITE,
+    evaluation_depth=3,
+    use_pattern_analysis=True,
+    use_tactical_analysis=True,
+    use_strategic_analysis=True
+)
+
+# Use in a game
+board = chess.Board()
+move, confidence = bot.choose_move(board)
+print(f"Best move: {move} (confidence: {confidence})")
+
+# Get detailed position evaluation
+evaluation = bot.get_position_evaluation(board)
+print(f"Position score: {evaluation['total_score']}")
+```
+
+Generate heatmaps using Wolfram Engine:
+
+```python
+from utils.integration import generate_heatmaps
+
+# Use Wolfram Engine for heatmap generation
+heatmaps = generate_heatmaps(
+    fens, 
+    use_wolfram=True,
+    pattern_set="wolfram_analysis"
+)
+```
+
+See [WOLFRAM_SETUP.md](WOLFRAM_SETUP.md) for installation instructions and [examples/wolfram_example.py](examples/wolfram_example.py) for a complete demonstration.
+
 Heatmap matrices are written as CSV and JSON files into the directory containing
 `moves.csv` (such as `analysis/heatmaps/` in this example). When invoking the
 Python helper ``utils.integration.generate_heatmaps`` the files are stored in the
