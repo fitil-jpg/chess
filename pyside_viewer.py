@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea, QFileDialog, QTextEdit, QSplitter,
+    QScrollBar, QMainWindow
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
@@ -117,11 +118,59 @@ class OverallUsageChart(QWidget):
             if x_leg > w - self.pad:
                 break
 
-class ChessViewer(QWidget):
+class ChessViewer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
+        
+        # Create central widget and scroll area
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        
+        # Create scroll area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setWidget(self.central_widget)
+        
+        # Style the scroll area
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: #f8f9fa;
+            }
+            QScrollBar:vertical {
+                background-color: #e9ecef;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #6c757d;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #495057;
+            }
+            QScrollBar:horizontal {
+                background-color: #e9ecef;
+                height: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: #6c757d;
+                border-radius: 6px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: #495057;
+            }
+        """)
+        
+        # Set scroll area as central widget
+        self.setCentralWidget(self.scroll_area)
 
         try:
             # Логіка позиції
@@ -407,8 +456,23 @@ class ChessViewer(QWidget):
         
         # Refresh ELO ratings display
         self._refresh_elo_ratings()
+        
+        # Ensure scrollbars are properly configured
+        self._configure_scrollbars()
 
     # ---------- UI helpers ----------
+
+    def _configure_scrollbars(self):
+        """Configure scrollbars to ensure proper content display"""
+        # Ensure the central widget has a minimum size
+        self.central_widget.setMinimumSize(960, 600)
+        
+        # Update scroll area size policy
+        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        # Ensure scrollbars appear when content exceeds viewport
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def _update_title_with_elo(self):
         """Update the title to include ELO ratings for both bots."""
