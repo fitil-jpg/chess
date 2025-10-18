@@ -59,9 +59,13 @@ heatmaps/heatmap_R_bins8.json
 runs/
 !runs/.gitkeep
 
-## Ignore entire data directories (keep dirs via .gitkeep)
-analysis/heatmaps/*
+## Ignore generated heatmap data (keep source scripts)
+analysis/heatmaps/*.json
+analysis/heatmaps/*.csv
+analysis/heatmaps/*/
 !analysis/heatmaps/.gitkeep
+!analysis/heatmaps/generate_heatmaps.R
+!analysis/heatmaps/generate_heatmaps_python.py
 heatmaps/*
 !heatmaps/.gitkeep
 
