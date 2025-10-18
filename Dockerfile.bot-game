@@ -1,0 +1,164 @@
+# Dockerfile для запуска игры двух ботов с логированием
+FROM python:3.10-slim
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    x11-utils \
+    x11-xserver-utils \
+    libxrender1 \
+    libxext6 \
+    libxss1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка Python зависимостей
+COPY requirements.txt web_requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    pip install --no-cache-dir -r /tmp/web_requirements.txt
+
+# Создание рабочей директории
+WORKDIR /app
+
+# Копирование исходного кода
+COPY . /app/
+
+# Создание директорий для логов и данных
+RUN mkdir -p /app/logs /app/runs /app/output
+
+# Установка переменных окружения
+ENV DISPLAY=:99
+ENV PYTHONPATH=/app
+ENV STOCKFISH_PATH=/app/bin/stockfish-bin
+
+# Создание скрипта для запуска Xvfb и игры
+RUN echo '#!/bin/bash\n\
+# Запуск Xvfb в фоне\n\
+Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &\n\
+# Ждем запуска Xvfb\n\
+sleep 2\n\
+# Запуск игры ботов\n\
+exec "$@"' > /app/start_with_xvfb.sh && \
+    chmod +x /app/start_with_xvfb.sh
+
+# Создание скрипта для запуска игры ботов
+RUN echo '#!/usr/bin/env python3\n\
+"""Скрипт для запуска игры двух ботов с детальным логированием"""\n\
+\n\
+import os\n\
+import sys\n\
+import time\n\
+import logging\n\
+import json\n\
+from datetime import datetime\n\
+from pathlib import Path\n\
+\n\
+# Добавляем путь к модулям\n\
+sys.path.insert(0, "/app")\n\
+\n\
+import chess\n\
+from chess_ai.bot_agent import make_agent\n\
+from arena import play_games, _setup_logging\n\
+\n\
+def setup_detailed_logging():\n\
+    """Настройка детального логирования"""\n\
+    # Создаем директорию для логов\n\
+    os.makedirs("/app/logs", exist_ok=True)\n\
+    \n\
+    # Настройка форматирования\n\
+    formatter = logging.Formatter(\n\
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",\n\
+        datefmt="%Y-%m-%d %H:%M:%S"\n\
+    )\n\
+    \n\
+    # Основной логгер\n\
+    logger = logging.getLogger()\n\
+    logger.setLevel(logging.INFO)\n\
+    \n\
+    # Файловый хендлер для детальных логов\n\
+    log_file = f"/app/logs/bot_game_{datetime.now().strftime(\'%Y%m%d_%H%M%S\')}.log"\n\
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")\n\
+    file_handler.setLevel(logging.INFO)\n\
+    file_handler.setFormatter(formatter)\n\
+    logger.addHandler(file_handler)\n\
+    \n\
+    # Консольный хендлер\n\
+    console_handler = logging.StreamHandler()\n\
+    console_handler.setLevel(logging.INFO)\n\
+    console_handler.setFormatter(formatter)\n\
+    logger.addHandler(console_handler)\n\
+    \n\
+    return logger\n\
+\n\
+def main():\n\
+    """Основная функция"""\n\
+    logger = setup_detailed_logging()\n\
+    \n\
+    # Получаем параметры из переменных окружения\n\
+    white_bot = os.environ.get("WHITE_BOT", "DynamicBot")\n\
+    black_bot = os.environ.get("BLACK_BOT", "FortifyBot")\n\
+    num_games = int(os.environ.get("NUM_GAMES", "2"))\n\
+    \n\
+    logger.info(f"Запуск игры: {white_bot} vs {black_bot}")\n\
+    logger.info(f"Количество игр: {num_games}")\n\
+    logger.info(f"Время начала: {datetime.now()}")\n\
+    \n\
+    try:\n\
+        # Модифицируем arena.py для использования наших параметров\n\
+        import arena\n\
+        arena.WHITE_AGENT = white_bot\n\
+        arena.BLACK_AGENT = black_bot\n\
+        arena.GAMES = num_games\n\
+        arena.PRINT_DIAGRAM = True\n\
+        arena.DIAGRAM_UNICODE = True\n\
+        \n\
+        # Запускаем игры\n\
+        start_time = time.time()\n\
+        wins, losses, draws = arena.play_games(num_games)\n\
+        total_time = time.time() - start_time\n\
+        \n\
+        # Сохраняем результаты\n\
+        results = {\n\
+            "white_bot": white_bot,\n\
+            "black_bot": black_bot,\n\
+            "games_played": num_games,\n\
+            "wins": wins,\n\
+            "losses": losses,\n\
+            "draws": draws,\n\
+            "total_time": total_time,\n\
+            "timestamp": datetime.now().isoformat()\n\
+        }\n\
+        \n\
+        results_file = f"/app/logs/results_{datetime.now().strftime(\'%Y%m%d_%H%M%S\')}.json"\n\
+        with open(results_file, "w", encoding="utf-8") as f:\n\
+            json.dump(results, f, indent=2, ensure_ascii=False)\n\
+        \n\
+        logger.info("=" * 50)\n\
+        logger.info("РЕЗУЛЬТАТЫ ИГРЫ")\n\
+        logger.info("=" * 50)\n\
+        logger.info(f"Белые: {white_bot}")\n\
+        logger.info(f"Черные: {black_bot}")\n\
+        logger.info(f"Игр сыграно: {num_games}")\n\
+        logger.info(f"Побед белых: {wins}")\n\
+        logger.info(f"Побед черных: {losses}")\n\
+        logger.info(f"Ничьих: {draws}")\n\
+        logger.info(f"Общее время: {total_time:.2f} секунд")\n\
+        logger.info(f"Среднее время на игру: {total_time/num_games:.2f} секунд")\n\
+        logger.info("=" * 50)\n\
+        \n\
+    except Exception as e:\n\
+        logger.error(f"Ошибка при запуске игры: {e}")\n\
+        logger.exception("Детали ошибки:")\n\
+        sys.exit(1)\n\
+\n\
+if __name__ == "__main__":\n\
+    main()' > /app/run_bot_game.py && \
+    chmod +x /app/run_bot_game.py
+
+# Точка входа
+ENTRYPOINT ["/app/start_with_xvfb.sh", "python", "/app/run_bot_game.py"]
