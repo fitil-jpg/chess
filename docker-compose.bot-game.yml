@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  bot-game:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot-game
+    container_name: chess-bot-game
+    environment:
+      # Настройки ботов
+      - WHITE_BOT=${WHITE_BOT:-DynamicBot}
+      - BLACK_BOT=${BLACK_BOT:-FortifyBot}
+      - NUM_GAMES=${NUM_GAMES:-2}
+      
+      # Настройки логирования
+      - LOG_LEVEL=INFO
+      
+      # Настройки Xvfb
+      - DISPLAY=:99
+      
+      # Путь к Stockfish
+      - STOCKFISH_PATH=/app/bin/stockfish-bin
+      
+    volumes:
+      # Монтируем директории для логов и результатов
+      - ./logs:/app/logs
+      - ./runs:/app/runs
+      - ./output:/app/output
+      
+      # Монтируем исходный код (для разработки)
+      - .:/app
+      
+    # Настройки для headless режима
+    stdin_open: true
+    tty: true
+    
+    # Ограничения ресурсов (опционально)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # Дополнительный сервис для веб-интерфейса (опционально)
+  web-interface:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot-game
+    container_name: chess-web-interface
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+    command: python /app/web_server.py --host 0.0.0.0 --port 5000
+    volumes:
+      - ./logs:/app/logs
+      - ./runs:/app/runs
+      - .:/app
+    depends_on:
+      - bot-game
+    profiles:
+      - web  # Запускается только с профилем web
+
+volumes:
+  logs:
+    driver: local
+  runs:
+    driver: local
+  output:
+    driver: local
