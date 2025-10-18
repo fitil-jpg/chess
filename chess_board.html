@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахова доска з фігурами</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 3px solid #2d3748;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            margin: 0 auto;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .cell.white {
+            background-color: #f0d9b5;
+        }
+
+        .cell.black {
+            background-color: #b58863;
+        }
+
+        .cell.highlight {
+            background-color: #ffd700 !important;
+            box-shadow: inset 0 0 0 3px #ff6b6b;
+        }
+
+        .controls {
+            margin-top: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: 0 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .stats {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♟️ Шахова доска з фігурами</h1>
+        
+        <div class="chess-board" id="chess-board">
+            <!-- Шахова доска буде створена JavaScript -->
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="startNewGame()">▶️ Нова гра</button>
+            <button class="btn" onclick="resetBoard()">🔄 Скинути</button>
+            <button class="btn" onclick="makeRandomMove()">🎲 Випадковий хід</button>
+        </div>
+        
+        <div class="status" id="game-status">
+            Готовий до початку гри
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-games">0</div>
+                <div class="stat-label">Всього ігор</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="white-wins">0</div>
+                <div class="stat-label">Перемоги білих</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="black-wins">0</div>
+                <div class="stat-label">Перемоги чорних</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="draws">0</div>
+                <div class="stat-label">Нічиї</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Шахові фігури
+        const pieceSymbols = {
+            'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+            'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+        };
+
+        // Початкова позиція
+        const initialPosition = [
+            ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+            ['bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP', 'bP'],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null],
+            ['wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP', 'wP'],
+            ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
+        ];
+
+        let currentBoard = JSON.parse(JSON.stringify(initialPosition));
+        let gameStats = {
+            totalGames: 0,
+            whiteWins: 0,
+            blackWins: 0,
+            draws: 0
+        };
+
+        // Ініціалізація доски
+        function initializeBoard() {
+            const board = document.getElementById('chess-board');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    const isWhite = (row + col) % 2 === 0;
+                    cell.className = `cell ${isWhite ? 'white' : 'black'}`;
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    const piece = currentBoard[row][col];
+                    if (piece) {
+                        cell.textContent = pieceSymbols[piece];
+                    }
+                    
+                    cell.addEventListener('click', () => handleCellClick(row, col));
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Обробка кліку по клітинці
+        function handleCellClick(row, col) {
+            const piece = currentBoard[row][col];
+            if (piece) {
+                // Підсвічуємо клітинку
+                document.querySelectorAll('.cell').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+                document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.add('highlight');
+                
+                // Показуємо інформацію про фігуру
+                const color = piece[0] === 'w' ? 'біла' : 'чорна';
+                const pieceName = getPieceName(piece[1]);
+                document.getElementById('game-status').textContent = 
+                    `Обрано: ${color} ${pieceName} на позиції ${String.fromCharCode(97 + col)}${8 - row}`;
+            }
+        }
+
+        // Отримання назви фігури
+        function getPieceName(pieceType) {
+            const names = {
+                'K': 'Король', 'Q': 'Ферзь', 'R': 'Тура',
+                'B': 'Слон', 'N': 'Кінь', 'P': 'Пішак'
+            };
+            return names[pieceType] || 'Невідома';
+        }
+
+        // Нова гра
+        function startNewGame() {
+            currentBoard = JSON.parse(JSON.stringify(initialPosition));
+            initializeBoard();
+            document.getElementById('game-status').textContent = 'Нова гра розпочата!';
+            gameStats.totalGames++;
+            updateStats();
+        }
+
+        // Скидання доски
+        function resetBoard() {
+            currentBoard = JSON.parse(JSON.stringify(initialPosition));
+            initializeBoard();
+            document.getElementById('game-status').textContent = 'Дошка скинута до початкової позиції';
+        }
+
+        // Випадковий хід (спрощений)
+        function makeRandomMove() {
+            // Знаходимо всі фігури
+            const pieces = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (currentBoard[row][col]) {
+                        pieces.push({row, col, piece: currentBoard[row][col]});
+                    }
+                }
+            }
+            
+            if (pieces.length === 0) {
+                document.getElementById('game-status').textContent = 'На дошці немає фігур!';
+                return;
+            }
+            
+            // Вибираємо випадкову фігуру
+            const randomPiece = pieces[Math.floor(Math.random() * pieces.length)];
+            const {row, col, piece} = randomPiece;
+            
+            // Підсвічуємо фігуру
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('highlight');
+            });
+            document.querySelector(`[data-row="${row}"][data-col="${col}"]`).classList.add('highlight');
+            
+            const color = piece[0] === 'w' ? 'біла' : 'чорна';
+            const pieceName = getPieceName(piece[1]);
+            document.getElementById('game-status').textContent = 
+                `Випадковий вибір: ${color} ${pieceName} на позиції ${String.fromCharCode(97 + col)}${8 - row}`;
+        }
+
+        // Оновлення статистики
+        function updateStats() {
+            document.getElementById('total-games').textContent = gameStats.totalGames;
+            document.getElementById('white-wins').textContent = gameStats.whiteWins;
+            document.getElementById('black-wins').textContent = gameStats.blackWins;
+            document.getElementById('draws').textContent = gameStats.draws;
+        }
+
+        // Завантаження даних з сервера
+        async function loadGameData() {
+            try {
+                const response = await fetch('http://localhost:3000/api/games');
+                if (response.ok) {
+                    const games = await response.json();
+                    gameStats.totalGames = games.length;
+                    gameStats.whiteWins = games.filter(g => g.result === '1-0').length;
+                    gameStats.blackWins = games.filter(g => g.result === '0-1').length;
+                    gameStats.draws = games.filter(g => g.result === '1/2-1/2').length;
+                    updateStats();
+                }
+            } catch (error) {
+                console.log('Не вдалося завантажити дані з сервера, використовуємо локальні дані');
+            }
+        }
+
+        // Ініціалізація при завантаженні сторінки
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBoard();
+            loadGameData();
+        });
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea, QFileDialog, QTabWidget, QProgressBar,
-    QSpinBox, QComboBox, QGroupBox, QSplitter, QTextEdit
+    QSpinBox, QComboBox, QGroupBox, QSplitter, QTextEdit, QMainWindow
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont, QPalette
@@ -255,13 +255,61 @@ class GameWorker(QThread):
         """Остановить выполнение"""
         self._stop_requested = True
 
-class InteractiveChessViewer(QWidget):
+class InteractiveChessViewer(QMainWindow):
     """Главный класс интерактивного viewer'а"""
     
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Interactive Chess Viewer - Auto Play Mode")
         self.resize(1400, 800)
+        
+        # Create central widget and scroll area
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        
+        # Create scroll area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setWidget(self.central_widget)
+        
+        # Style the scroll area
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: #f8f9fa;
+            }
+            QScrollBar:vertical {
+                background-color: #e9ecef;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #6c757d;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background-color: #495057;
+            }
+            QScrollBar:horizontal {
+                background-color: #e9ecef;
+                height: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:horizontal {
+                background-color: #6c757d;
+                border-radius: 6px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background-color: #495057;
+            }
+        """)
+        
+        # Set scroll area as central widget
+        self.setCentralWidget(self.scroll_area)
         
         # Инициализация данных
         self.board = chess.Board()
@@ -284,6 +332,21 @@ class InteractiveChessViewer(QWidget):
         # Запуск автоматического воспроизведения
         self._start_auto_play()
         
+        # Ensure scrollbars are properly configured
+        self._configure_scrollbars()
+        
+    def _configure_scrollbars(self):
+        """Configure scrollbars to ensure proper content display"""
+        # Ensure the central widget has a minimum size
+        self.central_widget.setMinimumSize(1200, 700)
+        
+        # Update scroll area size policy
+        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        # Ensure scrollbars appear when content exceeds viewport
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
     def _init_agents(self):
         """Инициализация шахматных агентов"""
         try:
@@ -295,8 +358,8 @@ class InteractiveChessViewer(QWidget):
             
     def _init_ui(self):
         """Инициализация пользовательского интерфейса"""
-        # Главный layout
-        main_layout = QHBoxLayout()
+        # Главный layout (обернут в QScrollArea для прокрутки)
+        main_layout = QVBoxLayout()
         
         # Создаем сплиттер для разделения панелей
         splitter = QSplitter(Qt.Horizontal)
@@ -312,7 +375,12 @@ class InteractiveChessViewer(QWidget):
         # Устанавливаем пропорции
         splitter.setSizes([600, 800])
         
-        main_layout.addWidget(splitter)
+        # Обернуть контент в область прокрутки, чтобы вмещалось в окно
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(splitter)
+
+        main_layout.addWidget(scroll)
         self.setLayout(main_layout)
         
     def _create_board_panel(self) -> QWidget:

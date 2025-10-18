@@ -249,6 +249,35 @@ def start_game():
 def make_move():
     """Зробити хід"""
     try:
+        data = request.get_json() or {}
+        
+        # Якщо передано FEN, використовуємо його замість поточної гри
+        if 'fen' in data:
+            temp_board = chess.Board(data['fen'])
+            if not temp_board.is_game_over():
+                # Виконуємо хід ботом
+                mover_color = temp_board.turn
+                agent = game_manager.white_agent if mover_color == chess.WHITE else game_manager.black_agent
+                
+                if agent:
+                    move = agent.choose_move(temp_board)
+                    if move and temp_board.is_legal(move):
+                        san_move = temp_board.san(move)
+                        temp_board.push(move)
+                        
+                        return jsonify({
+                            'success': True,
+                            'move': san_move,
+                            'fen': temp_board.fen(),
+                            'is_game_over': temp_board.is_game_over(),
+                            'result': temp_board.result() if temp_board.is_game_over() else None,
+                            'bot': 'WhiteBot' if mover_color == chess.WHITE else 'BlackBot',
+                            'confidence': 0.85  # Приклад значення
+                        })
+            
+            return jsonify({'error': 'Не вдалося зробити хід'}), 400
+        
+        # Стандартна логіка для активної гри
         if not game_data['is_playing']:
             return jsonify({'error': 'Гра не активна'}), 400
         
@@ -349,6 +378,206 @@ def get_heatmaps():
     except Exception as e:
         logger.error(f"Помилка завантаження теплових карт: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/game/analytics', methods=['GET'])
+def get_game_analytics():
+    """Отримати аналітику поточної гри"""
+    try:
+        if not game_manager.current_board:
+            return jsonify({'error': 'Немає активної гри'}), 400
+        
+        # Аналіз модулів
+        white_modules = {}
+        black_modules = {}
+        
+        for module in game_manager.game_modules['white']:
+            white_modules[module] = white_modules.get(module, 0) + 1
+        
+        for module in game_manager.game_modules['black']:
+            black_modules[module] = black_modules.get(module, 0) + 1
+        
+        # Конвертуємо в список для фронтенду
+        white_modules_list = [{'name': k, 'count': v} for k, v in white_modules.items()]
+        black_modules_list = [{'name': k, 'count': v} for k, v in black_modules.items()]
+        
+        return jsonify({
+            'whiteModules': white_modules_list,
+            'blackModules': black_modules_list,
+            'totalMoves': len(game_manager.game_moves),
+            'gameDuration': int((time.time() - game_manager.start_time) * 1000) if game_manager.start_time else 0,
+            'currentPosition': game_manager.current_board.fen(),
+            'isGameOver': game_manager.current_board.is_game_over(),
+            'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None
+        })
+    except Exception as e:
+        logger.error(f"Помилка отримання аналітики: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/game/move/analyze', methods=['POST'])
+def analyze_move():
+    """Аналіз конкретного ходу"""
+    try:
+        data = request.get_json() or {}
+        move_san = data.get('move')
+        fen = data.get('fen')
+        
+        if not move_san or not fen:
+            return jsonify({'error': 'Необхідні параметри: move, fen'}), 400
+        
+        # Створюємо тимчасову дошку для аналізу
+        temp_board = chess.Board(fen)
+        
+        # Перевіряємо чи хід легальний
+        try:
+            move = temp_board.parse_san(move_san)
+        except:
+            return jsonify({'error': 'Недійсний хід'}), 400
+        
+        # Аналізуємо хід
+        analysis = {
+            'move': move_san,
+            'isLegal': temp_board.is_legal(move),
+            'isCheck': False,
+            'isCheckmate': False,
+            'isStalemate': False,
+            'isCapture': temp_board.is_capture(move),
+            'isCastling': temp_board.is_castling(move),
+            'isEnPassant': temp_board.is_en_passant(move),
+            'isPromotion': temp_board.is_promotion(move)
+        }
+        
+        # Виконуємо хід для аналізу
+        temp_board.push(move)
+        analysis.update({
+            'isCheck': temp_board.is_check(),
+            'isCheckmate': temp_board.is_checkmate(),
+            'isStalemate': temp_board.is_stalemate(),
+            'isGameOver': temp_board.is_game_over(),
+            'result': temp_board.result() if temp_board.is_game_over() else None
+        })
+        
+        return jsonify(analysis)
+        
+    except Exception as e:
+        logger.error(f"Помилка аналізу ходу: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/game/position/evaluate', methods=['POST'])
+def evaluate_position():
+    """Оцінка позиції"""
+    try:
+        data = request.get_json() or {}
+        fen = data.get('fen')
+        
+        if not fen:
+            return jsonify({'error': 'Необхідний параметр: fen'}), 400
+        
+        board = chess.Board(fen)
+        
+        # Базова оцінка позиції
+        evaluation = {
+            'fen': fen,
+            'turn': 'white' if board.turn == chess.WHITE else 'black',
+            'isCheck': board.is_check(),
+            'isCheckmate': board.is_checkmate(),
+            'isStalemate': board.is_stalemate(),
+            'isGameOver': board.is_game_over(),
+            'result': board.result() if board.is_game_over() else None,
+            'legalMoves': len(list(board.legal_moves)),
+            'materialBalance': calculate_material_balance(board),
+            'kingSafety': evaluate_king_safety(board),
+            'centerControl': evaluate_center_control(board),
+            'mobility': evaluate_mobility(board)
+        }
+        
+        return jsonify(evaluation)
+        
+    except Exception as e:
+        logger.error(f"Помилка оцінки позиції: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def calculate_material_balance(board):
+    """Розрахунок матеріального балансу"""
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0
+    }
+    
+    white_material = 0
+    black_material = 0
+    
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            value = piece_values[piece.piece_type]
+            if piece.color == chess.WHITE:
+                white_material += value
+            else:
+                black_material += value
+    
+    return white_material - black_material
+
+def evaluate_king_safety(board):
+    """Оцінка безпеки короля"""
+    white_king_safety = 0
+    black_king_safety = 0
+    
+    # Простий алгоритм оцінки безпеки короля
+    for color in [chess.WHITE, chess.BLACK]:
+        king_square = board.king(color)
+        if king_square is not None:
+            # Перевіряємо кількість атак на короля
+            attacks = len(board.attackers(not color, king_square))
+            if color == chess.WHITE:
+                white_king_safety = max(0, 10 - attacks * 2)
+            else:
+                black_king_safety = max(0, 10 - attacks * 2)
+    
+    return {
+        'white': white_king_safety,
+        'black': black_king_safety
+    }
+
+def evaluate_center_control(board):
+    """Оцінка контролю центру"""
+    center_squares = [chess.D4, chess.D5, chess.E4, chess.E5]
+    
+    white_control = 0
+    black_control = 0
+    
+    for square in center_squares:
+        white_attackers = len(board.attackers(chess.WHITE, square))
+        black_attackers = len(board.attackers(chess.BLACK, square))
+        
+        if white_attackers > black_attackers:
+            white_control += 1
+        elif black_attackers > white_attackers:
+            black_control += 1
+    
+    return {
+        'white': white_control,
+        'black': black_control
+    }
+
+def evaluate_mobility(board):
+    """Оцінка мобільності фігур"""
+    white_moves = 0
+    black_moves = 0
+    
+    for move in board.legal_moves:
+        if board.turn == chess.WHITE:
+            white_moves += 1
+        else:
+            black_moves += 1
+    
+    return {
+        'white': white_moves,
+        'black': black_moves
+    }
 
 # Статичні файли
 @app.route('/static/<path:filename>')

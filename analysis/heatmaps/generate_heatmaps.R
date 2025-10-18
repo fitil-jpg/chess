@@ -8,10 +8,12 @@ if (length(args) < 1) {
 }
 
 input_csv <- args[1]
-output_dir <- if (length(args) > 1) args[2] else "."
+# By default, write outputs next to the input CSV
+output_dir <- if (length(args) > 1) args[2] else dirname(normalizePath(input_csv))
 
 # Check if required packages are available
-required_packages <- c("jsonlite", "dplyr")
+# Keep dependencies minimal: only jsonlite is required
+required_packages <- c("jsonlite")
 missing_packages <- required_packages[!required_packages %in% installed.packages()[,"Package"]]
 
 if (length(missing_packages) > 0) {
@@ -21,7 +23,6 @@ if (length(missing_packages) > 0) {
 
 # Load required libraries
 library(jsonlite)
-library(dplyr)
 
 # Read the CSV data
 if (!file.exists(input_csv)) {

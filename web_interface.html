@@ -5,52 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess AI Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/chess.min.js" onerror="loadChessFallback()"></script>
-    <script>
-        // Fallback for Chess.js loading
-        function loadChessFallback() {
-            console.warn('Primary Chess.js CDN failed, trying fallback...');
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/chess.js@1.0.0-beta.3/chess.min.js';
-            script.onerror = function() {
-                console.error('All Chess.js CDNs failed, using local fallback');
-                loadLocalChess();
-            };
-            document.head.appendChild(script);
-        }
-        
-        function loadLocalChess() {
-            // Create a minimal Chess.js implementation for basic functionality
-            window.Chess = function() {
-                this.board = function() {
-                    const board = [];
-                    for (let i = 0; i < 8; i++) {
-                        board[i] = [];
-                        for (let j = 0; j < 8; j++) {
-                            board[i][j] = null;
-                        }
-                    }
-                    // Set up initial position
-                    const pieces = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'];
-                    for (let i = 0; i < 8; i++) {
-                        board[0][i] = 'b' + pieces[i];
-                        board[1][i] = 'bp';
-                        board[6][i] = 'wp';
-                        board[7][i] = 'w' + pieces[i];
-                    }
-                    return board;
-                };
-                this.move = function(move) {
-                    // Basic move validation - always return true for now
-                    return { from: move.from, to: move.to };
-                };
-                this.turn = function() { return 'w'; };
-                this.isCheckmate = function() { return false; };
-                this.isDraw = function() { return false; };
-                this.isCheck = function() { return false; };
-            };
-        }
-    </script>
+    <!-- Load a stable chess.js that exposes global `Chess`; fallback to jsDelivr if cdnjs fails -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js';document.head.appendChild(s);})();"></script>
     <style>
         * {
             margin: 0;
@@ -541,28 +497,9 @@
 
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
-            // Перевіряємо чи завантажений Chess.js перед ініціалізацією
-            if (typeof Chess === 'undefined') {
-                console.warn('Chess.js ще не завантажений, чекаємо...');
-                // Чекаємо до 5 секунд на завантаження Chess.js
-                let attempts = 0;
-                const checkChess = setInterval(() => {
-                    attempts++;
-                    if (typeof Chess !== 'undefined') {
-                        clearInterval(checkChess);
-                        initializeApp();
-                    } else if (attempts > 50) { // 5 секунд
-                        clearInterval(checkChess);
-                        console.error('Chess.js не завантажений після 5 секунд');
-                        initializeApp(); // Ініціалізуємо з fallback
-                    }
-                }, 100);
-            } else {
-                initializeApp();
-            }
-        });
-        
-        function initializeApp() {
+            // Ініціалізуємо локальний стан гри, щоб фігури відобразилися одразу
+            // (до початку автоматичної гри через сервер)
+            try { game = new Chess(); } catch (e) { console.error('Chess.js не завантажено', e); }
             initializeChessBoard();
             initializeTabs();
             initializeCharts();
@@ -612,7 +549,16 @@
                 'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
                 'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
             };
-            return symbols[piece] || '';
+            if (!piece) return '';
+            // Підтримка як рядкових кодів ('wK'), так і об'єктів chess.js ({ type, color })
+            if (typeof piece === 'string') {
+                return symbols[piece] || '';
+            }
+            if (typeof piece === 'object') {
+                const code = (piece.color === 'w' ? 'w' : 'b') + String(piece.type || '').toUpperCase();
+                return symbols[code] || '';
+            }
+            return '';
         }
 
         // Обробка кліку по клітинці
@@ -846,16 +792,18 @@
                     <div>${game.modules.white} vs ${game.modules.black}</div>
                     <div>${game.moves} ходів • ${Math.round(game.duration / 1000)}с</div>
                 `;
-                gameItem.addEventListener('click', () => selectGame(game));
+                gameItem.addEventListener('click', (evt) => selectGame(game, evt));
                 gameList.appendChild(gameItem);
             });
         }
 
         // Вибір гри
-        function selectGame(game) {
+        function selectGame(game, evt) {
             selectedGame = game;
             document.querySelectorAll('.game-item').forEach(item => item.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('selected');
+            }
             
             updateMoveTimeline(game);
         }
@@ -977,6 +925,11 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    if (typeof Chess === 'undefined') {
+                        console.error('Chess.js не завантажено — бібліотека недоступна.');
+                        alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                        return;
+                    }
                     game = new Chess();
                     updateBoard();
                     
@@ -1035,15 +988,15 @@
 
         // Скидання гри
         function resetGame() {
-            stopGameLocal();
-            if (typeof Chess !== 'undefined') {
-                game = new Chess();
-                updateBoard();
-                document.getElementById('game-status').textContent = 'Готовий до початку гри';
-            } else {
-                console.error('Chess.js не доступний для скидання гри');
-                document.getElementById('game-status').textContent = 'Помилка: Chess.js не завантажений';
+            stopGame();
+            if (typeof Chess === 'undefined') {
+                console.error('Chess.js не завантажено — бібліотека недоступна.');
+                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                return;
             }
+            game = new Chess();
+            updateBoard();
+            document.getElementById('game-status').textContent = 'Готовий до початку гри';
         }
 
         // Оновлення статусу гри
@@ -1125,15 +1078,15 @@
                 console.error('Помилка скидання гри:', error);
             }
             
-            stopGameLocal();
-            if (typeof Chess !== 'undefined') {
-                game = new Chess();
-                updateBoard();
-                document.getElementById('game-status').textContent = 'Готовий до початку гри';
-            } else {
-                console.error('Chess.js не доступний для скидання гри');
-                document.getElementById('game-status').textContent = 'Помилка: Chess.js не завантажений';
+            stopGame();
+            if (typeof Chess === 'undefined') {
+                console.error('Chess.js не завантажено — бібліотека недоступна.');
+                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                return;
             }
+            game = new Chess();
+            updateBoard();
+            document.getElementById('game-status').textContent = 'Готовий до початку гри';
         }
 
         // Оновлення використання модулів з сервера
