@@ -295,8 +295,8 @@ class InteractiveChessViewer(QWidget):
             
     def _init_ui(self):
         """Инициализация пользовательского интерфейса"""
-        # Главный layout
-        main_layout = QHBoxLayout()
+        # Главный layout (обернут в QScrollArea для прокрутки)
+        main_layout = QVBoxLayout()
         
         # Создаем сплиттер для разделения панелей
         splitter = QSplitter(Qt.Horizontal)
@@ -312,7 +312,12 @@ class InteractiveChessViewer(QWidget):
         # Устанавливаем пропорции
         splitter.setSizes([600, 800])
         
-        main_layout.addWidget(splitter)
+        # Обернуть контент в область прокрутки, чтобы вмещалось в окно
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(splitter)
+
+        main_layout.addWidget(scroll)
         self.setLayout(main_layout)
         
     def _create_board_panel(self) -> QWidget:
