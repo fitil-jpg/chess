@@ -496,6 +496,9 @@
 
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
+            // Ініціалізуємо локальний стан гри, щоб фігури відобразилися одразу
+            // (до початку автоматичної гри через сервер)
+            try { game = new Chess(); } catch (e) { console.error('Chess.js не завантажено', e); }
             initializeChessBoard();
             initializeTabs();
             initializeCharts();
@@ -545,7 +548,16 @@
                 'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
                 'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
             };
-            return symbols[piece] || '';
+            if (!piece) return '';
+            // Підтримка як рядкових кодів ('wK'), так і об'єктів chess.js ({ type, color })
+            if (typeof piece === 'string') {
+                return symbols[piece] || '';
+            }
+            if (typeof piece === 'object') {
+                const code = (piece.color === 'w' ? 'w' : 'b') + String(piece.type || '').toUpperCase();
+                return symbols[code] || '';
+            }
+            return '';
         }
 
         // Обробка кліку по клітинці
@@ -766,16 +778,18 @@
                     <div>${game.modules.white} vs ${game.modules.black}</div>
                     <div>${game.moves} ходів • ${Math.round(game.duration / 1000)}с</div>
                 `;
-                gameItem.addEventListener('click', () => selectGame(game));
+                gameItem.addEventListener('click', (evt) => selectGame(game, evt));
                 gameList.appendChild(gameItem);
             });
         }
 
         // Вибір гри
-        function selectGame(game) {
+        function selectGame(game, evt) {
             selectedGame = game;
             document.querySelectorAll('.game-item').forEach(item => item.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
+            if (evt && evt.currentTarget) {
+                evt.currentTarget.classList.add('selected');
+            }
             
             updateMoveTimeline(game);
         }
