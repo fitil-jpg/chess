@@ -416,14 +416,24 @@ class ChessViewer(QMainWindow):
         right_col.addStretch(1)  # все тримаємо вгорі
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
-        main = QHBoxLayout()
+        content_widget = QWidget()
+        main = QHBoxLayout(content_widget)
         main.setContentsMargins(8, 8, 8, 8)
         main.setSpacing(12)
         main.addLayout(left_col, stretch=0)
         main.addLayout(right_col, stretch=1)
 
         self.board_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.central_widget.setLayout(main)
+
+        # Enable scrolling when content does not fit
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content_widget)
+
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        self.setLayout(outer)
 
         # Таймер автогри
         self.auto_timer = QTimer()
