@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install Python dependencies
 COPY requirements.txt /tmp/pip-tmp/
 RUN pip install --no-cache-dir -r /tmp/pip-tmp/requirements.txt \
-    && pip install --no-cache-dir pytest \
+    && pip install --no-cache-dir pytest Flask==2.3.3 Flask-CORS==4.0.0 \
     && rm -rf /tmp/pip-tmp
 
 # Install R and testthat

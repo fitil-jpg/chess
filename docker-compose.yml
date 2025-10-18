@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  match:
+    build:
+      context: .
+      dockerfile: Dockerfile.match
+    image: chess-bots:match
+    environment:
+      - STOCKFISH_PATH=stockfish
+      - RUNS_DIR=/runs
+    volumes:
+      - ./runs:/runs
+      - ./logs:/logs
+    command: ["python", "-u", "arena.py"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chess-bots:web
+    environment:
+      - FLASK_DEBUG=0
+      - RUNS_DIR=/runs
+      - STOCKFISH_PATH=stockfish
+    volumes:
+      - ./runs:/runs
+    ports:
+      - "5000:5000"
+    command: ["python", "-u", "run_web_server.py"]

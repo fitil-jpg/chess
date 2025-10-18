@@ -27,11 +27,12 @@ from core.pst_trainer import update_from_board, update_from_history
 from main import annotated_board
 
 # ---------- Налаштування ----------
-GAMES = 2
+# Можна налаштувати через змінні середовища: GAMES, WHITE_AGENT, BLACK_AGENT, RUNS_DIR
+GAMES = int(os.environ.get("GAMES", "2"))
 
 # Default internal vs internal. Override to pit against external engine.
-WHITE_AGENT = "DynamicBot"
-BLACK_AGENT = "FortifyBot"
+WHITE_AGENT = os.environ.get("WHITE_AGENT", "DynamicBot")
+BLACK_AGENT = os.environ.get("BLACK_AGENT", "FortifyBot")
 
 LOG_LEVEL = logging.INFO
 PERF_METRICS = True       # середній branching factor L та L^2 за гру
@@ -384,9 +385,10 @@ def play_games(games: int) -> Tuple[int, int, int]:
             avg_L2 = l2_sum / pos_count
             logger.info(f"PERF: avg L={avg_L:.1f} | avg L^2={avg_L2:.1f} over {pos_count} positions")
 
-        os.makedirs("runs", exist_ok=True)
+        runs_dir = os.environ.get("RUNS_DIR", "runs")
+        os.makedirs(runs_dir, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        run_path = os.path.join("runs", f"{ts}.json")
+        run_path = os.path.join(runs_dir, f"{ts}.json")
         with open(run_path, "w", encoding="utf-8") as f:
             json.dump(
                 {

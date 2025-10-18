@@ -39,7 +39,8 @@ def load_runs(path: str) -> List[Dict[str, Any]]:
     base_path = Path(path)
 
     if not base_path.exists():
-        raise FileNotFoundError(f"Directory not found: {path}")
+        logger.warning("Runs directory not found: %s (returning empty list)", path)
+        return []
 
     for file in sorted(base_path.glob("*.json")):
         with file.open("r", encoding="utf-8") as fh:

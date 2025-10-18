@@ -1,0 +1,20 @@
+Example docker-compose usage:
+
+1) Build images (if Docker available):
+   docker compose build
+
+2) Run a headless match and log to ./runs:
+   docker compose run --rm match
+
+   Customize bots and games count:
+   docker compose run --rm -e WHITE_AGENT=DynamicBot -e BLACK_AGENT=FortifyBot -e GAMES=4 match
+
+3) Start the web UI (reads ./runs):
+   docker compose up web
+
+4) If no Docker, run locally:
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt Flask==2.3.3 Flask-CORS==4.0.0
+   export RUNS_DIR=./runs
+   python arena.py   # generates JSON logs in 
+   python run_web_server.py  # open http://localhost:5000
