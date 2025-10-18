@@ -47,6 +47,8 @@
     </div>
 
     <script type="text/babel">
+        // Універсальний доступ до конструктора Chess у UMD/ESM сценаріях
+        const getChessCtor = () => (window.Chess || (window.chess && window.chess.Chess));
         const { useState, useEffect, useCallback } = React;
 
         // ChessBoard компонент
@@ -60,7 +62,10 @@
             whiteBot = 'StockfishBot',
             blackBot = 'DynamicBot'
         }) => {
-            const [game, setGame] = useState(new Chess());
+            const [game, setGame] = useState(() => {
+                const Ctor = getChessCtor();
+                return Ctor ? new Ctor() : null;
+            });
             const [moveHistory, setMoveHistory] = useState([]);
             const [selectedSquare, setSelectedSquare] = useState(null);
             const [possibleMoves, setPossibleMoves] = useState([]);
@@ -103,6 +108,7 @@
             };
 
             const handleSquareClick = useCallback(async (square) => {
+                if (!game) return;
                 if (isPlaying || game.isGameOver()) return;
 
                 const piece = game.get(square);
@@ -155,6 +161,7 @@
 
             const makeBotMove = useCallback(async () => {
                 try {
+                    if (!game) return;
                     const response = await fetch(`${apiEndpoint}/move`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -211,7 +218,13 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        setGame(new Chess());
+                        const Ctor = getChessCtor();
+                        if (!Ctor) {
+                            console.error('Chess is not defined: chess.js не завантажено');
+                            setGameStatus('Помилка: chess.js не завантажено');
+                            return;
+                        }
+                        setGame(new Ctor());
                         setMoveHistory([]);
                         setSelectedSquare(null);
                         setPossibleMoves([]);
@@ -230,7 +243,14 @@
             const resetGame = useCallback(async () => {
                 try {
                     await fetch(`${apiEndpoint}/reset`, { method: 'POST' });
-                    setGame(new Chess());
+                    const Ctor = getChessCtor();
+                    if (!Ctor) {
+                        console.error('Chess is not defined: chess.js не завантажено');
+                        setGameStatus('Помилка: chess.js не завантажено');
+                        setIsPlaying(false);
+                        return;
+                    }
+                    setGame(new Ctor());
                     setMoveHistory([]);
                     setSelectedSquare(null);
                     setPossibleMoves([]);
@@ -268,7 +288,7 @@
                 }
             }, [apiEndpoint, showAnalytics]);
 
-            const board = initializeBoard();
+            const board = game ? initializeBoard() : [];
 
             return React.createElement('div', { className: 'chess-board-container' },
                 React.createElement('div', { className: 'chess-board-wrapper' },

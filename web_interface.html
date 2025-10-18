@@ -494,6 +494,17 @@
         let gameInterval = null;
         let selectedGame = null;
 
+        // Універсальний конструктор Chess для UMD/ESM збірок chess.js
+        function createChessInstance() {
+            const ChessCtor = window.Chess || (window.chess && window.chess.Chess);
+            if (!ChessCtor) {
+                console.error('Chess is not defined: бібліотека chess.js не завантажилась або недоступна як глобальна змінна.');
+                alert('Помилка: не вдалося завантажити chess.js. Перевірте підключення до мережі.');
+                return null;
+            }
+            return new ChessCtor();
+        }
+
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
             initializeChessBoard();
@@ -887,7 +898,8 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    game = new Chess();
+                    game = createChessInstance();
+                    if (!game) return;
                     updateBoard();
                     
                     isPlaying = true;
@@ -932,7 +944,8 @@
         // Скидання гри
         function resetGame() {
             stopGame();
-            game = new Chess();
+            game = createChessInstance();
+            if (!game) return;
             updateBoard();
             document.getElementById('game-status').textContent = 'Готовий до початку гри';
         }
@@ -1015,7 +1028,8 @@
             }
             
             stopGame();
-            game = new Chess();
+            game = createChessInstance();
+            if (!game) return;
             updateBoard();
             document.getElementById('game-status').textContent = 'Готовий до початку гри';
         }
