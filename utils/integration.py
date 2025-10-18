@@ -78,7 +78,7 @@ def generate_heatmaps(
         except (FileNotFoundError, subprocess.CalledProcessError):
             # Fallback to Python implementation
             script = Path("analysis/heatmaps/generate_heatmaps_python.py")
-            cmd = ["python3", str(script), str(csv_path)]
+            cmd = ["python3", str(script), str(csv_path), str(out_path)]
             missing = "Python not found; install Python to generate heatmaps"
             fail_msg = "Python heatmap generation failed"
 
