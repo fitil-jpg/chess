@@ -6,6 +6,22 @@
     <title>Chess AI Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/chess.min.js"></script>
+    <script type="module">
+        // Fallback: ensure window.Chess is available even if UMD fails
+        if (!window.Chess) {
+            try {
+                const mod = await import('https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/dist/esm/chess.mjs');
+                window.Chess = mod.Chess;
+            } catch (e1) {
+                try {
+                    const mod = await import('https://unpkg.com/chess.js@1.0.0-beta.3/dist/esm/chess.mjs');
+                    window.Chess = mod.Chess;
+                } catch (e2) {
+                    console.error('Failed to load chess.js module', e1, e2);
+                }
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;

@@ -1,9 +1,29 @@
-"""Colour definitions for module usage visualisations."""
+"""Colour definitions for module usage visualisations.
+
+This module gracefully degrades when PySide6 is unavailable (e.g., on servers).
+In that case, a lightweight QColor shim is provided that preserves repr/tuple
+behaviour expected by UI components, while keeping imports cheap for web_server.
+"""
 
 import logging
 logger = logging.getLogger(__name__)
 
-from PySide6.QtGui import QColor
+try:
+    from PySide6.QtGui import QColor  # type: ignore
+except Exception:  # pragma: no cover - headless/server environments
+    class QColor:  # minimal shim
+        def __init__(self, r: int, g: int, b: int):
+            self._r, self._g, self._b = int(r), int(g), int(b)
+        def getRgb(self):
+            return (self._r, self._g, self._b, 255)
+        def __iter__(self):
+            yield from (self._r, self._g, self._b)
+        def __repr__(self) -> str:
+            return f"QColor({self._r}, {self._g}, {self._b})"
+        # Convenience hex string for web contexts
+        @property
+        def hex(self) -> str:
+            return f"#{self._r:02x}{self._g:02x}{self._b:02x}"
 
 # Order of priority used when extracting a module key from a reason string.
 REASON_PRIORITY = [
