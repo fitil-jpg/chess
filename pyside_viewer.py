@@ -16,7 +16,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
-    QListWidget, QScrollArea, QFileDialog,
+    QListWidget, QScrollArea, QFileDialog, QTextEdit, QSplitter,
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
@@ -213,7 +213,7 @@ class ChessViewer(QWidget):
         self.timeline_b = []  # для B
         self.fen_history = []
 
-        # ---- ЛЕВА КОЛОНКА: ДОШКА ----
+        # ---- ЛЕВА КОЛОНКА: ДОШКА + КОНСОЛЬ ----
         self.board_frame = QFrame()
         self.board_frame.setFixedSize(560, 560)
         self.grid = QGridLayout(self.board_frame)
@@ -222,8 +222,27 @@ class ChessViewer(QWidget):
         self.cell_grid = [[None for _ in range(8)] for _ in range(8)]
         self._draw_board_widgets()
 
+        # Console output area
+        self.console_output = QTextEdit()
+        self.console_output.setMaximumHeight(200)
+        self.console_output.setMinimumHeight(150)
+        self.console_output.setReadOnly(True)
+        self.console_output.setStyleSheet("""
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                font-family: 'Courier New', monospace;
+                font-size: 10px;
+                border: 1px solid #444;
+                border-radius: 4px;
+            }
+        """)
+        self.console_output.setPlainText("Console output will appear here during auto-play...")
+
         left_col = QVBoxLayout()
         left_col.addWidget(self.board_frame)
+        left_col.addWidget(QLabel("Console Output:"))
+        left_col.addWidget(self.console_output)
         left_col.addStretch(1)  # підштовхує дошку догори
 
         # ---- ПРАВА КОЛОНКА: КНОПКИ + СТАТУСИ ----
@@ -546,6 +565,12 @@ class ChessViewer(QWidget):
         self.btn_auto.setEnabled(False)
         self.btn_pause.setEnabled(True)
         
+        # Очищаем консоль и добавляем начальное сообщение
+        self.console_output.clear()
+        self._append_to_console("=== Starting Auto Play Mode ===")
+        self._append_to_console(f"Playing {self.auto_play_games} games: {WHITE_AGENT} vs {BLACK_AGENT}")
+        self._append_to_console("")
+        
         # Обновляем заголовок
         self.setWindowTitle(f"Chess Viewer — Auto Play Mode (Game 1/{self.auto_play_games})")
         
@@ -569,6 +594,9 @@ class ChessViewer(QWidget):
         self._update_usage_charts()
         self.moves_list.clear()
         self.fen_history.clear()
+        
+        # Добавляем информацию о новой игре в консоль
+        self._append_to_console(f"--- Starting Game {self.current_auto_game + 1} ---")
         
         # Инициализируем фигуры
         self._init_pieces()
@@ -597,11 +625,11 @@ class ChessViewer(QWidget):
         # Обновляем заголовок
         self.setWindowTitle("Chess Viewer — Auto Play Complete")
         
-        # Показываем статистику
-        self._show_auto_play_summary()
+        # Показываем статистику в консоли
+        self._show_auto_play_summary_in_console()
         
-    def _show_auto_play_summary(self):
-        """Показать сводку автоматических игр"""
+    def _show_auto_play_summary_in_console(self):
+        """Показать сводку автоматических игр в консоли"""
         if not self.auto_play_results:
             return
             
@@ -616,33 +644,27 @@ class ChessViewer(QWidget):
             total_moves += result.get('moves', 0)
             total_duration += result.get('duration_ms', 0)
             
-        # Создаем сводку
-        summary_lines = [
-            f"🎮 <b>Auto Play Summary ({len(self.auto_play_results)} games)</b>",
-            "",
-            "<b>Results:</b>",
-        ]
+        # Добавляем сводку в консоль
+        self._append_to_console("=" * 50)
+        self._append_to_console("🎮 AUTO PLAY SUMMARY")
+        self._append_to_console("=" * 50)
+        self._append_to_console(f"Total games: {len(self.auto_play_results)}")
+        self._append_to_console("")
+        self._append_to_console("Results:")
         
         for result, count in results_count.items():
             percentage = (count / len(self.auto_play_results)) * 100
-            summary_lines.append(f"• {result}: {count} games ({percentage:.1f}%)")
+            self._append_to_console(f"  {result}: {count} games ({percentage:.1f}%)")
             
-        summary_lines.extend([
-            "",
-            f"<b>Statistics:</b>",
-            f"• Total moves: {total_moves}",
-            f"• Average moves per game: {total_moves / len(self.auto_play_results):.1f}",
-            f"• Total duration: {total_duration / 1000:.1f}s",
-            f"• Average game duration: {total_duration / len(self.auto_play_results) / 1000:.1f}s",
-        ])
-        
-        summary_text = "<br>".join(summary_lines)
-        
-        QMessageBox.information(
-            self,
-            "🎯 Auto Play Complete",
-            summary_text
-        )
+        self._append_to_console("")
+        self._append_to_console("Statistics:")
+        self._append_to_console(f"  Total moves: {total_moves}")
+        self._append_to_console(f"  Average moves per game: {total_moves / len(self.auto_play_results):.1f}")
+        self._append_to_console(f"  Total duration: {total_duration / 1000:.1f}s")
+        self._append_to_console(f"  Average game duration: {total_duration / len(self.auto_play_results) / 1000:.1f}s")
+        self._append_to_console("=" * 50)
+        self._append_to_console("Auto Play Complete!")
+        self._append_to_console("")
 
     def auto_step(self):
         try:
@@ -717,6 +739,11 @@ class ChessViewer(QWidget):
             if self.debug_verbose.isChecked():
                 print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
 
+            # Добавляем ход в консоль во время auto-play
+            if self.auto_play_mode:
+                move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
+                self._append_to_console(move_info)
+
             self._update_status(reason, feats)
 
             # Append SAN move to list and highlight
@@ -764,11 +791,17 @@ class ChessViewer(QWidget):
         
         self.auto_play_results.append(game_result)
         
+        # Добавляем результат в консоль вместо показа окна
+        self._append_to_console(f"=== Game {self.current_auto_game + 1} Complete ===")
+        self._append_to_console(f"Result: {result}")
+        self._append_to_console(f"Moves: {moves_count}")
+        self._append_to_console(f"Duration: {duration_ms}ms")
+        self._append_to_console(f"White modules: {', '.join(self.usage_w.keys())}")
+        self._append_to_console(f"Black modules: {', '.join(self.usage_b.keys())}")
+        self._append_to_console("")
+        
         # Обновляем счетчик игр
         self.current_auto_game += 1
-        
-        # Показываем результат текущей игры
-        self._show_game_over()
         
         # Небольшая пауза перед следующей игрой
         QTimer.singleShot(2000, self._start_next_auto_game)
@@ -789,10 +822,23 @@ class ChessViewer(QWidget):
         }
         
         self.auto_play_results.append(game_result)
+        
+        # Добавляем ошибку в консоль
+        self._append_to_console(f"=== Game {self.current_auto_game + 1} ERROR ===")
+        self._append_to_console(f"Error: {exc}")
+        self._append_to_console("")
+        
         self.current_auto_game += 1
         
         # Продолжаем со следующей игрой
         QTimer.singleShot(1000, self._start_next_auto_game)
+    
+    def _append_to_console(self, text):
+        """Добавить текст в консольный вывод"""
+        self.console_output.append(text)
+        # Автоматически прокручиваем вниз
+        scrollbar = self.console_output.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     # ---------- Копі-кнопки ----------
 
