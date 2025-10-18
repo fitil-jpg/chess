@@ -239,19 +239,22 @@ class ChessViewer(QWidget):
         btn_row = QHBoxLayout()
         self.btn_auto  = QPushButton("▶ Авто")
         self.btn_pause = QPushButton("⏸ Пауза")
+        self.btn_auto_play = QPushButton("🎮 10 Игр")
+        self.btn_auto_play.setToolTip("Автоматически сыграть 10 игр подряд")
         self.btn_copy_san = QPushButton("⧉ SAN")
         self.btn_copy_pgn = QPushButton("⧉ PGN")
         self.btn_save_png = QPushButton("📷 PNG")
         self.btn_refresh_elo = QPushButton("🔄 ELO")
         self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
 
         # Зв’язки
         self.btn_auto.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
+        self.btn_auto_play.clicked.connect(self.start_auto_play)
         self.btn_copy_san.clicked.connect(self.copy_san)
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
         self.btn_save_png.clicked.connect(self.save_png)
@@ -359,6 +362,12 @@ class ChessViewer(QWidget):
         self.auto_timer.setInterval(650)
         self.auto_timer.timeout.connect(self.auto_step)
         self.auto_running = False
+        
+        # Настройки автоматического воспроизведения
+        self.auto_play_games = 10  # Количество игр для автоматического воспроизведения
+        self.current_auto_game = 0
+        self.auto_play_results = []  # Результаты автоматических игр
+        self.auto_play_mode = False  # Режим автоматического воспроизведения
 
         # Початкова ініціалізація
         self._init_pieces()
@@ -527,12 +536,122 @@ class ChessViewer(QWidget):
     def pause_auto(self):
         self.auto_timer.stop()
         self.auto_running = False
+        
+    def start_auto_play(self):
+        """Начать автоматическое воспроизведение 10 игр подряд"""
+        self.auto_play_mode = True
+        self.current_auto_game = 0
+        self.auto_play_results = []
+        self.btn_auto_play.setEnabled(False)
+        self.btn_auto.setEnabled(False)
+        self.btn_pause.setEnabled(True)
+        
+        # Обновляем заголовок
+        self.setWindowTitle(f"Chess Viewer — Auto Play Mode (Game 1/{self.auto_play_games})")
+        
+        # Начинаем первую игру
+        self._start_next_auto_game()
+        
+    def _start_next_auto_game(self):
+        """Начать следующую игру в режиме автоматического воспроизведения"""
+        if self.current_auto_game >= self.auto_play_games:
+            self._finish_auto_play()
+            return
+            
+        # Сбрасываем доску для новой игры
+        self.board = chess.Board()
+        self.piece_objects = {}
+        self.usage_w.clear()
+        self.usage_b.clear()
+        self.timeline_w.clear()
+        self.timeline_b.clear()
+        self.timeline.set_data(self.timeline_w, self.timeline_b)
+        self._update_usage_charts()
+        self.moves_list.clear()
+        self.fen_history.clear()
+        
+        # Инициализируем фигуры
+        self._init_pieces()
+        self._refresh_board()
+        self._update_status("-", None)
+        
+        # Обновляем заголовок
+        self.setWindowTitle(f"Chess Viewer — Auto Play Mode (Game {self.current_auto_game + 1}/{self.auto_play_games})")
+        
+        # Начинаем автоматическую игру
+        self.auto_running = True
+        self.auto_timer.start()
+        self.auto_step()
+        
+    def _finish_auto_play(self):
+        """Завершить автоматическое воспроизведение"""
+        self.auto_play_mode = False
+        self.auto_running = False
+        self.auto_timer.stop()
+        
+        # Восстанавливаем кнопки
+        self.btn_auto_play.setEnabled(True)
+        self.btn_auto.setEnabled(True)
+        self.btn_pause.setEnabled(False)
+        
+        # Обновляем заголовок
+        self.setWindowTitle("Chess Viewer — Auto Play Complete")
+        
+        # Показываем статистику
+        self._show_auto_play_summary()
+        
+    def _show_auto_play_summary(self):
+        """Показать сводку автоматических игр"""
+        if not self.auto_play_results:
+            return
+            
+        # Подсчитываем статистику
+        results_count = {}
+        total_moves = 0
+        total_duration = 0
+        
+        for result in self.auto_play_results:
+            game_result = result.get('result', '*')
+            results_count[game_result] = results_count.get(game_result, 0) + 1
+            total_moves += result.get('moves', 0)
+            total_duration += result.get('duration_ms', 0)
+            
+        # Создаем сводку
+        summary_lines = [
+            f"🎮 <b>Auto Play Summary ({len(self.auto_play_results)} games)</b>",
+            "",
+            "<b>Results:</b>",
+        ]
+        
+        for result, count in results_count.items():
+            percentage = (count / len(self.auto_play_results)) * 100
+            summary_lines.append(f"• {result}: {count} games ({percentage:.1f}%)")
+            
+        summary_lines.extend([
+            "",
+            f"<b>Statistics:</b>",
+            f"• Total moves: {total_moves}",
+            f"• Average moves per game: {total_moves / len(self.auto_play_results):.1f}",
+            f"• Total duration: {total_duration / 1000:.1f}s",
+            f"• Average game duration: {total_duration / len(self.auto_play_results) / 1000:.1f}s",
+        ])
+        
+        summary_text = "<br>".join(summary_lines)
+        
+        QMessageBox.information(
+            self,
+            "🎯 Auto Play Complete",
+            summary_text
+        )
 
     def auto_step(self):
         try:
             if self.board.is_game_over():
-                self.pause_auto()
-                self._show_game_over()
+                if self.auto_play_mode:
+                    self._handle_auto_play_game_over()
+                else:
+                    self.pause_auto()
+                    self._show_game_over()
                 return
 
             mover_color = self.board.turn
@@ -611,14 +730,69 @@ class ChessViewer(QWidget):
                 
         except Exception as exc:
             logger.error(f"Unexpected error in auto_step: {exc}")
-            self.pause_auto()
-            QMessageBox.critical(
-                self,
-                "❌ Game Error",
-                f"🚨 <b>An unexpected error occurred during gameplay:</b>\n\n"
-                f"<b>Error:</b> {exc}\n\n"
-                f"<b>Game paused.</b> You may need to restart the application."
-            )
+            if self.auto_play_mode:
+                self._handle_auto_play_error(exc)
+            else:
+                self.pause_auto()
+                QMessageBox.critical(
+                    self,
+                    "❌ Game Error",
+                    f"🚨 <b>An unexpected error occurred during gameplay:</b>\n\n"
+                    f"<b>Error:</b> {exc}\n\n"
+                    f"<b>Game paused.</b> You may need to restart the application."
+                )
+                
+    def _handle_auto_play_game_over(self):
+        """Обработка завершения игры в режиме автоматического воспроизведения"""
+        import time
+        
+        # Сохраняем результат текущей игры
+        result = self.board.result()
+        moves_count = len(self.board.move_stack)
+        duration_ms = int(time.time() * 1000)  # Простое время (можно улучшить)
+        
+        game_result = {
+            'game_id': self.current_auto_game,
+            'result': result,
+            'moves': moves_count,
+            'duration_ms': duration_ms,
+            'modules_w': list(self.usage_w.keys()),
+            'modules_b': list(self.usage_b.keys()),
+            'moves_san': self._moves_san_string(),
+            'pgn': self._game_pgn_string()
+        }
+        
+        self.auto_play_results.append(game_result)
+        
+        # Обновляем счетчик игр
+        self.current_auto_game += 1
+        
+        # Показываем результат текущей игры
+        self._show_game_over()
+        
+        # Небольшая пауза перед следующей игрой
+        QTimer.singleShot(2000, self._start_next_auto_game)
+        
+    def _handle_auto_play_error(self, exc):
+        """Обработка ошибки в режиме автоматического воспроизведения"""
+        logger.error(f"Error in auto play game {self.current_auto_game + 1}: {exc}")
+        
+        # Сохраняем результат с ошибкой
+        game_result = {
+            'game_id': self.current_auto_game,
+            'result': 'ERROR',
+            'moves': len(self.board.move_stack),
+            'duration_ms': 0,
+            'error': str(exc),
+            'modules_w': list(self.usage_w.keys()),
+            'modules_b': list(self.usage_b.keys())
+        }
+        
+        self.auto_play_results.append(game_result)
+        self.current_auto_game += 1
+        
+        # Продолжаем со следующей игрой
+        QTimer.singleShot(1000, self._start_next_auto_game)
 
     # ---------- Копі-кнопки ----------
 
