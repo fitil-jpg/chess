@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess AI Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/chess.min.js"></script>
+    <!-- Load a stable chess.js that exposes global `Chess`; fallback to jsDelivr if cdnjs fails -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js';document.head.appendChild(s);})();"></script>
     <style>
         * {
             margin: 0;
@@ -887,6 +888,11 @@
                 
                 if (response.ok) {
                     const data = await response.json();
+                    if (typeof Chess === 'undefined') {
+                        console.error('Chess.js не завантажено — бібліотека недоступна.');
+                        alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                        return;
+                    }
                     game = new Chess();
                     updateBoard();
                     
@@ -932,6 +938,11 @@
         // Скидання гри
         function resetGame() {
             stopGame();
+            if (typeof Chess === 'undefined') {
+                console.error('Chess.js не завантажено — бібліотека недоступна.');
+                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                return;
+            }
             game = new Chess();
             updateBoard();
             document.getElementById('game-status').textContent = 'Готовий до початку гри';
@@ -1015,6 +1026,11 @@
             }
             
             stopGame();
+            if (typeof Chess === 'undefined') {
+                console.error('Chess.js не завантажено — бібліотека недоступна.');
+                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
+                return;
+            }
             game = new Chess();
             updateBoard();
             document.getElementById('game-status').textContent = 'Готовий до початку гри';
