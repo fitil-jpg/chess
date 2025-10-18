@@ -1,0 +1,41 @@
+# Dockerfile for headless bot-vs-bot match runner with logs
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install minimal system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements and install runtime deps
+COPY requirements.txt ./
+# Only the needed subset will be imported at runtime; heavy libs remain optional
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir Flask==2.3.3 Flask-CORS==4.0.0
+
+# Copy project sources
+COPY chess_ai/ ./chess_ai/
+COPY core/ ./core/
+COPY metrics/ ./metrics/
+COPY utils/ ./utils/
+COPY scripts/ ./scripts/
+COPY arena.py ./
+COPY main.py ./
+COPY bin/stockfish-bin /usr/local/bin/stockfish
+
+# Ensure Stockfish is executable if present
+RUN chmod +x /usr/local/bin/stockfish || true
+
+# Provide a place for outputs; allow mounting as a volume
+RUN mkdir -p /logs /runs /output
+
+# Environment for Stockfish (optional). Users can override or mount their own engine
+ENV STOCKFISH_PATH=/usr/local/bin/stockfish
+
+# Default command: run a small series and save JSON logs to /runs
+# You can override agents/time via docker run arguments
+CMD ["python", "-u", "arena.py"]

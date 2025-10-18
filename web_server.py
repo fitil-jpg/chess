@@ -50,6 +50,9 @@ game_data = {
     'elo_manager': None
 }
 
+# Директорія з логами ігор (можна перевизначити через RUNS_DIR)
+RUNS_DIR = os.environ.get("RUNS_DIR", "runs")
+
 class GameManager:
     """Менеджер для управління іграми та ботами"""
     
@@ -176,7 +179,7 @@ def get_games():
     """Отримати список ігор"""
     try:
         # Завантажуємо існуючі ігри з файлів
-        runs = load_runs()
+        runs = load_runs(RUNS_DIR)
         games = []
         
         for run in runs:
@@ -202,7 +205,7 @@ def get_games():
 def get_modules():
     """Отримати статистику модулів"""
     try:
-        runs = load_runs()
+        runs = load_runs(RUNS_DIR)
         module_stats = {}
         
         for run in runs:
