@@ -9,3 +9,6 @@ schedule
 python-dotenv
 PySide6
 pyautogui
+# Wolfram Engine integration (optional)
+# Note: Wolfram Engine must be installed separately from https://www.wolfram.com/engine/
+# The wolframscript command must be available in PATH
