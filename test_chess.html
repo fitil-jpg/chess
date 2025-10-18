@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chess Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/chess.min.js"></script>
+</head>
+<body>
+    <h1>Chess Library Test</h1>
+    <div id="status"></div>
+    <button onclick="testChess()">Test Chess</button>
+    
+    <script>
+        function testChess() {
+            try {
+                const game = new Chess();
+                document.getElementById('status').innerHTML = 'Chess library loaded successfully!<br>FEN: ' + game.fen();
+                console.log('Chess object:', game);
+            } catch (error) {
+                document.getElementById('status').innerHTML = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Test on page load
+        window.onload = function() {
+            testChess();
+        };
+    </script>
+</body>
+</html>
