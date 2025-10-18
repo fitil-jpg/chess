@@ -1108,6 +1108,119 @@ class ChessViewer(QWidget):
         msg_box.exec()
         self.close()
 
+    def _save_game_to_runs(self, result: str) -> None:
+        """Save the current game to the runs folder."""
+        import json
+        import os
+        from datetime import datetime
+        
+        # Create runs directory if it doesn't exist
+        os.makedirs("runs", exist_ok=True)
+        
+        # Generate timestamp for filename
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        run_path = os.path.join("runs", f"{ts}.json")
+        
+        # Collect game data
+        moves_log = []
+        fens_log = []
+        modules_w = []
+        modules_b = []
+        
+        # Replay the game to collect data
+        temp_board = chess.Board()
+        for move in self.board.move_stack:
+            san = temp_board.san(move)
+            moves_log.append(san)
+            temp_board.push(move)
+            fens_log.append(temp_board.fen())
+            
+            # Get reason for the move (simplified - would need agent access)
+            if temp_board.turn == chess.BLACK:  # Move was made by white
+                modules_w.append("UI_Game")
+            else:  # Move was made by black
+                modules_b.append("UI_Game")
+        
+        # Save to file
+        with open(run_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "moves": moves_log,
+                    "fens": fens_log,
+                    "modules_w": modules_w,
+                    "modules_b": modules_b,
+                    "result": result,
+                    "white_agent": WHITE_AGENT,
+                    "black_agent": BLACK_AGENT,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+        
+        logger.info(f"Game saved to {run_path}")
+
+    def _update_elo_counter(self, result: str) -> None:
+        """Update ELO ratings and game counter."""
+        try:
+            # Initialize ELO sync manager
+            elo_manager = ELOSyncManager()
+            
+            # Determine winner
+            if result == "1-0":
+                winner = WHITE_AGENT
+                loser = BLACK_AGENT
+            elif result == "0-1":
+                winner = BLACK_AGENT
+                loser = WHITE_AGENT
+            else:  # Draw
+                winner = None
+                loser = None
+            
+            # Update ratings
+            if winner and loser:
+                # Update winner
+                winner_rating = elo_manager.get_bot_rating(winner)
+                if winner_rating:
+                    elo_manager.update_bot_rating(
+                        winner, 
+                        winner_rating.elo + 20,  # Simple +20 for win
+                        "local",
+                        "Game win"
+                    )
+                # Update loser
+                loser_rating = elo_manager.get_bot_rating(loser)
+                if loser_rating:
+                    elo_manager.update_bot_rating(
+                        loser, 
+                        loser_rating.elo - 20,  # Simple -20 for loss
+                        "local",
+                        "Game loss"
+                    )
+            else:
+                # Draw - small adjustments
+                white_rating = elo_manager.get_bot_rating(WHITE_AGENT)
+                if white_rating:
+                    elo_manager.update_bot_rating(
+                        WHITE_AGENT,
+                        white_rating.elo + 2,
+                        "local",
+                        "Game draw"
+                    )
+                black_rating = elo_manager.get_bot_rating(BLACK_AGENT)
+                if black_rating:
+                    elo_manager.update_bot_rating(
+                        BLACK_AGENT,
+                        black_rating.elo + 2,
+                        "local",
+                        "Game draw"
+                    )
+            
+            logger.info(f"ELO ratings updated for {WHITE_AGENT} vs {BLACK_AGENT}")
+            
+        except Exception as exc:
+            logger.error(f"Failed to update ELO counter: {exc}")
+
     def _show_game_over(self):
         res = self.board.result()
         winner = chess.WHITE if res == "1-0" else chess.BLACK
@@ -1145,6 +1258,13 @@ class ChessViewer(QWidget):
             self._auto_save_xrpa_png(res)
         except Exception as exc:
             print(f"Auto-save PNG failed: {exc}")
+
+        # Save game to runs folder and update ELO counter
+        try:
+            self._save_game_to_runs(res)
+            self._update_elo_counter(res)
+        except Exception as exc:
+            logger.error(f"Failed to save game or update ELO: {exc}")
 
         QMessageBox.information(
             self,
