@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess AI Analytics Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <!-- Use Chart.js UMD build (global Chart) to avoid ESM export errors -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+            onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/chart.js@4.4.3/dist/chart.umd.min.js';document.head.appendChild(s);})();"></script>
     <!-- Load a stable chess.js that exposes global `Chess`; fallback to jsDelivr if cdnjs fails -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js';document.head.appendChild(s);})();"></script>
     <style>
@@ -516,7 +519,7 @@
             initializeCharts();
             loadGameData();
             setupEventListeners();
-        }
+        });
 
         // Ініціалізація шахової доски
         function initializeChessBoard() {

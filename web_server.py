@@ -162,6 +162,20 @@ def index():
     """Головна сторінка"""
     return send_from_directory('.', 'web_interface.html')
 
+@app.route('/favicon.ico')
+def favicon():
+    """Повертає favicon для браузера"""
+    # Підтримуємо як svg у static, так і запасний шлях
+    static_path = Path('static')
+    svg_path = static_path / 'favicon.svg'
+    if svg_path.exists():
+        return send_from_directory('static', 'favicon.svg')
+    # Якщо немає svg, спробуємо ico, інакше 404 відправить Flask
+    ico_path = static_path / 'favicon.ico'
+    if ico_path.exists():
+        return send_from_directory('static', 'favicon.ico')
+    return ('', 204)
+
 @app.route('/api/status')
 def get_status():
     """Отримати статус системи"""
