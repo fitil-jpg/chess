@@ -10,6 +10,7 @@ import json
 import time
 import logging
 import threading
+import signal
 import socket
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -35,33 +36,53 @@ from chess_ai.elo_sync_manager import ELOSyncManager
 # Налаштування логування
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('chess_server.log')
+    ]
 )
 logger = logging.getLogger(__name__)
+
+# Налаштування для обробки помилок сокетів
+socket.setdefaulttimeout(30)  # 30 секунд таймаут для сокетів
 
 # Ініціалізація Flask додатку
 app = Flask(__name__)
 CORS(app)
 
+# Налаштування для обробки помилок
+app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
+app.config['JSON_SORT_KEYS'] = False
 
-class QuietWSGIRequestHandler(WSGIRequestHandler):
-    """WSGI request handler that silences common client disconnect errors.
+# Глобальна змінна для контролю сервера
+server_shutdown = threading.Event()
 
-    Suppresses noisy tracebacks such as BrokenPipeError, ConnectionResetError,
-    and platform-specific OSError codes when the client closes the connection
-    early (e.g., browser preconnects, health checks, or port scans).
-    """
+# Статистика з'єднань
+connection_stats = {
+    'total_requests': 0,
+    'failed_requests': 0,
+    'active_connections': 0,
+    'last_reset': time.time()
+}
 
-    def handle(self):  # type: ignore[override]
-        try:
-            super().handle()
-        except (BrokenPipeError, ConnectionResetError, OSError) as error:  # pragma: no cover
-            error_number = getattr(error, "errno", None)
-            # Common errno values: 32 (EPIPE), 104 (ECONNRESET), 57 (ENOTCONN on macOS)
-            if isinstance(error, (BrokenPipeError, ConnectionResetError)) or error_number in {32, 57, 104}:
-                logger.debug(f"Ignored client disconnect: {error}")
-                return
-            raise
+def log_connection_stats():
+    """Логування статистики з'єднань"""
+    if connection_stats['total_requests'] > 0:
+        success_rate = ((connection_stats['total_requests'] - connection_stats['failed_requests']) / 
+                       connection_stats['total_requests']) * 100
+        logger.info(f"Статистика з'єднань: {connection_stats['total_requests']} запитів, "
+                   f"успішність {success_rate:.1f}%, активних з'єднань: {connection_stats['active_connections']}")
+
+# Запускаємо логування статистики кожні 60 секунд
+def stats_logger():
+    """Фонове логування статистики"""
+    while not server_shutdown.is_set():
+        time.sleep(60)
+        if not server_shutdown.is_set():
+            log_connection_stats()
+
+stats_thread = threading.Thread(target=stats_logger, daemon=True)
 
 # Глобальні змінні
 game_data = {
@@ -71,6 +92,100 @@ game_data = {
     'agents': {},
     'elo_manager': None
 }
+
+# Декоратор для обробки помилок API
+def handle_api_errors(f):
+    """Декоратор для обробки помилок API з логуванням"""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = f(*args, **kwargs)
+            duration = time.time() - start_time
+            if duration > 5:  # Логуємо повільні запити
+                logger.warning(f"Повільний запит {f.__name__}: {duration:.2f}s")
+            return result
+        except (ConnectionResetError, OSError, socket.error) as e:
+            connection_stats['failed_requests'] += 1
+            logger.warning(f"Помилка з'єднання в {f.__name__}: {e}")
+            return jsonify({'error': 'Помилка з\'єднання', 'details': str(e)}), 503
+        except Exception as e:
+            connection_stats['failed_requests'] += 1
+            logger.error(f"Неочікувана помилка в {f.__name__}: {e}", exc_info=True)
+            return jsonify({'error': 'Внутрішня помилка сервера', 'details': str(e)}), 500
+        finally:
+            # Оновлюємо статистику активних з'єднань
+            connection_stats['active_connections'] = max(0, connection_stats['active_connections'] - 1)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+# Middleware для обробки помилок сокетів
+@app.before_request
+def before_request():
+    """Обробка запитів перед виконанням"""
+    try:
+        # Перевіряємо чи сервер не закривається
+        if server_shutdown.is_set():
+            return jsonify({'error': 'Сервер закривається'}), 503
+        
+        # Оновлюємо статистику
+        connection_stats['total_requests'] += 1
+        connection_stats['active_connections'] += 1
+        
+        # Логуємо запит (тільки для API endpoints)
+        if request.path.startswith('/api/'):
+            logger.debug(f"API запит: {request.method} {request.path} від {request.remote_addr}")
+            
+    except Exception as e:
+        logger.error(f"Помилка в before_request: {e}")
+
+@app.after_request
+def after_request(response):
+    """Обробка відповідей після виконання"""
+    try:
+        # Оновлюємо статистику
+        connection_stats['active_connections'] = max(0, connection_stats['active_connections'] - 1)
+        
+        if response.status_code >= 400:
+            connection_stats['failed_requests'] += 1
+        
+        # Додаємо заголовки для стабільності
+        response.headers['Connection'] = 'keep-alive'
+        response.headers['Keep-Alive'] = 'timeout=30, max=100'
+        response.headers['X-Request-ID'] = str(int(time.time() * 1000))  # Унікальний ID запиту
+        
+        return response
+    except Exception as e:
+        logger.error(f"Помилка в after_request: {e}")
+        return response
+
+# Обробник помилок для різних типів винятків
+@app.errorhandler(ConnectionResetError)
+def handle_connection_reset(e):
+    """Обробка помилок скидання з'єднання"""
+    logger.warning(f"З'єднання скинуто: {e}")
+    return jsonify({'error': 'З\'єднання втрачено'}), 503
+
+@app.errorhandler(OSError)
+def handle_os_error(e):
+    """Обробка помилок операційної системи"""
+    if e.errno == 57:  # Socket is not connected
+        logger.warning(f"Сокет не підключений: {e}")
+        return jsonify({'error': 'З\'єднання втрачено'}), 503
+    else:
+        logger.error(f"Помилка ОС: {e}")
+        return jsonify({'error': 'Помилка з\'єднання'}), 500
+
+@app.errorhandler(socket.error)
+def handle_socket_error(e):
+    """Обробка помилок сокетів"""
+    logger.warning(f"Помилка сокета: {e}")
+    return jsonify({'error': 'Помилка мережі'}), 503
+
+@app.errorhandler(500)
+def handle_internal_error(e):
+    """Обробка внутрішніх помилок сервера"""
+    logger.error(f"Внутрішня помилка сервера: {e}")
+    return jsonify({'error': 'Внутрішня помилка сервера'}), 500
 
 # Директорія з логами ігор (можна перевизначити через RUNS_DIR)
 RUNS_DIR = os.environ.get("RUNS_DIR", "runs")
@@ -105,35 +220,59 @@ class GameManager:
         self.start_time = None
     
     def make_move(self) -> Optional[Dict[str, Any]]:
-        """Зробити хід"""
-        if self.current_board.is_game_over():
-            return None
-            
+        """Зробити хід з покращеною обробкою помилок"""
         try:
+            if self.current_board.is_game_over():
+                return None
+                
             mover_color = self.current_board.turn
             agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
             
             if not agent:
+                logger.warning(f"Агент не знайдено для кольору {mover_color}")
+                return None
+                
+            # Додаткова перевірка стану доски
+            if not self.current_board.is_valid():
+                logger.error("Недійсний стан доски")
                 return None
                 
             move = agent.choose_move(self.current_board)
-            if not move or not self.current_board.is_legal(move):
+            if not move:
+                logger.warning("Агент не зміг зробити хід")
+                return None
+                
+            if not self.current_board.is_legal(move):
+                logger.warning(f"Недійсний хід: {move}")
                 return None
                 
             # Отримуємо інформацію про модуль
-            reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "UNKNOWN"
-            module_key = self._extract_reason_key(reason)
+            try:
+                reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "UNKNOWN"
+                module_key = self._extract_reason_key(reason)
+            except Exception as e:
+                logger.warning(f"Помилка отримання причини ходу: {e}")
+                module_key = "UNKNOWN"
             
             # Записуємо хід
-            san_move = self.current_board.san(move)
-            self.game_moves.append(san_move)
+            try:
+                san_move = self.current_board.san(move)
+                self.game_moves.append(san_move)
+            except Exception as e:
+                logger.error(f"Помилка конвертації ходу в SAN: {e}")
+                return None
             
             if mover_color == chess.WHITE:
                 self.game_modules['white'].append(module_key)
             else:
                 self.game_modules['black'].append(module_key)
             
-            self.current_board.push(move)
+            # Виконуємо хід
+            try:
+                self.current_board.push(move)
+            except Exception as e:
+                logger.error(f"Помилка виконання ходу: {e}")
+                return None
             
             return {
                 'move': san_move,
@@ -144,8 +283,11 @@ class GameManager:
                 'result': self.current_board.result() if self.current_board.is_game_over() else None
             }
             
+        except (ConnectionResetError, OSError, socket.error) as e:
+            logger.warning(f"Помилка з'єднання при виконанні ходу: {e}")
+            return None
         except Exception as e:
-            logger.error(f"Помилка при виконанні ходу: {e}")
+            logger.error(f"Неочікувана помилка при виконанні ходу: {e}", exc_info=True)
             return None
     
     def _extract_reason_key(self, reason: str) -> str:
@@ -180,11 +322,34 @@ class GameManager:
 game_manager = GameManager()
 
 @app.route('/')
+@handle_api_errors
 def index():
     """Головна сторінка"""
-    return send_from_directory('.', 'web_interface.html')
+    try:
+        return send_from_directory('.', 'web_interface.html')
+    except FileNotFoundError:
+        logger.warning("Файл web_interface.html не знайдено")
+        return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
+
+@app.route('/health')
+@handle_api_errors
+def health_check():
+    """Перевірка здоров'я сервера"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'uptime': time.time() - (getattr(health_check, 'start_time', time.time())),
+        'server_info': {
+            'python_version': sys.version,
+            'flask_version': getattr(Flask, '__version__', 'unknown')
+        }
+    })
+
+# Ініціалізуємо час запуску для health check
+health_check.start_time = time.time()
 
 @app.route('/api/status')
+@handle_api_errors
 def get_status():
     """Отримати статус системи"""
     return jsonify({
@@ -197,6 +362,7 @@ def get_status():
     })
 
 @app.route('/api/games', methods=['GET'])
+@handle_api_errors
 def get_games():
     """Отримати список ігор"""
     try:
@@ -224,6 +390,7 @@ def get_games():
         return jsonify([])
 
 @app.route('/api/modules', methods=['GET'])
+@handle_api_errors
 def get_modules():
     """Отримати статистику модулів"""
     try:
@@ -241,6 +408,7 @@ def get_modules():
         return jsonify({})
 
 @app.route('/api/game/start', methods=['POST'])
+@handle_api_errors
 def start_game():
     """Почати нову гру"""
     try:
@@ -268,6 +436,7 @@ def start_game():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/move', methods=['POST'])
+@handle_api_errors
 def make_move():
     """Зробити хід"""
     try:
@@ -330,6 +499,7 @@ def make_move():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/stop', methods=['POST'])
+@handle_api_errors
 def stop_game():
     """Зупинити гру"""
     try:
@@ -340,6 +510,7 @@ def stop_game():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/reset', methods=['POST'])
+@handle_api_errors
 def reset_game():
     """Скинути гру"""
     try:
@@ -351,6 +522,7 @@ def reset_game():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/state', methods=['GET'])
+@handle_api_errors
 def get_game_state():
     """Отримати поточний стан гри"""
     try:
@@ -360,6 +532,7 @@ def get_game_state():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bots', methods=['GET'])
+@handle_api_errors
 def get_available_bots():
     """Отримати список доступних ботів"""
     bots = [
@@ -379,6 +552,7 @@ def get_available_bots():
     return jsonify(bots)
 
 @app.route('/api/elo', methods=['GET'])
+@handle_api_errors
 def get_elo_ratings():
     """Отримати ELO рейтинги"""
     try:
@@ -392,6 +566,7 @@ def get_elo_ratings():
         return jsonify({})
 
 @app.route('/api/heatmaps', methods=['GET'])
+@handle_api_errors
 def get_heatmaps():
     """Отримати теплові карти"""
     try:
@@ -402,6 +577,7 @@ def get_heatmaps():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/analytics', methods=['GET'])
+@handle_api_errors
 def get_game_analytics():
     """Отримати аналітику поточної гри"""
     try:
@@ -436,6 +612,7 @@ def get_game_analytics():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/move/analyze', methods=['POST'])
+@handle_api_errors
 def analyze_move():
     """Аналіз конкретного ходу"""
     try:
@@ -485,6 +662,7 @@ def analyze_move():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/position/evaluate', methods=['POST'])
+@handle_api_errors
 def evaluate_position():
     """Оцінка позиції"""
     try:
@@ -603,9 +781,32 @@ def evaluate_mobility(board):
 
 # Статичні файли
 @app.route('/static/<path:filename>')
+@handle_api_errors
 def static_files(filename):
     """Обслуговування статичних файлів"""
-    return send_from_directory('static', filename)
+    try:
+        return send_from_directory('static', filename)
+    except FileNotFoundError:
+        logger.warning(f"Статичний файл не знайдено: {filename}")
+        return jsonify({'error': 'Файл не знайдено'}), 404
+
+def signal_handler(signum, frame):
+    """Обробник сигналів для graceful shutdown"""
+    logger.info(f"Отримано сигнал {signum}, закриваємо сервер...")
+    server_shutdown.set()
+    
+    # Логуємо фінальну статистику
+    log_connection_stats()
+    
+    # Даємо час на завершення активних з'єднань
+    logger.info("Очікуємо завершення активних з'єднань...")
+    for i in range(10):  # Максимум 10 секунд
+        if connection_stats['active_connections'] == 0:
+            break
+        time.sleep(1)
+        logger.info(f"Активних з'єднань: {connection_stats['active_connections']}")
+    
+    logger.info("Сервер готовий до закриття")
 
 def _detect_local_ip() -> Optional[str]:
     """Attempt to detect a non-loopback local IPv4 address for logging purposes."""
@@ -629,7 +830,7 @@ def _detect_local_ip() -> Optional[str]:
 
 
 def run_server(host='0.0.0.0', port=5000, debug=False):
-    """Запуск сервера"""
+    """Запуск сервера з покращеною обробкою помилок"""
     logger.info(f"Запуск веб-сервера на {host}:{port}")
     if host in ("0.0.0.0", "::"):
         logger.info(f"Відкрийте http://127.0.0.1:{port} у браузері")
@@ -639,13 +840,49 @@ def run_server(host='0.0.0.0', port=5000, debug=False):
     else:
         logger.info(f"Відкрийте http://{host}:{port} у браузері")
     
+    # Встановлюємо обробники сигналів
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Запускаємо фонове логування статистики
+    global stats_thread
+    stats_thread.start()
+    logger.info("Запущено моніторинг статистики з'єднань")
+    
     # Встановлюємо шлях до Stockfish
     if not os.environ.get("STOCKFISH_PATH"):
         stockfish_path = "/workspace/bin/stockfish-bin"
         if os.path.exists(stockfish_path):
             os.environ["STOCKFISH_PATH"] = stockfish_path
     
-    app.run(host=host, port=port, debug=debug, threaded=True, request_handler=QuietWSGIRequestHandler)
+    try:
+        # Налаштування для покращеної стабільності
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+        app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+        
+        # Запуск сервера з покращеними налаштуваннями
+        app.run(
+            host=host, 
+            port=port, 
+            debug=debug, 
+            threaded=True,
+            use_reloader=False,  # Відключаємо reloader для стабільності
+            request_handler=None,  # Використовуємо стандартний обробник
+            passthrough_errors=False  # Обробляємо всі помилки
+        )
+    except (OSError, socket.error) as e:
+        if e.errno == 48:  # Address already in use
+            logger.error(f"Порт {port} вже використовується. Спробуйте інший порт.")
+        else:
+            logger.error(f"Помилка запуску сервера: {e}")
+        raise
+    except KeyboardInterrupt:
+        logger.info("Сервер зупинено користувачем")
+    except Exception as e:
+        logger.error(f"Неочікувана помилка сервера: {e}", exc_info=True)
+        raise
+    finally:
+        logger.info("Сервер закрито")
 
 if __name__ == '__main__':
     import argparse
@@ -654,7 +891,17 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=5000, help='Port to bind to')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    parser.add_argument('--timeout', type=int, default=30, help='Request timeout in seconds')
     
     args = parser.parse_args()
     
-    run_server(host=args.host, port=args.port, debug=args.debug)
+    # Встановлюємо таймаут для запитів
+    socket.setdefaulttimeout(args.timeout)
+    
+    try:
+        run_server(host=args.host, port=args.port, debug=args.debug)
+    except KeyboardInterrupt:
+        logger.info("Сервер зупинено користувачем")
+    except Exception as e:
+        logger.error(f"Критична помилка сервера: {e}", exc_info=True)
+        sys.exit(1)
