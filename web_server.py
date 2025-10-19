@@ -24,6 +24,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
 import chess
 import chess.engine
+from werkzeug.serving import WSGIRequestHandler
 
 # Імпортуємо існуючі компоненти
 from chess_ai.bot_agent import make_agent
@@ -807,10 +808,37 @@ def signal_handler(signum, frame):
     
     logger.info("Сервер готовий до закриття")
 
+def _detect_local_ip() -> Optional[str]:
+    """Attempt to detect a non-loopback local IPv4 address for logging purposes."""
+    try:
+        candidates = {
+            addr[4][0]
+            for addr in socket.getaddrinfo(socket.gethostname(), None, family=socket.AF_INET)
+        }
+        for ip in sorted(candidates):
+            if not ip.startswith("127."):
+                return ip
+    except Exception:
+        pass
+    try:
+        # Fallback technique that infers the preferred outbound interface locally
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return None
+
+
 def run_server(host='0.0.0.0', port=5000, debug=False):
     """Запуск сервера з покращеною обробкою помилок"""
     logger.info(f"Запуск веб-сервера на {host}:{port}")
-    logger.info(f"Відкрийте http://{host}:{port} у браузері")
+    if host in ("0.0.0.0", "::"):
+        logger.info(f"Відкрийте http://127.0.0.1:{port} у браузері")
+        local_ip = _detect_local_ip()
+        if local_ip:
+            logger.info(f"Або у локальній мережі: http://{local_ip}:{port}")
+    else:
+        logger.info(f"Відкрийте http://{host}:{port} у браузері")
     
     # Встановлюємо обробники сигналів
     signal.signal(signal.SIGINT, signal_handler)
