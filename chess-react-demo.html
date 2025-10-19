@@ -7,7 +7,19 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/chess.js@1.0.0-beta.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+    <script>
+        // Debug: Check what's available
+        console.log('Chess library loaded:', typeof Chess);
+        console.log('Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('chess')));
+        
+        // Ensure Chess is available globally
+        if (typeof Chess === 'undefined') {
+            console.error('Chess library not loaded properly');
+        } else {
+            console.log('Chess constructor available:', typeof Chess);
+        }
+    </script>
     <link rel="stylesheet" href="ChessBoard.css">
     <style>
         body {
@@ -36,6 +48,25 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin: 20px;
+        }
+        
+        .error-message h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }
+        
+        .error-message p {
+            color: #666;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -62,9 +93,21 @@
             whiteBot = 'StockfishBot',
             blackBot = 'DynamicBot'
         }) => {
+            console.log('ChessBoard component created');
             const [game, setGame] = useState(() => {
-                const Ctor = getChessCtor();
-                return Ctor ? new Ctor() : null;
+                console.log('Initializing game, Chess available:', typeof Chess);
+                if (typeof Chess === 'undefined') {
+                    console.error('Chess library not loaded');
+                    return null;
+                }
+                try {
+                    const gameInstance = new Chess();
+                    console.log('Chess game created successfully');
+                    return gameInstance;
+                } catch (error) {
+                    console.error('Error creating Chess instance:', error);
+                    return null;
+                }
             });
             const [moveHistory, setMoveHistory] = useState([]);
             const [selectedSquare, setSelectedSquare] = useState(null);
@@ -79,6 +122,7 @@
             });
 
             const initializeBoard = useCallback(() => {
+                if (!game) return [];
                 const board = [];
                 for (let row = 0; row < 8; row++) {
                     const boardRow = [];
@@ -108,8 +152,7 @@
             };
 
             const handleSquareClick = useCallback(async (square) => {
-                if (!game) return;
-                if (isPlaying || game.isGameOver()) return;
+                if (!game || isPlaying || game.isGameOver()) return;
 
                 const piece = game.get(square);
                 
@@ -218,13 +261,13 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        const Ctor = getChessCtor();
-                        if (!Ctor) {
-                            console.error('Chess is not defined: chess.js не завантажено');
-                            setGameStatus('Помилка: chess.js не завантажено');
+                        console.log('Starting game, Chess available:', typeof Chess);
+                        if (typeof Chess !== 'undefined') {
+                            setGame(() => new Chess());
+                        } else {
+                            console.error('Cannot start game: Chess library not available');
                             return;
                         }
-                        setGame(new Ctor());
                         setMoveHistory([]);
                         setSelectedSquare(null);
                         setPossibleMoves([]);
@@ -243,14 +286,13 @@
             const resetGame = useCallback(async () => {
                 try {
                     await fetch(`${apiEndpoint}/reset`, { method: 'POST' });
-                    const Ctor = getChessCtor();
-                    if (!Ctor) {
-                        console.error('Chess is not defined: chess.js не завантажено');
-                        setGameStatus('Помилка: chess.js не завантажено');
-                        setIsPlaying(false);
+                    console.log('Resetting game, Chess available:', typeof Chess);
+                    if (typeof Chess !== 'undefined') {
+                        setGame(() => new Chess());
+                    } else {
+                        console.error('Cannot reset game: Chess library not available');
                         return;
                     }
-                    setGame(new Ctor());
                     setMoveHistory([]);
                     setSelectedSquare(null);
                     setPossibleMoves([]);
@@ -289,6 +331,20 @@
             }, [apiEndpoint, showAnalytics]);
 
             const board = game ? initializeBoard() : [];
+
+            // Show error if Chess library is not loaded
+            if (!game) {
+                return React.createElement('div', { className: 'chess-board-container' },
+                    React.createElement('div', { className: 'error-message' },
+                        React.createElement('h3', null, '❌ Помилка завантаження'),
+                        React.createElement('p', null, 'Chess.js бібліотека не завантажена. Перезавантажте сторінку.'),
+                        React.createElement('button', { 
+                            onClick: () => window.location.reload(),
+                            className: 'btn btn-primary'
+                        }, '🔄 Перезавантажити')
+                    )
+                );
+            }
 
             return React.createElement('div', { className: 'chess-board-container' },
                 React.createElement('div', { className: 'chess-board-wrapper' },
@@ -371,6 +427,7 @@
 
         // Головний додаток
         const ChessApp = () => {
+            console.log('ChessApp component created');
             const [gameData, setGameData] = useState({
                 totalGames: 0,
                 whiteWins: 0,
@@ -512,7 +569,17 @@
         };
 
         // Рендеринг додатку
-        ReactDOM.render(React.createElement(ChessApp), document.getElementById('root'));
+        console.log('Rendering ChessApp...');
+        console.log('React available:', typeof React);
+        console.log('ReactDOM available:', typeof ReactDOM);
+        console.log('Chess available:', typeof Chess);
+        
+        try {
+            ReactDOM.render(React.createElement(ChessApp), document.getElementById('root'));
+            console.log('ChessApp rendered successfully');
+        } catch (error) {
+            console.error('Error rendering ChessApp:', error);
+        }
     </script>
 </body>
 </html>

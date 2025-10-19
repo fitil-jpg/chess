@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chess.js</title>
+</head>
+<body>
+    <h1>Chess.js Test</h1>
+    <div id="output"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+    <script>
+        console.log('Chess library loaded:', typeof Chess);
+        console.log('Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('chess')));
+        
+        const output = document.getElementById('output');
+        
+        if (typeof Chess !== 'undefined') {
+            try {
+                const game = new Chess();
+                output.innerHTML = `
+                    <p>✅ Chess.js loaded successfully!</p>
+                    <p>FEN: ${game.fen()}</p>
+                    <p>Moves: ${game.moves().length}</p>
+                `;
+            } catch (error) {
+                output.innerHTML = `<p>❌ Error creating Chess instance: ${error.message}</p>`;
+            }
+        } else {
+            output.innerHTML = '<p>❌ Chess library not loaded</p>';
+        }
+    </script>
+</body>
+</html>
