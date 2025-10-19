@@ -495,6 +495,17 @@
         let gameInterval = null;
         let selectedGame = null;
 
+        // Універсальний конструктор Chess для UMD/ESM збірок chess.js
+        function createChessInstance() {
+            const ChessCtor = window.Chess || (window.chess && window.chess.Chess);
+            if (!ChessCtor) {
+                console.error('Chess is not defined: бібліотека chess.js не завантажилась або недоступна як глобальна змінна.');
+                alert('Помилка: не вдалося завантажити chess.js. Перевірте підключення до мережі.');
+                return null;
+            }
+            return new ChessCtor();
+        }
+
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
             // Ініціалізуємо локальний стан гри, щоб фігури відобразилися одразу

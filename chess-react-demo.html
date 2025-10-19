@@ -78,6 +78,8 @@
     </div>
 
     <script type="text/babel">
+        // Універсальний доступ до конструктора Chess у UMD/ESM сценаріях
+        const getChessCtor = () => (window.Chess || (window.chess && window.chess.Chess));
         const { useState, useEffect, useCallback } = React;
 
         // ChessBoard компонент
@@ -202,6 +204,7 @@
 
             const makeBotMove = useCallback(async () => {
                 try {
+                    if (!game) return;
                     const response = await fetch(`${apiEndpoint}/move`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -327,7 +330,7 @@
                 }
             }, [apiEndpoint, showAnalytics]);
 
-            const board = initializeBoard();
+            const board = game ? initializeBoard() : [];
 
             // Show error if Chess library is not loaded
             if (!game) {

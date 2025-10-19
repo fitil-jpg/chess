@@ -225,7 +225,18 @@
 
     <script>
         // Глобальні змінні
-        let game = new Chess();
+        // Універсальний конструктор Chess для UMD/ESM збірок chess.js
+        function createChessInstance() {
+            const ChessCtor = window.Chess || (window.chess && window.chess.Chess);
+            if (!ChessCtor) {
+                console.error('Chess is not defined: бібліотека chess.js не завантажилась або недоступна як глобальна змінна.');
+                alert('Помилка: не вдалося завантажити chess.js. Перевірте підключення до мережі.');
+                return null;
+            }
+            return new ChessCtor();
+        }
+
+        let game = createChessInstance();
         let selectedSquare = null;
         let possibleMoves = [];
         let moveHistory = [];
@@ -257,6 +268,7 @@
 
         // Оновлення доски
         function updateBoard() {
+            if (!game) return;
             const board = game.board();
             const cells = document.querySelectorAll('.chess-square');
             
@@ -386,7 +398,8 @@
 
         // Скидання гри
         function resetGame() {
-            game = new Chess();
+            game = createChessInstance();
+            if (!game) return;
             moveHistory = [];
             selectedSquare = null;
             possibleMoves = [];
