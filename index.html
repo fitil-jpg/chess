@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Chess Viewer - Strategy Mode</title>
+  <script src="https://cdn.jsdelivr.net/npm/chess.js@1.0.0-beta.3/chess.min.js"></script>
   <style>
     body {
       font-family: monospace;
@@ -95,8 +96,8 @@
   <h2>Chess Viewer – Static Mode</h2>
   <div class="board" id="board"></div>
   <div class="btn-row">
-    <button disabled>⬅ Prev</button>
-    <button disabled>Next ➡</button>
+    <button onclick="startGame()">▶️ Start Game</button>
+    <button onclick="resetGame()">🔄 Reset Game</button>
   </div>
 </div>
 
@@ -118,5 +119,69 @@
 </div>
 
 <script src="data_loader.js"></script>
+<script>
+// Global variables for chess game
+let game = null;
+let isPlaying = false;
+
+// Initialize chess game
+function initChess() {
+  game = new Chess();
+  renderChessBoard();
+}
+
+// Render the chess board
+function renderChessBoard() {
+  if (!game) return;
+  
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  
+  const board = game.board();
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const cell = document.createElement('div');
+      const piece = board[row][col];
+      const isWhite = (row + col) % 2 === 0;
+      cell.className = 'cell ' + (isWhite ? 'white' : 'black');
+      
+      if (piece) {
+        const symbols = {
+          'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+          'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+        };
+        cell.textContent = symbols[piece] || '';
+      }
+      
+      boardEl.appendChild(cell);
+    }
+  }
+}
+
+// Start game function
+function startGame() {
+  if (!game) {
+    initChess();
+  }
+  isPlaying = true;
+  console.log('Game started');
+  // Add any additional start game logic here
+}
+
+// Reset game function
+function resetGame() {
+  if (game) {
+    game.reset();
+    renderChessBoard();
+  }
+  isPlaying = false;
+  console.log('Game reset');
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  initChess();
+});
+</script>
 </body>
 </html>

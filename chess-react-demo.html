@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess React Demo</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+    <script>
+        // Debug: Check what's available
+        console.log('Chess library loaded:', typeof Chess);
+        console.log('Available globals:', Object.keys(window).filter(k => k.toLowerCase().includes('chess')));
+        
+        // Ensure Chess is available globally
+        if (typeof Chess === 'undefined') {
+            console.error('Chess library not loaded properly');
+        } else {
+            console.log('Chess constructor available:', typeof Chess);
+        }
+    </script>
+    <link rel="stylesheet" href="ChessBoard.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin: 20px;
+        }
+        
+        .error-message h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }
+        
+        .error-message p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">
+            <div class="spinner"></div>
+            Завантаження Chess React Demo...
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // ChessBoard компонент
+        const ChessBoard = ({ 
+            onMove = () => {}, 
+            onGameEnd = () => {},
+            showMoveHistory = true,
+            showAnalytics = true,
+            apiEndpoint = '/api/game',
+            autoPlay = false,
+            whiteBot = 'StockfishBot',
+            blackBot = 'DynamicBot'
+        }) => {
+            console.log('ChessBoard component created');
+            const [game, setGame] = useState(() => {
+                console.log('Initializing game, Chess available:', typeof Chess);
+                if (typeof Chess === 'undefined') {
+                    console.error('Chess library not loaded');
+                    return null;
+                }
+                try {
+                    const gameInstance = new Chess();
+                    console.log('Chess game created successfully');
+                    return gameInstance;
+                } catch (error) {
+                    console.error('Error creating Chess instance:', error);
+                    return null;
+                }
+            });
+            const [moveHistory, setMoveHistory] = useState([]);
+            const [selectedSquare, setSelectedSquare] = useState(null);
+            const [possibleMoves, setPossibleMoves] = useState([]);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [gameStatus, setGameStatus] = useState('Готовий до початку гри');
+            const [analytics, setAnalytics] = useState({
+                whiteModules: [],
+                blackModules: [],
+                moveTimes: [],
+                positionEvals: []
+            });
+
+            const initializeBoard = useCallback(() => {
+                if (!game) return [];
+                const board = [];
+                for (let row = 0; row < 8; row++) {
+                    const boardRow = [];
+                    for (let col = 0; col < 8; col++) {
+                        const square = String.fromCharCode(97 + col) + (8 - row);
+                        const piece = game.get(square);
+                        boardRow.push({
+                            square,
+                            piece,
+                            color: (row + col) % 2 === 0 ? 'white' : 'black',
+                            row,
+                            col
+                        });
+                    }
+                    board.push(boardRow);
+                }
+                return board;
+            }, [game]);
+
+            const getPieceSymbol = (piece) => {
+                if (!piece) return '';
+                const symbols = {
+                    'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+                    'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+                };
+                return symbols[piece.color + piece.type.toUpperCase()] || '';
+            };
+
+            const handleSquareClick = useCallback(async (square) => {
+                if (!game || isPlaying || game.isGameOver()) return;
+
+                const piece = game.get(square);
+                
+                if (piece && piece.color === game.turn()) {
+                    setSelectedSquare(square);
+                    const moves = game.moves({ square, verbose: true });
+                    setPossibleMoves(moves.map(move => move.to));
+                } else if (selectedSquare && possibleMoves.includes(square)) {
+                    try {
+                        const move = game.move({
+                            from: selectedSquare,
+                            to: square,
+                            promotion: 'q'
+                        });
+
+                        if (move) {
+                            const moveData = {
+                                move,
+                                fen: game.fen(),
+                                turn: game.turn(),
+                                isGameOver: game.isGameOver(),
+                                result: game.isGameOver() ? game.result() : null,
+                                timestamp: new Date().toISOString()
+                            };
+
+                            setMoveHistory(prev => [...prev, moveData]);
+                            setSelectedSquare(null);
+                            setPossibleMoves([]);
+                            
+                            onMove(moveData);
+
+                            if (game.isGameOver()) {
+                                setIsPlaying(false);
+                                setGameStatus(`Гра закінчена: ${getGameResultText(game.result())}`);
+                                onGameEnd(moveData);
+                            } else {
+                                setGameStatus(`Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`);
+                            }
+
+                            if (autoPlay && !game.isGameOver()) {
+                                await makeBotMove();
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Помилка виконання ходу:', error);
+                    }
+                }
+            }, [game, selectedSquare, possibleMoves, isPlaying, autoPlay, onMove, onGameEnd]);
+
+            const makeBotMove = useCallback(async () => {
+                try {
+                    const response = await fetch(`${apiEndpoint}/move`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fen: game.fen(),
+                            turn: game.turn()
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.move) {
+                            const move = game.move(data.move);
+                            if (move) {
+                                const moveData = {
+                                    move,
+                                    fen: game.fen(),
+                                    turn: game.turn(),
+                                    isGameOver: game.isGameOver(),
+                                    result: game.isGameOver() ? game.result() : null,
+                                    timestamp: new Date().toISOString(),
+                                    bot: data.bot,
+                                    confidence: data.confidence
+                                };
+
+                                setMoveHistory(prev => [...prev, moveData]);
+                                onMove(moveData);
+
+                                if (game.isGameOver()) {
+                                    setIsPlaying(false);
+                                    setGameStatus(`Гра закінчена: ${getGameResultText(game.result())}`);
+                                    onGameEnd(moveData);
+                                } else {
+                                    setGameStatus(`Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Помилка ходу бота:', error);
+                }
+            }, [game, apiEndpoint, onMove, onGameEnd]);
+
+            const startGame = useCallback(async () => {
+                try {
+                    const response = await fetch(`${apiEndpoint}/start`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            white_bot: whiteBot,
+                            black_bot: blackBot
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Starting game, Chess available:', typeof Chess);
+                        if (typeof Chess !== 'undefined') {
+                            setGame(() => new Chess());
+                        } else {
+                            console.error('Cannot start game: Chess library not available');
+                            return;
+                        }
+                        setMoveHistory([]);
+                        setSelectedSquare(null);
+                        setPossibleMoves([]);
+                        setIsPlaying(true);
+                        setGameStatus('Гра розпочата');
+                        
+                        if (autoPlay) {
+                            await makeBotMove();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Помилка початку гри:', error);
+                }
+            }, [apiEndpoint, whiteBot, blackBot, autoPlay, makeBotMove]);
+
+            const resetGame = useCallback(async () => {
+                try {
+                    await fetch(`${apiEndpoint}/reset`, { method: 'POST' });
+                    console.log('Resetting game, Chess available:', typeof Chess);
+                    if (typeof Chess !== 'undefined') {
+                        setGame(() => new Chess());
+                    } else {
+                        console.error('Cannot reset game: Chess library not available');
+                        return;
+                    }
+                    setMoveHistory([]);
+                    setSelectedSquare(null);
+                    setPossibleMoves([]);
+                    setIsPlaying(false);
+                    setGameStatus('Готовий до початку гри');
+                } catch (error) {
+                    console.error('Помилка скидання гри:', error);
+                }
+            }, [apiEndpoint]);
+
+            const getGameResultText = (result) => {
+                switch (result) {
+                    case '1-0': return 'Білі виграли';
+                    case '0-1': return 'Чорні виграли';
+                    case '1/2-1/2': return 'Нічия';
+                    default: return 'Невідомий результат';
+                }
+            };
+
+            useEffect(() => {
+                const loadAnalytics = async () => {
+                    try {
+                        const response = await fetch(`${apiEndpoint}/analytics`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            setAnalytics(data);
+                        }
+                    } catch (error) {
+                        console.error('Помилка завантаження аналітики:', error);
+                    }
+                };
+
+                if (showAnalytics) {
+                    loadAnalytics();
+                }
+            }, [apiEndpoint, showAnalytics]);
+
+            const board = initializeBoard();
+
+            // Show error if Chess library is not loaded
+            if (!game) {
+                return React.createElement('div', { className: 'chess-board-container' },
+                    React.createElement('div', { className: 'error-message' },
+                        React.createElement('h3', null, '❌ Помилка завантаження'),
+                        React.createElement('p', null, 'Chess.js бібліотека не завантажена. Перезавантажте сторінку.'),
+                        React.createElement('button', { 
+                            onClick: () => window.location.reload(),
+                            className: 'btn btn-primary'
+                        }, '🔄 Перезавантажити')
+                    )
+                );
+            }
+
+            return React.createElement('div', { className: 'chess-board-container' },
+                React.createElement('div', { className: 'chess-board-wrapper' },
+                    React.createElement('div', { className: 'chess-board' },
+                        board.map((row, rowIndex) =>
+                            row.map((cell, colIndex) =>
+                                React.createElement('div', {
+                                    key: `${rowIndex}-${colIndex}`,
+                                    className: `chess-square ${cell.color} ${
+                                        selectedSquare === cell.square ? 'selected' : ''
+                                    } ${
+                                        possibleMoves.includes(cell.square) ? 'possible-move' : ''
+                                    }`,
+                                    onClick: () => handleSquareClick(cell.square)
+                                },
+                                    cell.piece && React.createElement('span', { className: 'chess-piece' },
+                                        getPieceSymbol(cell.piece)
+                                    ),
+                                    possibleMoves.includes(cell.square) && React.createElement('div', { className: 'move-indicator' })
+                                )
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: 'game-controls' },
+                        React.createElement('button', {
+                            onClick: startGame,
+                            disabled: isPlaying,
+                            className: 'btn btn-primary'
+                        }, '▶️ Почати гру'),
+                        React.createElement('button', {
+                            onClick: resetGame,
+                            className: 'btn btn-secondary'
+                        }, '🔄 Скинути')
+                    ),
+                    React.createElement('div', { className: 'game-status' }, gameStatus)
+                ),
+                showMoveHistory && React.createElement('div', { className: 'move-history' },
+                    React.createElement('h3', null, 'Історія ходів'),
+                    React.createElement('div', { className: 'moves-list' },
+                        moveHistory.map((moveData, index) =>
+                            React.createElement('div', { key: index, className: 'move-item' },
+                                React.createElement('span', { className: 'move-number' }, `${index + 1}.`),
+                                React.createElement('span', { className: 'move-notation' }, moveData.move.san),
+                                moveData.bot && React.createElement('span', { className: 'move-bot' }, `(${moveData.bot})`),
+                                moveData.confidence && React.createElement('span', { className: 'move-confidence' },
+                                    `${Math.round(moveData.confidence * 100)}%`
+                                )
+                            )
+                        )
+                    )
+                ),
+                showAnalytics && React.createElement('div', { className: 'analytics-panel' },
+                    React.createElement('h3', null, 'Аналітика'),
+                    React.createElement('div', { className: 'analytics-content' },
+                        React.createElement('div', { className: 'module-usage' },
+                            React.createElement('h4', null, 'Використання модулів'),
+                            React.createElement('div', { className: 'module-stats' },
+                                React.createElement('div', { className: 'white-modules' },
+                                    React.createElement('h5', null, 'Білі:'),
+                                    analytics.whiteModules.map((module, index) =>
+                                        React.createElement('div', { key: index, className: 'module-item' },
+                                            `${module.name}: ${module.count}`
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', { className: 'black-modules' },
+                                    React.createElement('h5', null, 'Чорні:'),
+                                    analytics.blackModules.map((module, index) =>
+                                        React.createElement('div', { key: index, className: 'module-item' },
+                                            `${module.name}: ${module.count}`
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Головний додаток
+        const ChessApp = () => {
+            console.log('ChessApp component created');
+            const [gameData, setGameData] = useState({
+                totalGames: 0,
+                whiteWins: 0,
+                blackWins: 0,
+                draws: 0
+            });
+            const [availableBots, setAvailableBots] = useState([]);
+            const [selectedBots, setSelectedBots] = useState({
+                white: 'StockfishBot',
+                black: 'DynamicBot'
+            });
+            const [gameHistory, setGameHistory] = useState([]);
+
+            useEffect(() => {
+                const loadBots = async () => {
+                    try {
+                        const response = await fetch('/api/bots');
+                        if (response.ok) {
+                            const bots = await response.json();
+                            setAvailableBots(bots);
+                        }
+                    } catch (error) {
+                        console.error('Помилка завантаження ботів:', error);
+                        // Використовуємо тестові дані
+                        setAvailableBots(['StockfishBot', 'DynamicBot', 'RandomBot', 'AggressiveBot']);
+                    }
+                };
+
+                loadBots();
+            }, []);
+
+            const handleMove = (moveData) => {
+                console.log('Хід виконано:', moveData);
+            };
+
+            const handleGameEnd = (gameEndData) => {
+                console.log('Гра закінчена:', gameEndData);
+                setGameHistory(prev => [...prev, gameEndData]);
+                
+                setGameData(prev => ({
+                    ...prev,
+                    totalGames: prev.totalGames + 1,
+                    whiteWins: gameEndData.result === '1-0' ? prev.whiteWins + 1 : prev.whiteWins,
+                    blackWins: gameEndData.result === '0-1' ? prev.blackWins + 1 : prev.blackWins,
+                    draws: gameEndData.result === '1/2-1/2' ? prev.draws + 1 : prev.draws
+                }));
+            };
+
+            const handleBotChange = (color, bot) => {
+                setSelectedBots(prev => ({
+                    ...prev,
+                    [color]: bot
+                }));
+            };
+
+            return React.createElement('div', { className: 'chess-app' },
+                React.createElement('header', { className: 'app-header' },
+                    React.createElement('h1', null, '♟️ Chess AI Analytics Dashboard'),
+                    React.createElement('p', null, 'Інтерактивна аналітика шахових ботів з реальним часом')
+                ),
+                React.createElement('div', { className: 'app-content' },
+                    React.createElement('div', { className: 'stats-panel' },
+                        React.createElement('h3', null, '📊 Статистика ігор'),
+                        React.createElement('div', { className: 'stats-grid' },
+                            React.createElement('div', { className: 'stat-card' },
+                                React.createElement('div', { className: 'stat-value' }, gameData.totalGames),
+                                React.createElement('div', { className: 'stat-label' }, 'Всього ігор')
+                            ),
+                            React.createElement('div', { className: 'stat-card' },
+                                React.createElement('div', { className: 'stat-value' }, gameData.whiteWins),
+                                React.createElement('div', { className: 'stat-label' }, 'Перемоги білих')
+                            ),
+                            React.createElement('div', { className: 'stat-card' },
+                                React.createElement('div', { className: 'stat-value' }, gameData.blackWins),
+                                React.createElement('div', { className: 'stat-label' }, 'Перемоги чорних')
+                            ),
+                            React.createElement('div', { className: 'stat-card' },
+                                React.createElement('div', { className: 'stat-value' }, gameData.draws),
+                                React.createElement('div', { className: 'stat-label' }, 'Нічиї')
+                            )
+                        )
+                    ),
+                    React.createElement('div', { className: 'bot-settings' },
+                        React.createElement('h3', null, '🤖 Налаштування ботів'),
+                        React.createElement('div', { className: 'bot-selectors' },
+                            React.createElement('div', { className: 'bot-selector' },
+                                React.createElement('label', null, 'Білі:'),
+                                React.createElement('select', {
+                                    value: selectedBots.white,
+                                    onChange: (e) => handleBotChange('white', e.target.value)
+                                }, availableBots.map(bot =>
+                                    React.createElement('option', { key: bot, value: bot }, bot)
+                                ))
+                            ),
+                            React.createElement('div', { className: 'bot-selector' },
+                                React.createElement('label', null, 'Чорні:'),
+                                React.createElement('select', {
+                                    value: selectedBots.black,
+                                    onChange: (e) => handleBotChange('black', e.target.value)
+                                }, availableBots.map(bot =>
+                                    React.createElement('option', { key: bot, value: bot }, bot)
+                                ))
+                            )
+                        )
+                    ),
+                    React.createElement(ChessBoard, {
+                        onMove: handleMove,
+                        onGameEnd: handleGameEnd,
+                        showMoveHistory: true,
+                        showAnalytics: true,
+                        apiEndpoint: '/api/game',
+                        autoPlay: true,
+                        whiteBot: selectedBots.white,
+                        blackBot: selectedBots.black
+                    }),
+                    gameHistory.length > 0 && React.createElement('div', { className: 'game-history-panel' },
+                        React.createElement('h3', null, '📋 Останні ігри'),
+                        React.createElement('div', { className: 'history-list' },
+                            gameHistory.slice(-5).reverse().map((game, index) =>
+                                React.createElement('div', { key: index, className: 'history-item' },
+                                    React.createElement('div', { className: 'game-info' },
+                                        React.createElement('span', null, `Гра #${gameHistory.length - index}`),
+                                        React.createElement('span', { 
+                                            className: `result ${game.result?.replace('/', '-')}` 
+                                        }, game.result)
+                                    ),
+                                    React.createElement('div', { className: 'game-details' },
+                                        game.bot && React.createElement('span', null, `Бот: ${game.bot}`),
+                                        game.confidence && React.createElement('span', null, 
+                                            `Впевненість: ${Math.round(game.confidence * 100)}%`
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Рендеринг додатку
+        console.log('Rendering ChessApp...');
+        console.log('React available:', typeof React);
+        console.log('ReactDOM available:', typeof ReactDOM);
+        console.log('Chess available:', typeof Chess);
+        
+        try {
+            ReactDOM.render(React.createElement(ChessApp), document.getElementById('root'));
+            console.log('ChessApp rendered successfully');
+        } catch (error) {
+            console.error('Error rendering ChessApp:', error);
+        }
+    </script>
+</body>
+</html>
