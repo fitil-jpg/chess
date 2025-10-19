@@ -4,7 +4,7 @@ Flask-CORS==4.0.0
 Werkzeug==2.3.7
 
 # Існуючі залежності проекту
-chess==1.10.0
+# Use python-chess (provides 'import chess'); avoid 'chess' name clash
 python-chess==1.999
 
 # Додаткові залежності для веб-функціональності
