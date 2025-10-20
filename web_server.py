@@ -32,6 +32,7 @@ from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from chess_ai.elo_sync_manager import ELOSyncManager
+from utils.integration import generate_heatmaps as integration_generate_heatmaps
 
 # Налаштування логування
 logging.basicConfig(
@@ -574,6 +575,45 @@ def get_elo_ratings():
     except Exception as e:
         logger.error(f"Помилка завантаження ELO: {e}")
         return jsonify({})
+
+HEATMAPS_BASE_DIR = Path(os.environ.get("HEATMAPS_DIR", "analysis/heatmaps"))
+
+def _compute_phase_from_fen(fen: str) -> str:
+    """Груба оцінка фази гри за кількістю некоролівських фігур у позиції."""
+    bd = chess.Board(fen)
+    non_kings = sum(1 for p in bd.piece_map().values() if p.piece_type != chess.KING)
+    if non_kings <= 12:
+        return "endgame"
+    if non_kings <= 20:
+        return "midgame"
+    return "opening"
+
+def _list_sets() -> List[Dict[str, Any]]:
+    HEATMAPS_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    sets: List[Dict[str, Any]] = []
+    for sub in sorted(HEATMAPS_BASE_DIR.iterdir()):
+        if not sub.is_dir():
+            continue
+        pieces = sorted([p.stem.replace("heatmap_", "") for p in sub.glob("heatmap_*.json")])
+        if not pieces:
+            continue
+        sets.append({"name": sub.name, "pieces": pieces, "path": str(sub)})
+    # Also expose base JSONs in repo root (if present) as a virtual set
+    base_jsons = list(Path('.').glob('heatmap_*.json'))
+    if base_jsons:
+        pieces = sorted([p.stem.replace("heatmap_", "") for p in base_jsons])
+        sets.insert(0, {"name": "base", "pieces": pieces, "path": "."})
+    return sets
+
+def _read_heatmap(pattern_set: str, piece: str) -> Optional[List[List[int]]]:
+    if pattern_set == "base":
+        json_path = Path(f"heatmap_{piece}.json")
+    else:
+        json_path = HEATMAPS_BASE_DIR / pattern_set / f"heatmap_{piece}.json"
+    if not json_path.exists():
+        return None
+    with json_path.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
 
 @app.route('/api/heatmaps', methods=['GET'])
 @handle_api_errors
