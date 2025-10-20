@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Bot Heatmap Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #34495e;
+            margin-top: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .heatmap-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        
+        .heatmap-card h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .heatmap-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏁 Chess Bot Heatmap Manager</h1>
+        
+        <!-- Generation Section -->
+        <div class="section">
+            <h2>Генерація теплових карт</h2>
+            
+            <div id="status"></div>
+            
+            <div class="form-group">
+                <label for="botSelect">Бот:</label>
+                <select id="botSelect">
+                    <option value="DynamicBot">DynamicBot</option>
+                    <option value="StockfishBot">StockfishBot</option>
+                    <option value="RandomBot">RandomBot</option>
+                    <option value="AggressiveBot">AggressiveBot</option>
+                    <option value="FortifyBot">FortifyBot</option>
+                    <option value="EndgameBot">EndgameBot</option>
+                    <option value="CriticalBot">CriticalBot</option>
+                    <option value="TrapBot">TrapBot</option>
+                    <option value="KingValueBot">KingValueBot</option>
+                    <option value="NeuralBot">NeuralBot</option>
+                    <option value="UtilityBot">UtilityBot</option>
+                    <option value="PieceMateBot">PieceMateBot</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="phaseSelect">Етап гри:</label>
+                <select id="phaseSelect">
+                    <option value="all">Вся гра</option>
+                    <option value="opening">Дебют (1-15 ходів)</option>
+                    <option value="middlegame">Мітельшпіль (16-40 ходів)</option>
+                    <option value="endgame">Ендшпіль (41+ ходів)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="pieceSelect">Тип фігури:</label>
+                <select id="pieceSelect">
+                    <option value="all">Всі фігури</option>
+                    <option value="pawn">Пішаки</option>
+                    <option value="knight">Коні</option>
+                    <option value="bishop">Слони</option>
+                    <option value="rook">Тури</option>
+                    <option value="queen">Ферзі</option>
+                    <option value="king">Королі</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="gamesLimit">Кількість ігор:</label>
+                <input type="number" id="gamesLimit" value="100" min="1" max="1000">
+            </div>
+            
+            <button onclick="generateHeatmap()">Генерувати теплову карту</button>
+            <button onclick="generateAllHeatmaps()">Генерувати всі теплові карти</button>
+            <button onclick="loadHeatmaps()">Оновити список</button>
+        </div>
+        
+        <!-- Analysis Section -->
+        <div class="section">
+            <h2>Аналіз паттернів</h2>
+            <button onclick="analyzeBot()">Аналізувати бота</button>
+            <button onclick="compareBots()">Порівняти ботів</button>
+        </div>
+        
+        <!-- Heatmaps Display -->
+        <div class="section">
+            <h2>Доступні теплові карти</h2>
+            <div id="heatmapGrid" class="heatmap-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Завантаження...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="section">
+            <h2>Статистика</h2>
+            <div id="stats" class="stats">
+                <!-- Stats will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function showLoading(show = true) {
+            const grid = document.getElementById('heatmapGrid');
+            if (show) {
+                grid.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Генерація теплової карти...</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function generateHeatmap() {
+            const bot = document.getElementById('botSelect').value;
+            const phase = document.getElementById('phaseSelect').value;
+            const piece = document.getElementById('pieceSelect').value;
+            const games = document.getElementById('gamesLimit').value;
+            
+            showLoading(true);
+            showStatus('Генерація теплової карти...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/heatmaps/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bot_name: bot,
+                        game_phase: phase,
+                        piece_type: piece,
+                        games_limit: parseInt(games)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✓ Теплова карта згенерована! Файл: ${result.result.filepath}`, 'success');
+                    loadHeatmaps();
+                } else {
+                    showStatus(`✗ Помилка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`✗ Помилка з'єднання: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function generateAllHeatmaps() {
+            if (!confirm('Генерувати теплові карти для всіх ботів? Це може зайняти багато часу.')) {
+                return;
+            }
+            
+            showLoading(true);
+            showStatus('Генерація всіх теплових карт...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/heatmaps/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bot_name: 'all',
+                        game_phase: 'all',
+                        piece_type: 'all',
+                        games_limit: 100
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✓ Всі теплові карти згенеровані!`, 'success');
+                    loadHeatmaps();
+                } else {
+                    showStatus(`✗ Помилка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`✗ Помилка з'єднання: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function loadHeatmaps() {
+            try {
+                const response = await fetch(`${API_BASE}/heatmaps`);
+                const data = await response.json();
+                
+                const grid = document.getElementById('heatmapGrid');
+                
+                if (data.heatmaps && data.heatmaps.length > 0) {
+                    grid.innerHTML = data.heatmaps.map(heatmap => `
+                        <div class="heatmap-card">
+                            <h3>${heatmap.name}</h3>
+                            <p><strong>Файл:</strong> ${heatmap.filename}</p>
+                            <p><strong>Розмір:</strong> ${(heatmap.size / 1024).toFixed(1)} KB</p>
+                            <p><strong>Змінено:</strong> ${new Date(heatmap.modified * 1000).toLocaleString()}</p>
+                            <img src="${API_BASE}/heatmaps/${heatmap.filename}" alt="${heatmap.name}" 
+                                 onerror="this.style.display='none'">
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<p>Теплові карти не знайдено. Згенеруйте їх використовуючи форму вище.</p>';
+                }
+            } catch (error) {
+                document.getElementById('heatmapGrid').innerHTML = 
+                    `<p style="color: red;">Помилка завантаження: ${error.message}</p>`;
+            }
+        }
+        
+        async function analyzeBot() {
+            const bot = document.getElementById('botSelect').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/heatmaps/analyze`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bot_name: bot,
+                        piece_type: 'all'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`✓ Аналіз завершено для ${bot}`, 'success');
+                    console.log('Analysis result:', result.analysis);
+                } else {
+                    showStatus(`✗ Помилка аналізу: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`✗ Помилка з'єднання: ${error.message}`, 'error');
+            }
+        }
+        
+        async function compareBots() {
+            showStatus('Функція порівняння ботів буде реалізована в наступній версії', 'info');
+        }
+        
+        // Завантажуємо теплові карти при завантаженні сторінки
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHeatmaps();
+        });
+    </script>
+</body>
+</html>

@@ -21,9 +21,12 @@ services:
       - FLASK_DEBUG=0
       - RUNS_DIR=/runs
       - STOCKFISH_PATH=stockfish
+      - HEATMAP_DIR=/heatmap_visualizations
     volumes:
       - ./runs:/runs
-      - ./analysis/heatmaps:/workspace/analysis/heatmaps
+      - ./heatmap_visualizations:/heatmap_visualizations
+      - ./output:/output
+      - ./logs:/logs
     ports:
       - "5000:5000"
     command: ["python", "-u", "run_web_server.py"]
