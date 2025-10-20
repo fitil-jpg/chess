@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     libgomp1 \
+    stockfish \
     && rm -rf /var/lib/apt/lists/*
 
 # Установка Python зависимостей
@@ -34,7 +35,12 @@ RUN mkdir -p /app/logs /app/runs /app/output
 # Установка переменных окружения
 ENV DISPLAY=:99
 ENV PYTHONPATH=/app
-ENV STOCKFISH_PATH=/app/bin/stockfish-bin
+ENV STOCKFISH_PATH=/usr/local/bin/stockfish
+
+# Ensure Stockfish is consistently available on PATH
+RUN if [ -x /usr/games/stockfish ]; then ln -sf /usr/games/stockfish /usr/local/bin/stockfish; \
+    elif [ -x /usr/bin/stockfish ]; then ln -sf /usr/bin/stockfish /usr/local/bin/stockfish; \
+    fi && chmod +x /usr/local/bin/stockfish || true
 
 # Создание скрипта для запуска Xvfb и игры
 RUN echo '#!/bin/bash\n\
