@@ -25,7 +25,8 @@ COPY utils/ ./utils/
 COPY scripts/ ./scripts/
 COPY arena.py ./
 COPY main.py ./
-COPY bin/stockfish-bin /usr/local/bin/stockfish
+# Copy the actual Stockfish binary
+COPY bin/stockfish/stockfish-ubuntu-x86-64-avx2 /usr/local/bin/stockfish
 
 # Ensure Stockfish is executable if present
 RUN chmod +x /usr/local/bin/stockfish || true
