@@ -32,6 +32,7 @@ from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from chess_ai.elo_sync_manager import ELOSyncManager
+from utils.integration import generate_heatmaps as integration_generate_heatmaps
 
 # Налаштування логування
 logging.basicConfig(
@@ -565,16 +566,213 @@ def get_elo_ratings():
         logger.error(f"Помилка завантаження ELO: {e}")
         return jsonify({})
 
+HEATMAPS_BASE_DIR = Path(os.environ.get("HEATMAPS_DIR", "analysis/heatmaps"))
+
+def _compute_phase_from_fen(fen: str) -> str:
+    """Груба оцінка фази гри за кількістю некоролівських фігур у позиції."""
+    bd = chess.Board(fen)
+    non_kings = sum(1 for p in bd.piece_map().values() if p.piece_type != chess.KING)
+    if non_kings <= 12:
+        return "endgame"
+    if non_kings <= 20:
+        return "midgame"
+    return "opening"
+
+def _list_sets() -> List[Dict[str, Any]]:
+    HEATMAPS_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    sets: List[Dict[str, Any]] = []
+    for sub in sorted(HEATMAPS_BASE_DIR.iterdir()):
+        if not sub.is_dir():
+            continue
+        pieces = sorted([p.stem.replace("heatmap_", "") for p in sub.glob("heatmap_*.json")])
+        if not pieces:
+            continue
+        sets.append({"name": sub.name, "pieces": pieces, "path": str(sub)})
+    # Also expose base JSONs in repo root (if present) as a virtual set
+    base_jsons = list(Path('.').glob('heatmap_*.json'))
+    if base_jsons:
+        pieces = sorted([p.stem.replace("heatmap_", "") for p in base_jsons])
+        sets.insert(0, {"name": "base", "pieces": pieces, "path": "."})
+    return sets
+
+def _read_heatmap(pattern_set: str, piece: str) -> Optional[List[List[int]]]:
+    if pattern_set == "base":
+        json_path = Path(f"heatmap_{piece}.json")
+    else:
+        json_path = HEATMAPS_BASE_DIR / pattern_set / f"heatmap_{piece}.json"
+    if not json_path.exists():
+        return None
+    with json_path.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
+
 @app.route('/api/heatmaps', methods=['GET'])
 @handle_api_errors
 def get_heatmaps():
-    """Отримати теплові карти"""
+    """Список доступних наборів теплових карт або дані конкретної карти.
+
+    Параметри запиту:
+      - set: ім'я набору (напр. "default", "base")
+      - piece: назва фігури (напр. "rook", "queen", "pawn", "k", "q", ...)
+    """
     try:
-        # Тут можна додати логіку для генерації теплових карт
-        return jsonify({'message': 'Heatmaps endpoint - to be implemented'})
+        set_name = request.args.get('set')
+        piece = request.args.get('piece')
+        if set_name and piece:
+            data = _read_heatmap(set_name, piece)
+            if data is None:
+                return jsonify({"error": "Heatmap not found"}), 404
+            return jsonify({"set": set_name, "piece": piece, "matrix": data})
+
+        if set_name:
+            sets = _list_sets()
+            for s in sets:
+                if s["name"] == set_name:
+                    return jsonify(s)
+            return jsonify({"error": "Set not found"}), 404
+
+        return jsonify({"sets": _list_sets()})
     except Exception as e:
         logger.error(f"Помилка завантаження теплових карт: {e}")
         return jsonify({'error': str(e)}), 500
+
+def _filter_fens_by(runs: List[Dict[str, Any]], *, modules: Optional[List[str]] = None,
+                    phase: Optional[List[str]] = None, color: Optional[str] = None,
+                    limit: Optional[int] = None) -> List[str]:
+    """Повертає FEN'и з урахуванням фільтрів по модулю/фазі/кольору.
+
+    - modules: список підрядків (UPPERCASE) для порівняння із reasons у modules_w/b
+    - phase: список фаз: opening|midgame|endgame (обчиснюється з FEN)
+    - color: 'white' або 'black' — відбираємо позиції ПІСЛЯ ходу відповідного кольору
+    - limit: максимум FEN'ів (для пришвидшення)
+    """
+    modules_u = [m.upper() for m in modules] if modules else None
+    phases_u = [p.lower() for p in phase] if phase else None
+    want_color = color.lower() if color else None
+
+    out: List[str] = []
+    for run in runs:
+        fens = run.get('fens', [])
+        mw = run.get('modules_w', [])
+        mb = run.get('modules_b', [])
+        for idx, fen in enumerate(fens):
+            mover_color = 'white' if idx % 2 == 0 else 'black'  # чий хід щойно відбувся
+            # Модуль, що обрав цей хід
+            if idx % 2 == 0:
+                mod = mw[idx // 2] if (idx // 2) < len(mw) else ""
+            else:
+                mod = mb[idx // 2] if (idx // 2) < len(mb) else ""
+
+            if modules_u:
+                up = str(mod).upper()
+                if not any(tok in up for tok in modules_u):
+                    continue
+
+            if want_color and mover_color != want_color:
+                continue
+
+            if phases_u:
+                ph = _compute_phase_from_fen(fen)
+                if ph not in phases_u:
+                    continue
+
+            out.append(fen)
+            if limit and len(out) >= limit:
+                return out
+    return out
+
+@app.route('/api/heatmaps/generate', methods=['POST'])
+@handle_api_errors
+def generate_heatmaps_endpoint():
+    """Згенерувати теплокарти з RUNS із можливими фільтрами.
+
+    Тіло запиту (JSON):
+      - pattern_set: ім'я набору для збереження (опц.)
+      - runs_dir: директорія з пробігами (опц.; дефолт RUNS_DIR)
+      - modules: рядок або список (наприклад, ["AGGRESSIVE", "FORTIFY"])
+      - phase: рядок або список ("opening"|"midgame"|"endgame")
+      - color: "white"|"black"
+      - limit: int — обмежити кількість FEN для швидкої перевірки
+      - use_wolfram: bool — використовувати Wolfram Engine замість R/Python
+    """
+    data = request.get_json(silent=True) or {}
+    runs_dir = data.get('runs_dir', RUNS_DIR)
+    pattern_set = data.get('pattern_set')
+    modules = data.get('modules')
+    phases = data.get('phase')
+    color = data.get('color')
+    limit = data.get('limit')
+    use_wolfram = bool(data.get('use_wolfram', False))
+
+    # Нормалізація типів
+    if isinstance(modules, str):
+        modules = [modules]
+    if isinstance(phases, str):
+        phases = [phases]
+    if isinstance(limit, str):
+        try:
+            limit = int(limit)
+        except Exception:
+            limit = None
+
+    runs = load_runs(runs_dir)
+    fens = _filter_fens_by(runs, modules=modules, phase=phases, color=color, limit=limit)
+    if not fens:
+        return jsonify({"error": "Немає позицій за заданими фільтрами"}), 400
+
+    # Автоматично побудуємо назву набору, якщо не задано
+    if not pattern_set:
+        tags: List[str] = []
+        if modules:
+            tags.append("m-" + "+".join(m.lower() for m in modules))
+        if phases:
+            tags.append("p-" + "+".join(phases))
+        if color:
+            tags.append("c-" + color.lower())
+        pattern_set = "filtered" if not tags else "filtered_" + "_".join(tags)
+
+    # Запускаємо інтеграцію (сама створить директорію analysis/heatmaps/<pattern_set>)
+    try:
+        result = integration_generate_heatmaps(
+            fens,
+            out_dir=str(HEATMAPS_BASE_DIR),
+            pattern_set=pattern_set,
+            use_wolfram=use_wolfram,
+        )
+    except Exception as e:
+        logger.error("Помилка генерації теплових карт: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+    pieces = sorted(result.get(pattern_set, {}).keys())
+    return jsonify({
+        "success": True,
+        "set": pattern_set,
+        "pieces": pieces,
+        "count_fens": len(fens),
+        "dir": str(HEATMAPS_BASE_DIR / pattern_set),
+    })
+
+@app.route('/api/heatmaps/sets', methods=['GET'])
+@handle_api_errors
+def list_heatmap_sets():
+    """Повертає список доступних наборів теплокарт та їхні фігури."""
+    return jsonify({"sets": _list_sets()})
+
+@app.route('/api/heatmaps/<pattern_set>/<piece>.json', methods=['GET'])
+@handle_api_errors
+def get_heatmap_file(pattern_set: str, piece: str):
+    """Повертає конкретний JSON-файл теплокарти."""
+    if pattern_set == "base":
+        # base – з кореня сховища
+        filename = f"heatmap_{piece}.json"
+        if not Path(filename).exists():
+            return jsonify({"error": "Heatmap not found"}), 404
+        return send_from_directory('.', filename)
+    # analysis/heatmaps/<pattern_set>/heatmap_<piece>.json
+    base = HEATMAPS_BASE_DIR / pattern_set
+    filename = f"heatmap_{piece}.json"
+    if not (base / filename).exists():
+        return jsonify({"error": "Heatmap not found"}), 404
+    return send_from_directory(str(base), filename)
 
 @app.route('/api/game/analytics', methods=['GET'])
 @handle_api_errors

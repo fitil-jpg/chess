@@ -23,6 +23,7 @@ services:
       - STOCKFISH_PATH=stockfish
     volumes:
       - ./runs:/runs
+      - ./analysis/heatmaps:/workspace/analysis/heatmaps
     ports:
       - "5000:5000"
     command: ["python", "-u", "run_web_server.py"]
