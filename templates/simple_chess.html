@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахова доска - Python Chess</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1;
+            border: 4px solid #2d3748;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 0 auto 30px;
+            max-width: 500px;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .cell.white {
+            background-color: #f0d9b5;
+        }
+
+        .cell.black {
+            background-color: #b58863;
+        }
+
+        .cell.selected {
+            background-color: #4ecdc4 !important;
+            box-shadow: inset 0 0 0 4px #45b7aa;
+        }
+
+        .cell.possible-move {
+            background-color: #90EE90 !important;
+        }
+
+        .cell.last-move {
+            background-color: #ffd700 !important;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .move-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .move-input input {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 1rem;
+            width: 200px;
+            text-align: center;
+        }
+
+        .move-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .legal-moves {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .legal-moves h3 {
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .moves-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .move-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .move-tag:hover {
+            background: #5a67d8;
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .cell {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♟️ Шахова доска</h1>
+        
+        <div class="chess-board" id="chess-board">
+            <!-- Доска буде створена JavaScript -->
+        </div>
+        
+        <div class="status" id="game-status">
+            Готовий до гри
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="btn-reset">🔄 Нова гра</button>
+            <button class="btn" id="btn-bot-move">🤖 Хід бота</button>
+            <button class="btn" id="btn-legal-moves">📋 Можливі ходи</button>
+        </div>
+        
+        <div class="move-input">
+            <input type="text" id="move-input" placeholder="Введіть хід (наприклад: e4)">
+            <button class="btn" id="btn-make-move">Зробити хід</button>
+        </div>
+        
+        <div class="legal-moves" id="legal-moves" style="display: none;">
+            <h3>Можливі ходи:</h3>
+            <div class="moves-list" id="moves-list"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="info-value" id="turn-info">Білі</div>
+                <div class="info-label">Хід</div>
+            </div>
+            <div class="info-card">
+                <div class="info-value" id="fen-info">-</div>
+                <div class="info-label">FEN</div>
+            </div>
+            <div class="info-card">
+                <div class="info-value" id="moves-count">0</div>
+                <div class="info-label">Ходів</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBoard = null;
+        let selectedSquare = null;
+        let possibleMoves = [];
+        let movesCount = 0;
+
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBoard();
+            loadBoard();
+            setupEventListeners();
+        });
+
+        // Ініціалізація доски
+        function initializeBoard() {
+            const board = document.getElementById('chess-board');
+            board.innerHTML = '';
+            
+            for (let rank = 7; rank >= 0; rank--) {
+                for (let file = 0; file < 8; file++) {
+                    const cell = document.createElement('div');
+                    const isWhite = (rank + file) % 2 === 0;
+                    cell.className = `cell ${isWhite ? 'white' : 'black'}`;
+                    cell.dataset.rank = rank;
+                    cell.dataset.file = file;
+                    cell.addEventListener('click', () => handleCellClick(rank, file));
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Завантаження стану дошки
+        async function loadBoard() {
+            try {
+                const response = await fetch('/api/board');
+                const data = await response.json();
+                
+                if (data.board) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                }
+            } catch (error) {
+                console.error('Помилка завантаження дошки:', error);
+                showStatus('Помилка завантаження дошки', 'error');
+            }
+        }
+
+        // Оновлення доски
+        function updateBoard(boardArray) {
+            const cells = document.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                const rank = parseInt(cell.dataset.rank);
+                const file = parseInt(cell.dataset.file);
+                const piece = boardArray[rank][file];
+                
+                cell.innerHTML = piece.symbol || '';
+                cell.classList.remove('selected', 'possible-move', 'last-move');
+                
+                if (piece.color) {
+                    cell.style.color = piece.color === 'white' ? '#fff' : '#000';
+                }
+            });
+        }
+
+        // Оновлення статусу
+        function updateStatus(data) {
+            const status = document.getElementById('game-status');
+            const turnInfo = document.getElementById('turn-info');
+            const fenInfo = document.getElementById('fen-info');
+            
+            let statusText = '';
+            if (data.is_checkmate) {
+                statusText = `Мат! ${data.turn === 'white' ? 'Чорні' : 'Білі'} виграли`;
+            } else if (data.is_stalemate) {
+                statusText = 'Пат - нічия';
+            } else if (data.is_check) {
+                statusText = `Шах! Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            } else {
+                statusText = `Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            }
+            
+            status.textContent = statusText;
+            turnInfo.textContent = data.turn === 'white' ? 'Білі' : 'Чорні';
+            fenInfo.textContent = data.fen.substring(0, 20) + '...';
+        }
+
+        // Обробка кліку по клітинці
+        function handleCellClick(rank, file) {
+            const square = String.fromCharCode(97 + file) + (8 - rank);
+            
+            if (selectedSquare) {
+                // Намагаємося зробити хід
+                makeMove(selectedSquare + square);
+                selectedSquare = null;
+                clearSelection();
+            } else {
+                // Вибираємо клітинку
+                selectedSquare = square;
+                highlightSquare(rank, file);
+                loadLegalMoves();
+            }
+        }
+
+        // Підсвічування обраної клітинки
+        function highlightSquare(rank, file) {
+            clearSelection();
+            const cell = document.querySelector(`[data-rank="${rank}"][data-file="${file}"]`);
+            if (cell) {
+                cell.classList.add('selected');
+            }
+        }
+
+        // Очищення виділення
+        function clearSelection() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('selected', 'possible-move');
+            });
+        }
+
+        // Завантаження можливих ходів
+        async function loadLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    possibleMoves = data.moves;
+                    highlightPossibleMoves();
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Підсвічування можливих ходів
+        function highlightPossibleMoves() {
+            if (!selectedSquare) return;
+            
+            possibleMoves.forEach(move => {
+                if (move.from === selectedSquare) {
+                    const toSquare = move.to;
+                    const file = toSquare.charCodeAt(0) - 97;
+                    const rank = 8 - parseInt(toSquare[1]);
+                    const cell = document.querySelector(`[data-rank="${rank}"][data-file="${file}"]`);
+                    if (cell) {
+                        cell.classList.add('possible-move');
+                    }
+                }
+            });
+        }
+
+        // Виконання ходу
+        async function makeMove(move) {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ move: move })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Хід: ${data.move}`, 'success');
+                } else {
+                    showStatus(`Помилка: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Помилка виконання ходу:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Хід бота
+        async function makeBotMove() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/bot_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ bot: 'RandomBot' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Бот зробив хід: ${data.move}`, 'success');
+                } else {
+                    showStatus(`Помилка бота: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Помилка ходу бота:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Скидання дошки
+        async function resetBoard() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount = 0;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus('Нова гра розпочата', 'success');
+                }
+            } catch (error) {
+                console.error('Помилка скидання:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Показати можливі ходи
+        async function showLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    const movesList = document.getElementById('moves-list');
+                    const legalMoves = document.getElementById('legal-moves');
+                    
+                    movesList.innerHTML = '';
+                    data.moves.forEach(move => {
+                        const moveTag = document.createElement('span');
+                        moveTag.className = 'move-tag';
+                        moveTag.textContent = move.san;
+                        moveTag.addEventListener('click', () => {
+                            makeMove(move.san);
+                            legalMoves.style.display = 'none';
+                        });
+                        movesList.appendChild(moveTag);
+                    });
+                    
+                    legalMoves.style.display = legalMoves.style.display === 'none' ? 'block' : 'none';
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Налаштування обробників подій
+        function setupEventListeners() {
+            document.getElementById('btn-reset').addEventListener('click', resetBoard);
+            document.getElementById('btn-bot-move').addEventListener('click', makeBotMove);
+            document.getElementById('btn-legal-moves').addEventListener('click', showLegalMoves);
+            document.getElementById('btn-make-move').addEventListener('click', () => {
+                const moveInput = document.getElementById('move-input');
+                const move = moveInput.value.trim();
+                if (move) {
+                    makeMove(move);
+                    moveInput.value = '';
+                }
+            });
+            
+            // Enter в поле введення ходу
+            document.getElementById('move-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('btn-make-move').click();
+                }
+            });
+        }
+
+        // Показати статус
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('game-status');
+            status.textContent = message;
+            status.style.color = type === 'error' ? '#e53e3e' : type === 'success' ? '#38a169' : '#4a5568';
+        }
+
+        // Показати завантаження
+        function showLoading() {
+            const status = document.getElementById('game-status');
+            status.innerHTML = '<div class="spinner"></div>Завантаження...';
+        }
+
+        // Приховати завантаження
+        function hideLoading() {
+            // Статус буде оновлений в updateStatus
+        }
+    </script>
+</body>
+</html>
