@@ -208,6 +208,6 @@ if __name__ == '__main__':
     os.makedirs('templates', exist_ok=True)
     
     print("Запуск простого шахматного веб-сервера...")
-    print("Откройте http://localhost:5000 в браузере")
+    print("Откройте http://localhost:5001 в браузере")
     
     app.run(host='0.0.0.0', port=5001, debug=True)
