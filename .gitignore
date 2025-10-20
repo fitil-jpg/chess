@@ -54,6 +54,18 @@ heatmaps/heatmap_P_bins8.json
 heatmaps/heatmap_Q_bins8.json
 heatmaps/heatmap_R_bins8.json
 
+# Generated heatmap visualizations (keep base images, ignore generated ones)
+heatmap_visualizations/*.png
+heatmap_visualizations/*.json
+!heatmap_visualizations/all_pieces_heatmap.png
+!heatmap_visualizations/bishop_heatmap.png
+!heatmap_visualizations/combined_heatmap.png
+!heatmap_visualizations/king_heatmap.png
+!heatmap_visualizations/knight_heatmap.png
+!heatmap_visualizations/pawn_heatmap.png
+!heatmap_visualizations/queen_heatmap.png
+!heatmap_visualizations/rook_heatmap.png
+
 ## Run logs
 # Ignore entire run logs directory but keep placeholder
 runs/

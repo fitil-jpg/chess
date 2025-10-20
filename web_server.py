@@ -331,6 +331,16 @@ def index():
         logger.warning("Файл web_interface.html не знайдено")
         return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
 
+@app.route('/heatmaps')
+@handle_api_errors
+def heatmap_interface():
+    """Інтерфейс управління тепловими картами"""
+    try:
+        return send_from_directory('.', 'heatmap_web_interface.html')
+    except FileNotFoundError:
+        logger.warning("Файл heatmap_web_interface.html не знайдено")
+        return jsonify({'error': 'Інтерфейс теплових карт не знайдено'}), 404
+
 @app.route('/health')
 @handle_api_errors
 def health_check():
@@ -568,12 +578,92 @@ def get_elo_ratings():
 @app.route('/api/heatmaps', methods=['GET'])
 @handle_api_errors
 def get_heatmaps():
-    """Отримати теплові карти"""
+    """Отримати список доступних теплових карт"""
     try:
-        # Тут можна додати логіку для генерації теплових карт
-        return jsonify({'message': 'Heatmaps endpoint - to be implemented'})
+        import os
+        from pathlib import Path
+        
+        heatmap_dir = Path("heatmap_visualizations")
+        if not heatmap_dir.exists():
+            return jsonify({'heatmaps': []})
+        
+        heatmaps = []
+        for file_path in heatmap_dir.glob("*.png"):
+            heatmaps.append({
+                'name': file_path.stem,
+                'filename': file_path.name,
+                'path': str(file_path),
+                'size': file_path.stat().st_size,
+                'modified': file_path.stat().st_mtime
+            })
+        
+        return jsonify({'heatmaps': sorted(heatmaps, key=lambda x: x['modified'], reverse=True)})
     except Exception as e:
         logger.error(f"Помилка завантаження теплових карт: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/heatmaps/generate', methods=['POST'])
+@handle_api_errors
+def generate_heatmap():
+    """Генерувати теплову карту для конкретного бота та етапу гри"""
+    try:
+        data = request.get_json() or {}
+        bot_name = data.get('bot_name', 'DynamicBot')
+        game_phase = data.get('game_phase', 'all')  # 'opening', 'middlegame', 'endgame', 'all'
+        piece_type = data.get('piece_type', 'all')  # 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king', 'all'
+        games_limit = data.get('games_limit', 100)
+        
+        # Імпортуємо heatmap generator
+        from utils.heatmap_generator import HeatmapGenerator
+        
+        generator = HeatmapGenerator()
+        result = generator.generate_heatmap(
+            bot_name=bot_name,
+            game_phase=game_phase,
+            piece_type=piece_type,
+            games_limit=games_limit
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Heatmap generated for {bot_name} - {game_phase} - {piece_type}',
+            'result': result
+        })
+        
+    except Exception as e:
+        logger.error(f"Помилка генерації теплової карти: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/heatmaps/<path:filename>')
+@handle_api_errors
+def serve_heatmap(filename):
+    """Обслуговування файлів теплових карт"""
+    try:
+        return send_from_directory('heatmap_visualizations', filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'Heatmap file not found'}), 404
+
+@app.route('/api/heatmaps/analyze', methods=['POST'])
+@handle_api_errors
+def analyze_heatmap():
+    """Аналіз теплової карти для конкретного бота"""
+    try:
+        data = request.get_json() or {}
+        bot_name = data.get('bot_name', 'DynamicBot')
+        piece_type = data.get('piece_type', 'all')
+        
+        from utils.heatmap_analyzer import HeatmapAnalyzer
+        
+        analyzer = HeatmapAnalyzer()
+        analysis = analyzer.analyze_bot_patterns(bot_name, piece_type)
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+        
+    except Exception as e:
+        logger.error(f"Помилка аналізу теплової карти: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/analytics', methods=['GET'])
