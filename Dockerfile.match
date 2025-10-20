@@ -26,11 +26,8 @@ COPY utils/ ./utils/
 COPY scripts/ ./scripts/
 COPY arena.py ./
 COPY main.py ./
-
-# Expose Stockfish on PATH consistently regardless of package install location
-RUN if [ -x /usr/games/stockfish ]; then ln -sf /usr/games/stockfish /usr/local/bin/stockfish; \
-    elif [ -x /usr/bin/stockfish ]; then ln -sf /usr/bin/stockfish /usr/local/bin/stockfish; \
-    fi
+# Copy the actual Stockfish binary
+COPY bin/stockfish/stockfish-ubuntu-x86-64-avx2 /usr/local/bin/stockfish
 
 # Ensure Stockfish is executable if present
 RUN chmod +x /usr/local/bin/stockfish || true
