@@ -1,5 +1,6 @@
 matplotlib
 python-chess
+flask
 rpy2
 torch
 py-spy
