@@ -1,0 +1,141 @@
+{
+  "heatmap_settings": {
+    "default_bots": [
+      "DynamicBot",
+      "StockfishBot",
+      "RandomBot",
+      "AggressiveBot",
+      "FortifyBot",
+      "EndgameBot",
+      "CriticalBot",
+      "TrapBot",
+      "KingValueBot",
+      "NeuralBot",
+      "UtilityBot",
+      "PieceMateBot"
+    ],
+    "game_phases": {
+      "opening": {
+        "moves": [
+          1,
+          15
+        ],
+        "description": "Дебют"
+      },
+      "middlegame": {
+        "moves": [
+          16,
+          40
+        ],
+        "description": "Мітельшпіль"
+      },
+      "endgame": {
+        "moves": [
+          41,
+          200
+        ],
+        "description": "Ендшпіль"
+      },
+      "all": {
+        "moves": [
+          1,
+          200
+        ],
+        "description": "Вся гра"
+      }
+    },
+    "piece_types": {
+      "pawn": {
+        "symbols": [
+          "P",
+          "p"
+        ],
+        "description": "Пішаки"
+      },
+      "knight": {
+        "symbols": [
+          "N",
+          "n"
+        ],
+        "description": "Коні"
+      },
+      "bishop": {
+        "symbols": [
+          "B",
+          "b"
+        ],
+        "description": "Слони"
+      },
+      "rook": {
+        "symbols": [
+          "R",
+          "r"
+        ],
+        "description": "Тури"
+      },
+      "queen": {
+        "symbols": [
+          "Q",
+          "q"
+        ],
+        "description": "Ферзі"
+      },
+      "king": {
+        "symbols": [
+          "K",
+          "k"
+        ],
+        "description": "Королі"
+      },
+      "all": {
+        "symbols": [
+          "P",
+          "N",
+          "B",
+          "R",
+          "Q",
+          "K",
+          "p",
+          "n",
+          "b",
+          "r",
+          "q",
+          "k"
+        ],
+        "description": "Всі фігури"
+      }
+    },
+    "output_formats": [
+      "png",
+      "json"
+    ],
+    "default_games_limit": 100,
+    "heatmap_colors": {
+      "colormap": "Reds",
+      "dpi": 300,
+      "figsize": [
+        16,
+        12
+      ]
+    }
+  },
+  "analysis_settings": {
+    "hot_spot_threshold": 0.8,
+    "center_squares": [
+      "d4",
+      "d5",
+      "e4",
+      "e5"
+    ],
+    "king_side_files": [
+      "f",
+      "g",
+      "h"
+    ],
+    "queen_side_files": [
+      "a",
+      "b",
+      "c"
+    ]
+  }
+}
