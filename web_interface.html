@@ -516,6 +516,10 @@
             initializeCharts();
             loadGameData();
             setupEventListeners();
+            // Якщо chess.js недоступний, показуємо позицію через FEN з бекенду
+            if (!game) {
+                loadBoardStateAndRender();
+            }
         }
 
         // Ініціалізація шахової доски
@@ -552,6 +556,67 @@
                 cell.innerHTML = piece ? getPieceSymbol(piece) : '';
                 cell.classList.remove('highlight', 'selected');
             });
+        }
+
+        // --- Без chess.js: мінімальний FEN-рендерер ----------------------
+        // Перетворити FEN у 8x8 сітку кодів на кшталт 'wP', 'bK' або null
+        function fenToGrid(fen) {
+            const placement = (fen || '').split(' ')[0];
+            if (!placement) return Array.from({ length: 8 }, () => Array(8).fill(null));
+            const rows = placement.split('/');
+            const grid = [];
+            for (let r = 0; r < 8; r++) {
+                const row = [];
+                const rowStr = rows[r] || '';
+                for (let i = 0; i < rowStr.length; i++) {
+                    const ch = rowStr[i];
+                    if (/^[1-8]$/.test(ch)) {
+                        const n = parseInt(ch, 10);
+                        for (let k = 0; k < n; k++) row.push(null);
+                    } else {
+                        const isWhite = ch === ch.toUpperCase();
+                        const code = (isWhite ? 'w' : 'b') + ch.toUpperCase();
+                        row.push(code);
+                    }
+                }
+                // Заповнюємо ряд до 8 клітинок (на випадок некоректного FEN)
+                while (row.length < 8) row.push(null);
+                grid.push(row.slice(0, 8));
+            }
+            return grid;
+        }
+
+        // Намалювати дошку із сітки кодів 'wP'/'bK'
+        function renderBoardFromGrid(grid) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const code = (grid[row] || [])[col] || null;
+                cell.innerHTML = code ? getPieceSymbol(code) : '';
+                cell.classList.remove('highlight', 'selected');
+            });
+        }
+
+        // Завантажити стан із сервера та відрендерити без chess.js
+        async function loadBoardStateAndRender() {
+            try {
+                const resp = await fetch('/api/game/state').catch(() => null);
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    const grid = fenToGrid(data.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+                    renderBoardFromGrid(grid);
+                    // Оновимо статус
+                    document.getElementById('game-status').textContent = `Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+                } else {
+                    // Fallback до стартової позиції
+                    const grid = fenToGrid('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+                    renderBoardFromGrid(grid);
+                }
+            } catch (e) {
+                const grid = fenToGrid('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+                renderBoardFromGrid(grid);
+            }
         }
 
         // Отримання символу фігури
