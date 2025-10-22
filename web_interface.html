@@ -14,10 +14,17 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* Ensure page is scrollable on macOS Safari */
             min-height: 100vh;
+            min-height: 100dvh;
+            overflow-y: auto;
             color: #333;
         }
 
