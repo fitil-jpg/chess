@@ -124,53 +124,9 @@ class ChessViewer(QMainWindow):
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
         
-        # Create central widget and scroll area
+        # Create central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        
-        # Create scroll area
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setWidget(self.central_widget)
-        
-        # Style the scroll area
-        self.scroll_area.setStyleSheet("""
-            QScrollArea {
-                border: none;
-                background-color: #f8f9fa;
-            }
-            QScrollBar:vertical {
-                background-color: #e9ecef;
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: #6c757d;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background-color: #495057;
-            }
-            QScrollBar:horizontal {
-                background-color: #e9ecef;
-                height: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:horizontal {
-                background-color: #6c757d;
-                border-radius: 6px;
-                min-width: 20px;
-            }
-            QScrollBar::handle:horizontal:hover {
-                background-color: #495057;
-            }
-        """)
-        
-        # Set scroll area as central widget
-        self.setCentralWidget(self.scroll_area)
 
         try:
             # Логіка позиції
@@ -287,6 +243,9 @@ class ChessViewer(QMainWindow):
             }
         """)
         self.console_output.setPlainText("Console output will appear here during auto-play...")
+        
+        # Ensure console is visible and properly sized
+        self.console_output.setVisible(True)
 
         left_col = QVBoxLayout()
         left_col.addWidget(self.board_frame)
@@ -413,27 +372,17 @@ class ChessViewer(QMainWindow):
         chart_scroll.setWidget(self.overall_chart)
         right_col.addWidget(chart_scroll)
 
-        right_col.addStretch(1)  # все тримаємо вгорі
+        # Add some spacing at the bottom but don't push everything to the top
+        right_col.addStretch(0)  # Allow natural spacing
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
-        content_widget = QWidget()
-        main = QHBoxLayout(content_widget)
+        main = QHBoxLayout(self.central_widget)
         main.setContentsMargins(8, 8, 8, 8)
         main.setSpacing(12)
         main.addLayout(left_col, stretch=0)
         main.addLayout(right_col, stretch=1)
 
         self.board_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-
-        # Enable scrolling when content does not fit
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(content_widget)
-
-        outer = QVBoxLayout()
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(scroll)
-        self.setLayout(outer)
 
         # Таймер автогри
         self.auto_timer = QTimer()
@@ -457,22 +406,24 @@ class ChessViewer(QMainWindow):
         # Refresh ELO ratings display
         self._refresh_elo_ratings()
         
-        # Ensure scrollbars are properly configured
-        self._configure_scrollbars()
+        # Ensure proper window sizing and scrolling
+        self._configure_window()
 
     # ---------- UI helpers ----------
 
-    def _configure_scrollbars(self):
-        """Configure scrollbars to ensure proper content display"""
-        # Ensure the central widget has a minimum size
-        self.central_widget.setMinimumSize(960, 600)
+    def _configure_window(self):
+        """Configure window sizing and ensure proper content display"""
+        # Set minimum window size to ensure all content is visible
+        self.setMinimumSize(1000, 700)
         
-        # Update scroll area size policy
-        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # Ensure the central widget can expand properly
+        self.central_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
-        # Ensure scrollbars appear when content exceeds viewport
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # Set window properties for better display on different platforms
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
+        
+        # Ensure proper resizing behavior
+        self.resize(1200, 800)
 
     def _update_title_with_elo(self):
         """Update the title to include ELO ratings for both bots."""
