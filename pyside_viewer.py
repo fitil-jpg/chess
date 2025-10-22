@@ -11,6 +11,7 @@ import re
 import chess
 import logging
 import subprocess
+import time
 from collections import defaultdict
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -123,6 +124,9 @@ class ChessViewer(QMainWindow):
         super().__init__()
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
+        
+        # Мінімальна затримка між застосуванням ходів (мс)
+        self.min_move_delay_ms = 400
         
         # Create central widget
         self.central_widget = QWidget()
@@ -479,6 +483,7 @@ class ChessViewer(QMainWindow):
         self.auto_timer.setInterval(650)
         self.auto_timer.timeout.connect(self.auto_step)
         self.auto_running = False
+        self.move_in_progress = False
         
         # Настройки автоматического воспроизведения
         self.auto_play_games = 10  # Количество игр для автоматического воспроизведения
@@ -514,6 +519,53 @@ class ChessViewer(QMainWindow):
         
         # Ensure proper resizing behavior
         self.resize(1200, 800)
+
+    def _piece_type_to_name(self, piece_type: int) -> str | None:
+        mapping = {
+            chess.PAWN: "pawn",
+            chess.KNIGHT: "knight",
+            chess.BISHOP: "bishop",
+            chess.ROOK: "rook",
+            chess.QUEEN: "queen",
+            chess.KING: "king",
+        }
+        return mapping.get(piece_type)
+
+    def _update_heatmap_counts(self) -> None:
+        """Показати кількість активних клітин теплокарт (> 0) по фігурам і сумарно."""
+        try:
+            # Ліниве створення лейблу, якщо тепер з'явилися хітмапи
+            if not hasattr(self, "lbl_heatmap_counts") or self.lbl_heatmap_counts is None:
+                # Спробуємо додати віджет у вкладку Heatmaps
+                layout = getattr(self.heatmap_tab, 'layout', lambda: None)()
+                if layout and callable(getattr(layout, 'addWidget', None)):
+                    layout.addWidget(QLabel("Статистика теплокарт:"))
+                    self.lbl_heatmap_counts = QLabel()
+                    self.lbl_heatmap_counts.setWordWrap(True)
+                    self.lbl_heatmap_counts.setStyleSheet(
+                        "QLabel { background-color: #f3f6ff; border: 1px solid #ccd8ff; border-radius: 4px; padding: 6px; }"
+                    )
+                    layout.addWidget(self.lbl_heatmap_counts)
+                else:
+                    return
+            heatmaps = self.drawer_manager.heatmaps or {}
+            if not heatmaps:
+                self.lbl_heatmap_counts.setText("Набір теплокарт порожній.")
+                return
+            parts = []
+            total_cells = 0
+            for name, grid in sorted(heatmaps.items()):
+                # grid очікується як 8x8; рахуємо клітини з інтенсивністю > 0
+                try:
+                    cnt = sum(1 for row in grid for v in row if (v or 0) > 0)
+                except Exception:
+                    cnt = 0
+                total_cells += cnt
+                parts.append(f"{name}: {cnt}")
+            summary = f"Всього: {total_cells} | " + ", ".join(parts)
+            self.lbl_heatmap_counts.setText(summary)
+        except Exception as exc:
+            logger.warning(f"Failed to compute heatmap counts: {exc}")
 
     def _update_title_with_elo(self):
         """Update the title to include ELO ratings for both bots."""
@@ -783,6 +835,9 @@ class ChessViewer(QMainWindow):
 
     def auto_step(self):
         try:
+            # Захист від реентрантних викликів, поки застосування попереднього ходу не завершено
+            if self.move_in_progress:
+                return
             if self.board.is_game_over():
                 if self.auto_play_mode:
                     self._handle_auto_play_game_over()
@@ -791,10 +846,13 @@ class ChessViewer(QMainWindow):
                     self._show_game_over()
                 return
 
+            # Початок кроку — будемо гарантувати мінімум 400 мс до застосування ходу
+            step_start = time.perf_counter()
+
             mover_color = self.board.turn
             agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
 
-            # Get move with error handling
+            # Отримати хід з обробкою помилок
             try:
                 move = agent.choose_move(self.board)
             except Exception as exc:
@@ -815,7 +873,7 @@ class ChessViewer(QMainWindow):
                 self._show_game_over()
                 return
 
-            # Validate move before applying
+            # Перевірити легальність ходу
             if not self.board.is_legal(move):
                 logger.error(f"Agent {agent.__class__.__name__} returned illegal move: {move}")
                 self.pause_auto()
@@ -828,47 +886,81 @@ class ChessViewer(QMainWindow):
                 )
                 return
 
+            # Підготовка до попереднього показу теплокарти фігури, що ходить
             san = self.board.san(move)  # до push
             move_no = self.board.fullmove_number
             prefix = f"{move_no}. " if mover_color == chess.WHITE else f"{move_no}... "
 
-            self.board.push(move)
-            self.fen_history.append(self.board.fen())
+            moving_piece = self.board.piece_at(move.from_square)
+            piece_name = self._piece_type_to_name(moving_piece.piece_type) if moving_piece else None
+            if piece_name and piece_name in self.drawer_manager.heatmaps:
+                # Увімкнути відповідну теплокарту і оновити оверлеї перед ходом
+                self.drawer_manager.active_heatmap_piece = piece_name
+                # Не змінюємо вибір у комбобоксі нав’язливо; але якщо він є — синхронізуємо
+                if self.heatmap_piece_combo:
+                    idx = self.heatmap_piece_combo.findText(piece_name)
+                    if idx >= 0 and self.heatmap_piece_combo.currentIndex() != idx:
+                        self.heatmap_piece_combo.blockSignals(True)
+                        self.heatmap_piece_combo.setCurrentIndex(idx)
+                        self.heatmap_piece_combo.blockSignals(False)
+                self._refresh_board()
 
-            self._init_pieces()
-            self._refresh_board()
+            # Обчислити затримку до мінімальних 400 мс від початку цього кроку
+            elapsed_ms = (time.perf_counter() - step_start) * 1000.0
+            delay_ms = max(0, int(self.min_move_delay_ms - elapsed_ms))
 
-            reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
-            feats  = agent.get_last_features() if hasattr(agent, "get_last_features") else None
+            def _apply_move_after_preview():
+                # Власне застосування ходу після затримки/попереднього показу
+                self.board.push(move)
+                self.fen_history.append(self.board.fen())
 
-            # Витягнути ключ/тег і оновити usage + таймлайн
-            key = self._extract_reason_key(reason)
-            if mover_color == chess.WHITE:
-                self.usage_w[key] += 1
-                self.timeline_w.append(key)
+                self._init_pieces()
+                self._refresh_board()
+
+                reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
+                feats  = agent.get_last_features() if hasattr(agent, "get_last_features") else None
+
+                # Оновити usage + таймлайн
+                key = self._extract_reason_key(reason)
+                if mover_color == chess.WHITE:
+                    self.usage_w[key] += 1
+                    self.timeline_w.append(key)
+                else:
+                    self.usage_b[key] += 1
+                    self.timeline_b.append(key)
+
+                # Консольний дебаг
+                if self.debug_verbose.isChecked():
+                    print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
+
+                # Добавити хід у консоль під час auto-play
+                if self.auto_play_mode:
+                    move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
+                    self._append_to_console(move_info)
+
+                self._update_status(reason, feats)
+
+                # Додати у список ходів
+                self.moves_list.addItem(f"{prefix}{san}")
+                self.moves_list.setCurrentRow(self.moves_list.count() - 1)
+                self.moves_list.scrollToBottom()
+
+                if self.board.is_game_over():
+                    self.pause_auto()
+                    self._show_game_over()
+
+            # Застосувати після необхідної паузи
+            def _wrap_apply():
+                try:
+                    _apply_move_after_preview()
+                finally:
+                    self.move_in_progress = False
+            # Встановити прапорець лише коли вже маємо валідний хід і плануємо застосування
+            self.move_in_progress = True
+            if delay_ms > 0:
+                QTimer.singleShot(delay_ms, _wrap_apply)
             else:
-                self.usage_b[key] += 1
-                self.timeline_b.append(key)
-
-            # Консольний дебаг
-            if self.debug_verbose.isChecked():
-                print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
-
-            # Добавляем ход в консоль во время auto-play
-            if self.auto_play_mode:
-                move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
-                self._append_to_console(move_info)
-
-            self._update_status(reason, feats)
-
-            # Append SAN move to list and highlight
-            self.moves_list.addItem(f"{prefix}{san}")
-            self.moves_list.setCurrentRow(self.moves_list.count() - 1)
-            self.moves_list.scrollToBottom()
-
-            if self.board.is_game_over():
-                self.pause_auto()
-                self._show_game_over()
+                _wrap_apply()
                 
         except Exception as exc:
             logger.error(f"Unexpected error in auto_step: {exc}")
@@ -1377,6 +1469,7 @@ class ChessViewer(QMainWindow):
             piece_name=active_piece,
         )
         self._refresh_board()
+        self._update_heatmap_counts()
 
     def _on_heatmap_piece(self, piece: str | None) -> None:
         """Callback for heatmap piece selection."""
@@ -1386,6 +1479,8 @@ class ChessViewer(QMainWindow):
             piece_name=piece,
         )
         self._refresh_board()
+        # Підрахунки залежать від набору; але оновимо і тут для консистентності
+        self._update_heatmap_counts()
 
     def _on_timeline_click(self, index: int, is_white: bool) -> None:
         """Handle click on the usage timeline by reporting the move index."""
@@ -1584,6 +1679,11 @@ class ChessViewer(QMainWindow):
                     piece_name=self.drawer_manager.active_heatmap_piece,
                 )
                 self._refresh_board()
+                # Оновити підсумки теплокарт після генерації
+                try:
+                    self._update_heatmap_counts()
+                except Exception as exc:
+                    logger.warning(f"Failed to update heatmap counts after generation: {exc}")
                 heatmap_msg = (
                     f"\n\n✅ Heatmaps updated for set '{active_set}'."
                 )
