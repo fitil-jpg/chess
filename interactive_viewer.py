@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QListWidget, QScrollArea, QFileDialog, QTabWidget, QProgressBar,
     QSpinBox, QComboBox, QGroupBox, QSplitter, QTextEdit, QMainWindow
 )
-from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
+from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont, QPalette
 from PySide6.QtCharts import (
     QChart, QChartView, QBarSeries, QBarSet, QValueAxis, 
@@ -94,22 +94,30 @@ class InteractiveChart(QChartView):
 
 class ModuleUsageChart(InteractiveBarChart):
     """Интерактивная диаграмма использования модулей"""
-    
+
+    # Унифицированный сигнал клика по данным
+    dataClicked = Signal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__("Module Usage Statistics", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
-    def _on_data_clicked(self, module: str, data: dict):
-        """Обработка клика по модулю"""
+        # Пробрасываем клики с бар-чарта в унифицированный сигнал
+        self.barClicked.connect(self._relay_click)
+
+    def _relay_click(self, module: str, data: dict):
+        """Проброс клика по бару как dataClicked"""
         self.dataClicked.emit(module, data)
 
 class GameResultsChart(InteractivePieChart):
     """Интерактивная диаграмма результатов игр"""
-    
+
+    # Унифицированный сигнал клика по данным
+    dataClicked = Signal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__("Game Results", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
+        # Пробрасываем клики с pie-чарта в унифицированный сигнал
+        self.sliceClicked.connect(self._relay_click)
+
     def set_data(self, results: List[GameResult]):
         """Установить данные результатов игр"""
         results_dict = {}
@@ -127,18 +135,22 @@ class GameResultsChart(InteractivePieChart):
         }
         
         super().set_data(results_dict, colors)
-        
-    def _on_data_clicked(self, result: str, data: dict):
-        """Обработка клика по результату"""
+
+    def _relay_click(self, result: str, data: dict):
+        """Проброс клика по сегменту как dataClicked"""
         self.dataClicked.emit(result, data)
 
 class MoveTimelineChart(InteractiveLineChart):
     """Интерактивная временная шкала ходов"""
-    
+
+    # Унифицированный сигнал клика по данным (индекс точки)
+    dataClicked = Signal(int, dict)
+
     def __init__(self, parent=None):
         super().__init__("Move Timeline", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
+        # Пробрасываем клики с line-чарта в унифицированный сигнал
+        self.pointClicked.connect(self._relay_click)
+
     def set_data(self, moves: List[str], modules: List[str]):
         """Установить данные ходов"""
         # Создаем данные для линейного графика
@@ -147,16 +159,16 @@ class MoveTimelineChart(InteractiveLineChart):
             data_points.append((i, 1))  # Простая визуализация
             
         super().set_data(data_points)
-        
-    def _on_data_clicked(self, index: int, data: dict):
-        """Обработка клика по точке"""
+
+    def _relay_click(self, index: int, data: dict):
+        """Проброс клика по точке как dataClicked"""
         self.dataClicked.emit(index, data)
 
 class GameWorker(QThread):
     """Worker thread для выполнения игр в фоне"""
-    gameCompleted = pyqtSignal(object)  # GameResult
-    progressUpdated = pyqtSignal(int)   # progress percentage
-    statusUpdated = pyqtSignal(str)     # status message
+    gameCompleted = Signal(object)  # GameResult
+    progressUpdated = Signal(int)   # progress percentage
+    statusUpdated = Signal(str)     # status message
     
     def __init__(self, white_agent, black_agent, num_games=10):
         super().__init__()

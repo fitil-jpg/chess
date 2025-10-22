@@ -229,6 +229,8 @@ class ChessViewer(QMainWindow):
 
         # Console output area
         self.console_output = QTextEdit()
+        self.console_output.setMaximumHeight(140)  # Зменшено на 60 пікселів (4 рядки)
+        self.console_output.setMinimumHeight(90)   # Зменшено на 60 пікселів
         self.console_output.setReadOnly(True)
         self.console_output.setStyleSheet("""
             QTextEdit {
@@ -259,7 +261,7 @@ class ChessViewer(QMainWindow):
         left_col.addWidget(QLabel("Console Output:"))
         left_col.addWidget(self.console_output)
 
-        # ---- ПРАВА КОЛОНКА: КНОПКИ + СТАТУСИ ----
+        # ---- ПРАВА КОЛОНКА: КНОПКИ + ТАБИ ----
         right_col = QVBoxLayout()
 
         # Create title with ELO ratings
@@ -293,6 +295,14 @@ class ChessViewer(QMainWindow):
         self.btn_save_png.clicked.connect(self.save_png)
         self.btn_refresh_elo.clicked.connect(self._refresh_elo_ratings)
 
+        # Створюємо таби
+        self.tab_widget = QTabWidget()
+        right_col.addWidget(self.tab_widget)
+
+        # Таб 1: Статуси та метрики
+        self.status_tab = QWidget()
+        status_layout = QVBoxLayout(self.status_tab)
+
         # Статуси
         self.lbl_module   = QLabel("Модуль: —")
         self.lbl_features = QLabel("Фічі: —")
@@ -310,7 +320,10 @@ class ChessViewer(QMainWindow):
             self.lbl_king,
         ):
             lab.setWordWrap(True)
-            right_col.addWidget(lab)
+            status_layout.addWidget(lab)
+        
+        status_layout.addStretch()
+        self.tab_widget.addTab(self.status_tab, "📊 Статуси")
 
         # Підготовка віджетів для вкладок (табів)
         self.chart_usage_w = OverallUsageChart()
@@ -322,13 +335,48 @@ class ChessViewer(QMainWindow):
         # Таймлайн застосованих модулів
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
+        # Таб 2: Usage та Timeline
+        self.usage_tab = QWidget()
+        usage_layout = QVBoxLayout(self.usage_tab)
+        
+        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
+        self.chart_usage_w = OverallUsageChart()
+        usage_layout.addWidget(self.chart_usage_w)
 
+        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
+        self.chart_usage_b = OverallUsageChart()
+        usage_layout.addWidget(self.chart_usage_b)
+
+        # Таймлайн застосованих модулів
+        usage_layout.addWidget(QLabel("Usage timeline:"))
+        self.timeline = UsageTimeline()
+        self.timeline.moveClicked.connect(self._on_timeline_click)
+        usage_layout.addWidget(self.timeline)
+        
+        usage_layout.addStretch()
+        self.tab_widget.addTab(self.usage_tab, "📈 Usage")
+
+        # Таб 3: Ходи
+        self.moves_tab = QWidget()
+        moves_layout = QVBoxLayout(self.moves_tab)
+        
+        moves_layout.addWidget(QLabel("Moves:"))
+        self.moves_list = QListWidget()
+        moves_layout.addWidget(self.moves_list)
+        
+        moves_layout.addStretch()
+        self.tab_widget.addTab(self.moves_tab, "♟️ Ходи")
+
+        # Таб 4: Heatmaps
+        self.heatmap_tab = QWidget()
+        heatmap_layout = QVBoxLayout(self.heatmap_tab)
+        
         # Heatmap selection panel
         # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
         heatmaps_tab = QWidget()
         heatmaps_tab_layout = QVBoxLayout(heatmaps_tab)
         if self.drawer_manager.heatmaps:
-            heatmap_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
+            heatmap_panel_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
                 self._on_heatmap_piece,
                 set_callback=self._on_heatmap_set,
                 sets=self.drawer_manager.list_heatmap_sets(),
@@ -336,7 +384,7 @@ class ChessViewer(QMainWindow):
                 current_set=default_heatmap_set,
                 current_piece=default_heatmap_piece,
             )
-            heatmaps_tab_layout.addLayout(heatmap_layout)
+            heatmap_layout.addLayout(heatmap_panel_layout)
             self._populate_heatmap_pieces(default_heatmap_piece)
             self._sync_heatmap_set_selection()
             self._save_heatmap_preferences(
@@ -358,20 +406,31 @@ class ChessViewer(QMainWindow):
             )
             msg.setWordWrap(True)
             msg.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; }")
-            heatmaps_tab_layout.addWidget(msg)
+            heatmap_layout.addWidget(msg)
             btn_gen_heatmaps = QPushButton("🔧 Generate heatmaps now")
             btn_gen_heatmaps.setStyleSheet("QPushButton { background-color: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; }")
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
-            heatmaps_tab_layout.addWidget(btn_gen_heatmaps)
-            heatmaps_tab_layout.addStretch(1)
+            heatmap_layout.addWidget(btn_gen_heatmaps)
+        
+        heatmap_layout.addStretch()
+        self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
 
-        # Загальна діаграма використання модулів (у вкладці)
+        # Таб 5: Загальна статистика
+        self.overall_tab = QWidget()
+        overall_layout = QVBoxLayout(self.overall_tab)
+        
+        # Загальна діаграма використання модулів
+        overall_layout.addWidget(QLabel("Overall module usage:"))
         self.overall_chart = OverallUsageChart()
         runs = load_runs("runs")
         self.overall_chart.set_data(aggregate_module_usage(runs))
         chart_scroll = QScrollArea()
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
+        overall_layout.addWidget(chart_scroll)
+        
+        overall_layout.addStretch()
+        self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
 
         # Побудова вкладок праворуч (після кнопок і метрик)
         tabs = QTabWidget()
@@ -1542,16 +1601,15 @@ class ChessViewer(QMainWindow):
         except Exception as exc:
             logger.error(f"Failed to save game or update ELO: {exc}")
 
-        # Виводимо результат в ліву нижню консоль замість MessageBox
-        self._append_to_console("=== Game Complete ===")
-        self._append_to_console(f"Result: {res}")
-        self._append_to_console(f"Moves: {len(self.board.move_stack)}")
+        # Виводимо результат в консоль замість message box
+        self._append_to_console("=" * 50)
+        self._append_to_console("🎯 GAME COMPLETE")
+        self._append_to_console("=" * 50)
+        self._append_to_console(f"🏁 Result: {res}")
+        self._append_to_console(f"📋 Moves: {self._moves_san_string()}")
         if heatmap_msg:
-            # Очистимо HTML і залишимо коротке повідомлення
-            if "Heatmaps updated" in heatmap_msg:
-                self._append_to_console("Heatmaps: updated")
-            elif "Heatmap update failed" in heatmap_msg:
-                self._append_to_console("Heatmaps: update failed")
+            self._append_to_console(heatmap_msg.strip())
+        self._append_to_console("=" * 50)
         self._append_to_console("")
 
 # ====== Запуск ======
