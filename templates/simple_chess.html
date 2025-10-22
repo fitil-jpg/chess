@@ -258,6 +258,52 @@
                 max-width: 200px;
             }
         }
+
+        /* Stats panel */
+        .stats-section {
+            margin-top: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .stats-section h2 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+            color: #2d3748;
+        }
+        .metrics-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .metrics-list li {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #edf2f7;
+            color: #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.95rem;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 8px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -301,6 +347,28 @@
                 <div class="info-value" id="moves-count">0</div>
                 <div class="info-label">Ходів</div>
             </div>
+            <div class="info-card">
+                <div class="info-value" id="phase-info">-</div>
+                <div class="info-label">Фаза гри</div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>📊 Статистика (як у PySide)</h2>
+            <ul id="metrics-list" class="metrics-list"></ul>
+            <div style="margin-top:10px;color:#4a5568;font-size:0.95rem;">
+                Легальні ходи: <span id="legal-count">0</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>📜 Ходи (SAN) та PGN</h2>
+            <pre id="san-text" class="code-block">—</pre>
+            <div class="btn-row">
+                <button class="btn" id="btn-copy-san">⧉ Копіювати SAN</button>
+                <button class="btn" id="btn-copy-pgn">⧉ Копіювати PGN</button>
+                <button class="btn" id="btn-download-pgn">⬇ Завантажити PGN</button>
+            </div>
         </div>
     </div>
 
@@ -309,12 +377,15 @@
         let selectedSquare = null;
         let possibleMoves = [];
         let movesCount = 0;
+        let lastPGN = '';
+        let lastSAN = '';
 
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
             initializeBoard();
             loadBoard();
             setupEventListeners();
+            loadStats();
         });
 
         // Ініціалізація доски
@@ -389,6 +460,48 @@
             status.textContent = statusText;
             turnInfo.textContent = data.turn === 'white' ? 'Білі' : 'Чорні';
             fenInfo.textContent = data.fen.substring(0, 20) + '...';
+        }
+
+        // Завантаження та відображення розширених статистик
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/stats');
+                const data = await resp.json();
+                if (data && !data.error) {
+                    updateStatsDisplay(data);
+                }
+            } catch (e) {
+                console.error('Помилка завантаження статистики:', e);
+            }
+        }
+
+        function updateStatsDisplay(stats) {
+            // Phase
+            const phaseInfo = document.getElementById('phase-info');
+            phaseInfo.textContent = stats.phase || '-';
+
+            // Metrics list
+            const list = document.getElementById('metrics-list');
+            list.innerHTML = '';
+            (stats.metrics || []).forEach(line => {
+                const li = document.createElement('li');
+                li.textContent = line;
+                list.appendChild(li);
+            });
+
+            // Legal moves count
+            document.getElementById('legal-count').textContent = stats.legal_moves_count ?? 0;
+
+            // SAN / PGN
+            lastSAN = stats.moves_san || '';
+            lastPGN = stats.pgn || '';
+            document.getElementById('san-text').textContent = lastSAN || '—';
+
+            // Move counter sync just in case
+            if (typeof stats.move_count === 'number') {
+                movesCount = stats.move_count;
+                document.getElementById('moves-count').textContent = movesCount;
+            }
         }
 
         // Обробка кліку по клітинці
@@ -477,6 +590,7 @@
                     movesCount++;
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus(`Хід: ${data.move}`, 'success');
+                    loadStats();
                 } else {
                     showStatus(`Помилка: ${data.error}`, 'error');
                 }
@@ -509,6 +623,7 @@
                     movesCount++;
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus(`Бот зробив хід: ${data.move}`, 'success');
+                    loadStats();
                 } else {
                     showStatus(`Помилка бота: ${data.error}`, 'error');
                 }
@@ -540,6 +655,7 @@
                     movesCount = 0;
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus('Нова гра розпочата', 'success');
+                    loadStats();
                 }
             } catch (error) {
                 console.error('Помилка скидання:', error);
@@ -590,6 +706,23 @@
                     makeMove(move);
                     moveInput.value = '';
                 }
+            });
+            document.getElementById('btn-copy-san').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(lastSAN || ''); showStatus('SAN скопійовано', 'success'); } catch (e) { showStatus('Не вдалося скопіювати SAN', 'error'); }
+            });
+            document.getElementById('btn-copy-pgn').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(lastPGN || ''); showStatus('PGN скопійовано', 'success'); } catch (e) { showStatus('Не вдалося скопіювати PGN', 'error'); }
+            });
+            document.getElementById('btn-download-pgn').addEventListener('click', () => {
+                const blob = new Blob([lastPGN || ''], { type: 'application/x-chess-pgn;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'game.pgn';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             });
             
             // Enter в поле введення ходу
