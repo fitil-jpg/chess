@@ -375,6 +375,20 @@ class ChessViewer(QMainWindow):
         self.heatmap_tab = QWidget()
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
         
+        # Heatmap statistics
+        self.heatmap_stats_label = QLabel()
+        self.heatmap_stats_label.setWordWrap(True)
+        self.heatmap_stats_label.setStyleSheet("""
+            QLabel {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 5px;
+                padding: 10px;
+                font-weight: bold;
+            }
+        """)
+        heatmap_layout.addWidget(self.heatmap_stats_label)
+        
         # Heatmap selection panel
         # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
         heatmaps_tab = QWidget()
@@ -485,6 +499,10 @@ class ChessViewer(QMainWindow):
         self.auto_running = False
         self.move_in_progress = False
         
+        # Мінімальний час для ходу (400мс)
+        self.min_move_time = 400
+        self.move_start_time = 0
+        
         # Настройки автоматического воспроизведения
         self.auto_play_games = 10  # Количество игр для автоматического воспроизведения
         self.current_auto_game = 0
@@ -497,6 +515,9 @@ class ChessViewer(QMainWindow):
             self.drawer_manager.collect_overlays(self.piece_objects, self.board)
         self._refresh_board()
         self._update_status("-", None)
+        
+        # Оновлюємо статистику хітмапів
+        self._update_heatmap_stats()
         
         # Refresh ELO ratings display
         self._refresh_elo_ratings()
@@ -593,6 +614,59 @@ class ChessViewer(QMainWindow):
             logger.warning(f"Failed to load ELO ratings: {exc}")
             # Fallback to basic title without ELO
             self.title_label.setText(f"White: {WHITE_AGENT}    |    Black: {BLACK_AGENT}")
+
+    def _count_heatmaps(self):
+        """Підрахувати кількість хітмапів по фігурам та загально."""
+        try:
+            piece_counts = {}
+            total_heatmaps = 0
+            
+            # Підрахунок хітмапів по фігурам
+            for piece_name, heatmap_data in self.drawer_manager.heatmaps.items():
+                if isinstance(heatmap_data, list) and len(heatmap_data) > 0:
+                    # Перевіряємо, чи це двовимірний масив (8x8)
+                    if isinstance(heatmap_data[0], list) and len(heatmap_data) == 8:
+                        piece_counts[piece_name] = 1
+                        total_heatmaps += 1
+                    else:
+                        piece_counts[piece_name] = len(heatmap_data)
+                        total_heatmaps += len(heatmap_data)
+                else:
+                    piece_counts[piece_name] = 0
+            
+            return piece_counts, total_heatmaps
+            
+        except Exception as exc:
+            logger.warning(f"Failed to count heatmaps: {exc}")
+            return {}, 0
+
+    def _update_heatmap_stats(self):
+        """Оновити статистику хітмапів у вкладці."""
+        try:
+            piece_counts, total_heatmaps = self._count_heatmaps()
+            
+            if total_heatmaps == 0:
+                stats_text = "🔥 <b>Heatmap Statistics</b><br>No heatmaps available"
+            else:
+                stats_text = f"🔥 <b>Heatmap Statistics</b><br>"
+                stats_text += f"<b>Total heatmaps:</b> {total_heatmaps}<br>"
+                stats_text += f"<b>By piece type:</b><br>"
+                
+                for piece_name, count in sorted(piece_counts.items()):
+                    if count > 0:
+                        stats_text += f"  • {piece_name}: {count}<br>"
+                
+                # Додаємо інформацію про активний хітмап
+                if self.drawer_manager.active_heatmap_piece:
+                    stats_text += f"<br><b>Active:</b> {self.drawer_manager.active_heatmap_piece}"
+                else:
+                    stats_text += f"<br><b>Active:</b> None"
+            
+            self.heatmap_stats_label.setText(stats_text)
+            
+        except Exception as exc:
+            logger.warning(f"Failed to update heatmap stats: {exc}")
+            self.heatmap_stats_label.setText("🔥 <b>Heatmap Statistics</b><br>Error loading statistics")
 
     def _ensure_bots_registered(self):
         """Ensure both bots are registered in the ELO system with initial ratings."""
@@ -846,6 +920,9 @@ class ChessViewer(QMainWindow):
                     self._show_game_over()
                 return
 
+            # Запам'ятовуємо час початку ходу
+            import time
+            self.move_start_time = time.time()
             # Початок кроку — будемо гарантувати мінімум 400 мс до застосування ходу
             step_start = time.perf_counter()
 
@@ -938,6 +1015,16 @@ class ChessViewer(QMainWindow):
                     move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
                     self._append_to_console(move_info)
 
+            # Перевіряємо, чи пройшов мінімальний час
+            elapsed_time = (time.time() - self.move_start_time) * 1000  # в мілісекундах
+            if elapsed_time < self.min_move_time:
+                remaining_time = self.min_move_time - elapsed_time
+                QTimer.singleShot(int(remaining_time), self._continue_after_timing)
+                return
+
+            if self.board.is_game_over():
+                self.pause_auto()
+                self._show_game_over()
                 self._update_status(reason, feats)
 
                 # Додати у список ходів
@@ -975,6 +1062,50 @@ class ChessViewer(QMainWindow):
                     f"<b>Error:</b> {exc}\n\n"
                     f"<b>Game paused.</b> You may need to restart the application."
                 )
+
+    def _continue_after_timing(self):
+        """Продовжити після мінімального часу ходу."""
+        if self.auto_running and not self.board.is_game_over():
+            self.auto_step()
+
+    def _load_heatmap_for_piece(self, move):
+        """Завантажити хітмап для фігури, яка робить хід."""
+        try:
+            # Отримуємо фігуру, яка робить хід
+            piece = self.board.piece_at(move.from_square)
+            if piece is None:
+                return
+            
+            # Визначаємо тип фігури
+            piece_type = piece.piece_type
+            piece_name = None
+            
+            if piece_type == chess.PAWN:
+                piece_name = "pawn"
+            elif piece_type == chess.KNIGHT:
+                piece_name = "knight"
+            elif piece_type == chess.BISHOP:
+                piece_name = "bishop"
+            elif piece_type == chess.ROOK:
+                piece_name = "rook"
+            elif piece_type == chess.QUEEN:
+                piece_name = "queen"
+            elif piece_type == chess.KING:
+                piece_name = "king"
+            
+            if piece_name and piece_name in self.drawer_manager.heatmaps:
+                # Встановлюємо активний хітмап для цієї фігури
+                self.drawer_manager.active_heatmap_piece = piece_name
+                self._update_heatmap_stats()
+                
+                # Оновлюємо комбобокс, якщо він існує
+                if self.heatmap_piece_combo:
+                    self._populate_heatmap_pieces(piece_name)
+                
+                logger.info(f"Loaded heatmap for {piece_name} piece")
+            
+        except Exception as exc:
+            logger.warning(f"Failed to load heatmap for piece: {exc}")
                 
     def _handle_auto_play_game_over(self):
         """Обработка завершения игры в режиме автоматического воспроизведения"""
@@ -1325,13 +1456,17 @@ class ChessViewer(QMainWindow):
             logger.info("🔄 Starting heatmap generation...")
             generate_heatmaps(fens, pattern_set="default")
             
+            # Оновлюємо статистику після генерації
+            self.drawer_manager._load_heatmaps()
+            self._update_heatmap_stats()
+            
             QMessageBox.information(
                 self,
                 "✅ Heatmaps Generated Successfully",
                 f"🎉 Heatmap generation completed!\n\n"
                 f"📊 Generated heatmaps for {len(fens)} position(s)\n"
                 f"📁 Saved to: analysis/heatmaps/default/\n\n"
-                f"🔄 Please restart the viewer to load the new heatmaps.",
+                f"🔄 Heatmap statistics updated!",
             )
         except FileNotFoundError as exc:
             if "Rscript" in str(exc) or "wolframscript" in str(exc):
@@ -1468,6 +1603,7 @@ class ChessViewer(QMainWindow):
             set_name=self.drawer_manager.active_heatmap_set,
             piece_name=active_piece,
         )
+        self._update_heatmap_stats()
         self._refresh_board()
         self._update_heatmap_counts()
 
@@ -1478,6 +1614,7 @@ class ChessViewer(QMainWindow):
             set_name=self.drawer_manager.active_heatmap_set,
             piece_name=piece,
         )
+        self._update_heatmap_stats()
         self._refresh_board()
         # Підрахунки залежать від набору; але оновимо і тут для консистентності
         self._update_heatmap_counts()
@@ -1678,6 +1815,7 @@ class ChessViewer(QMainWindow):
                     set_name=self.drawer_manager.active_heatmap_set,
                     piece_name=self.drawer_manager.active_heatmap_piece,
                 )
+                self._update_heatmap_stats()
                 self._refresh_board()
                 # Оновити підсумки теплокарт після генерації
                 try:
