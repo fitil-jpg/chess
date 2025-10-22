@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QListWidget, QScrollArea, QFileDialog, QTabWidget, QProgressBar,
     QSpinBox, QComboBox, QGroupBox, QSplitter, QTextEdit, QMainWindow
 )
-from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
+from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont, QPalette
 from PySide6.QtCharts import (
     QChart, QChartView, QBarSeries, QBarSet, QValueAxis, 
@@ -154,9 +154,9 @@ class MoveTimelineChart(InteractiveLineChart):
 
 class GameWorker(QThread):
     """Worker thread для выполнения игр в фоне"""
-    gameCompleted = pyqtSignal(object)  # GameResult
-    progressUpdated = pyqtSignal(int)   # progress percentage
-    statusUpdated = pyqtSignal(str)     # status message
+    gameCompleted = Signal(object)  # GameResult
+    progressUpdated = Signal(int)   # progress percentage
+    statusUpdated = Signal(str)     # status message
     
     def __init__(self, white_agent, black_agent, num_games=10):
         super().__init__()
