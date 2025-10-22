@@ -33,6 +33,7 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from chess_ai.elo_sync_manager import ELOSyncManager
 from utils.integration import generate_heatmaps as integration_generate_heatmaps
+from utils.metrics_sidebar import build_sidebar_metrics
 
 # Налаштування логування
 logging.basicConfig(
@@ -332,6 +333,16 @@ def index():
         logger.warning("Файл web_interface.html не знайдено")
         return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
 
+# Lightweight board viewer (simple Flask UI)
+@app.route('/board')
+@handle_api_errors
+def simple_board_page():
+    try:
+        return render_template('simple_chess.html')
+    except Exception as e:
+        logger.error(f"Помилка рендерингу simple_chess.html: {e}")
+        return jsonify({'error': 'Не вдалося завантажити дошку'}), 500
+
 @app.route('/heatmaps')
 @handle_api_errors
 def heatmap_interface():
@@ -562,6 +573,213 @@ def get_available_bots():
     ]
     return jsonify(bots)
 
+# ===== Compatibility helpers for simple board endpoints =====
+# Unicode symbols for pieces (for simple board UI)
+PIECE_SYMBOLS = {
+    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+}
+
+def _get_piece_symbol(piece):
+    if piece is None:
+        return ''
+    return PIECE_SYMBOLS.get(piece.symbol(), '')
+
+def _board_to_array(board: chess.Board):
+    board_array = []
+    for rank in range(7, -1, -1):
+        row = []
+        for file in range(8):
+            square = chess.square(file, rank)
+            piece = board.piece_at(square)
+            row.append({
+                'symbol': _get_piece_symbol(piece),
+                'color': 'white' if piece and piece.color == chess.WHITE else 'black' if piece else None,
+                'square': chess.square_name(square)
+            })
+        board_array.append(row)
+    return board_array
+
+@app.route('/api/board')
+@handle_api_errors
+def api_board():
+    bd = game_manager.current_board
+    return jsonify({
+        'board': _board_to_array(bd),
+        'fen': bd.fen(),
+        'turn': 'white' if bd.turn == chess.WHITE else 'black',
+        'is_check': bd.is_check(),
+        'is_checkmate': bd.is_checkmate(),
+        'is_stalemate': bd.is_stalemate(),
+        'is_game_over': bd.is_game_over(),
+        'result': bd.result() if bd.is_game_over() else None
+    })
+
+@app.route('/api/legal_moves')
+@handle_api_errors
+def api_legal_moves():
+    bd = game_manager.current_board
+    moves = []
+    for mv in bd.legal_moves:
+        moves.append({
+            'san': bd.san(mv),
+            'uci': mv.uci(),
+            'from': chess.square_name(mv.from_square),
+            'to': chess.square_name(mv.to_square),
+        })
+    return jsonify({'moves': moves})
+
+@app.route('/api/move', methods=['POST'])
+@handle_api_errors
+def api_make_move():
+    data = request.get_json() or {}
+    move_notation = data.get('move')
+    if not move_notation:
+        return jsonify({'error': 'Не вказано хід'}), 400
+    bd = game_manager.current_board
+    # Try SAN first, then UCI
+    try:
+        move = bd.parse_san(move_notation)
+    except Exception:
+        try:
+            move = chess.Move.from_uci(move_notation)
+        except Exception:
+            return jsonify({'error': 'Недопустимий хід'}), 400
+    if not bd.is_legal(move):
+        return jsonify({'error': 'Недопустимий хід'}), 400
+    # Push and record SAN
+    san_move = bd.san(move)
+    bd.push(move)
+    game_manager.game_moves.append(san_move)
+    return jsonify({
+        'success': True,
+        'move': san_move,
+        'board': _board_to_array(bd),
+        'fen': bd.fen(),
+        'turn': 'white' if bd.turn == chess.WHITE else 'black',
+        'is_check': bd.is_check(),
+        'is_checkmate': bd.is_checkmate(),
+        'is_stalemate': bd.is_stalemate(),
+        'is_game_over': bd.is_game_over(),
+        'result': bd.result() if bd.is_game_over() else None
+    })
+
+@app.route('/api/reset', methods=['POST'])
+@handle_api_errors
+def api_reset():
+    game_manager.reset_game()
+    return jsonify({'success': True, 'board': _board_to_array(game_manager.current_board), 'fen': game_manager.current_board.fen()})
+
+@app.route('/api/bot_move', methods=['POST'])
+@handle_api_errors
+def api_bot_move():
+    data = request.get_json() or {}
+    bot_name = (data.get('bot') or '').strip() or 'RandomBot'
+    bd = game_manager.current_board
+    mover_color = bd.turn
+    # Ensure agent exists for current mover
+    try:
+        if mover_color == chess.WHITE and game_manager.white_agent is None:
+            game_manager.white_agent = make_agent(bot_name, chess.WHITE)
+        if mover_color == chess.BLACK and game_manager.black_agent is None:
+            game_manager.black_agent = make_agent(bot_name, chess.BLACK)
+    except Exception as e:
+        logger.warning(f"Не вдалося ініціалізувати агента {bot_name}: {e}. Використовуємо випадковий хід.")
+    agent = game_manager.white_agent if mover_color == chess.WHITE else game_manager.black_agent
+    if agent is None:
+        # Fallback: random legal move
+        legal = list(bd.legal_moves)
+        if not legal:
+            return jsonify({'error': 'Немає можливих ходів'}), 400
+        mv = legal[0]
+    else:
+        mv = agent.choose_move(bd)
+        if mv is None or not bd.is_legal(mv):
+            legal = list(bd.legal_moves)
+            if not legal:
+                return jsonify({'error': 'Немає можливих ходів'}), 400
+            mv = legal[0]
+    san_move = bd.san(mv)
+    bd.push(mv)
+    game_manager.game_moves.append(san_move)
+    return jsonify({
+        'success': True,
+        'move': san_move,
+        'bot': bot_name,
+        'board': _board_to_array(bd),
+        'fen': bd.fen(),
+        'turn': 'white' if bd.turn == chess.WHITE else 'black',
+        'is_check': bd.is_check(),
+        'is_checkmate': bd.is_checkmate(),
+        'is_stalemate': bd.is_stalemate(),
+        'is_game_over': bd.is_game_over(),
+        'result': bd.result() if bd.is_game_over() else None
+    })
+
+@app.route('/api/stats')
+@handle_api_errors
+def api_stats():
+    """Return rich metrics similar to PySide viewer sidebar."""
+    bd = game_manager.current_board
+    # Phase heuristic similar to elsewhere
+    non_kings = sum(1 for pc in bd.piece_map().values() if pc.piece_type != chess.KING)
+    if non_kings <= 12:
+        phase = 'endgame'
+    elif non_kings <= 20:
+        phase = 'midgame'
+    else:
+        phase = 'opening'
+    legal = []
+    for mv in bd.legal_moves:
+        legal.append({
+            'san': bd.san(mv),
+            'uci': mv.uci(),
+            'from': chess.square_name(mv.from_square),
+            'to': chess.square_name(mv.to_square),
+        })
+    # Build sidebar metrics
+    metrics_lines = build_sidebar_metrics(bd)
+    # SAN/PGN
+    # Reconstruct SAN list for current game
+    temp = chess.Board()
+    san_list = []
+    for mv in bd.move_stack:
+        san_list.append(temp.san(mv))
+        temp.push(mv)
+    def _moves_san_string(parts):
+        out = []
+        for i, san in enumerate(parts, start=1):
+            if i % 2 == 1:
+                move_no = (i + 1) // 2
+                out.append(f"{move_no}. {san}")
+            else:
+                out.append(san)
+        return " ".join(out)
+    san_text = _moves_san_string(san_list)
+    res = bd.result() if bd.is_game_over() else "*"
+    pgn_text = (
+        f"[Event \"WebViewer\"]\n[Site \"Local\"]\n"
+        f"[White \"Web\"]\n[Black \"Web\"]\n"
+        f"[Result \"{res}\"]\n\n{san_text} {res}\n"
+    )
+    return jsonify({
+        'fen': bd.fen(),
+        'turn': 'white' if bd.turn == chess.WHITE else 'black',
+        'is_check': bd.is_check(),
+        'is_checkmate': bd.is_checkmate(),
+        'is_stalemate': bd.is_stalemate(),
+        'is_game_over': bd.is_game_over(),
+        'result': bd.result() if bd.is_game_over() else None,
+        'phase': phase,
+        'metrics': metrics_lines,
+        'legal_moves_count': len(legal),
+        'legal_moves': legal,
+        'moves_san_list': san_list,
+        'moves_san': san_text,
+        'pgn': pgn_text,
+        'move_count': len(bd.move_stack),
+    })
+
 @app.route('/api/elo', methods=['GET'])
 @handle_api_errors
 def get_elo_ratings():
@@ -614,6 +832,103 @@ def _read_heatmap(pattern_set: str, piece: str) -> Optional[List[List[int]]]:
         return None
     with json_path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
+
+def _aggregate_piece_grids_for_piece(heatmaps: Dict[str, List[List[int]]], piece: str) -> Optional[List[List[int]]]:
+    """Aggregate upper/lower case piece grids into a single 8x8 grid for overlay.
+    piece: one of pawn, knight, bishop, rook, queen, king
+    """
+    mapping = {
+        'pawn': ['P', 'p'], 'knight': ['N', 'n'], 'bishop': ['B', 'b'],
+        'rook': ['R', 'r'], 'queen': ['Q', 'q'], 'king': ['K', 'k']
+    }
+    symbols = mapping.get(piece.lower())
+    if not symbols:
+        return None
+    agg = [[0 for _ in range(8)] for _ in range(8)]
+    for sym in symbols:
+        grid = heatmaps.get(sym)
+        if not grid:
+            continue
+        for r in range(8):
+            for c in range(8):
+                agg[r][c] += int(grid[r][c])
+    return agg
+
+def _normalize_grid(grid: List[List[int]]) -> List[List[float]]:
+    max_val = max((v for row in grid for v in row), default=0)
+    if max_val <= 0:
+        return [[0.0 for _ in range(8)] for _ in range(8)]
+    return [[(v / max_val) for v in row] for row in grid]
+
+def _heatmap_from_current_game(piece: str) -> Dict[str, Any]:
+    """Build per-piece heatmap from current game's SAN move history for overlay."""
+    moves_san = list(game_manager.game_moves)
+    bd = chess.Board()
+    grids = {sym: [[0 for _ in range(8)] for _ in range(8)] for sym in ['P','N','B','R','Q','K','p','n','b','r','q','k']}
+    for san in moves_san:
+        try:
+            mv = bd.parse_san(san)
+            piece_at = bd.piece_at(mv.from_square)
+            if piece_at is not None:
+                sym = piece_at.symbol()
+                to_file = chess.square_file(mv.to_square)
+                to_rank = chess.square_rank(mv.to_square)
+                grids[sym][7 - to_rank][to_file] += 1
+            bd.push(mv)
+        except Exception:
+            # Skip unparsable moves
+            continue
+    agg = _aggregate_piece_grids_for_piece(grids, piece)
+    total = sum(sum(row) for row in agg) if agg else 0
+    return {'heatmap': agg, 'total': total}
+
+@app.route('/api/heatmaps/sets', methods=['GET'])
+@handle_api_errors
+def api_heatmap_sets():
+    return jsonify({'sets': _list_sets()})
+
+@app.route('/api/heatmap/overlay', methods=['GET'])
+@handle_api_errors
+def api_heatmap_overlay():
+    """Return a single 8x8 grid for a given piece suitable for board overlay.
+    Query params:
+      - source: 'current' (default) or 'set'
+      - piece: pawn|knight|bishop|rook|queen|king (required)
+      - pattern_set: when source='set', name of set (e.g. 'base' or folder name)
+      - normalize: 0/1 to scale to [0,1]
+    """
+    piece = (request.args.get('piece') or '').lower()
+    source = (request.args.get('source') or 'current').lower()
+    normalize = request.args.get('normalize', '1') in ('1', 'true', 'yes')
+    if piece not in ('pawn','knight','bishop','rook','queen','king'):
+        return jsonify({'error': 'piece required: pawn|knight|bishop|rook|queen|king'}), 400
+    grid: Optional[List[List[int]]] = None
+    total = 0
+    if source == 'set':
+        pattern_set = (request.args.get('pattern_set') or 'base')
+        # Read JSONs for both cases and aggregate
+        upper_lower = {
+            'pawn': ['P','p'], 'knight': ['N','n'], 'bishop': ['B','b'],
+            'rook': ['R','r'], 'queen': ['Q','q'], 'king': ['K','k']
+        }[piece]
+        hm = {}
+        for sym in upper_lower:
+            # filenames use lowercase piece names in some repos; here _read_heatmap expects names like 'knight', etc.
+            name_map = {'P':'pawn','N':'knight','B':'bishop','R':'rook','Q':'queen','K':'king',
+                        'p':'pawn','n':'knight','b':'bishop','r':'rook','q':'queen','k':'king'}
+            arr = _read_heatmap(pattern_set, name_map[sym])
+            if arr:
+                hm[sym] = arr
+        grid = _aggregate_piece_grids_for_piece(hm, piece)
+        total = sum(sum(row) for row in grid) if grid else 0
+    else:
+        res = _heatmap_from_current_game(piece)
+        grid = res.get('heatmap')
+        total = int(res.get('total') or 0)
+    if grid is None:
+        return jsonify({'error': 'heatmap not available'}), 404
+    out = _normalize_grid(grid) if normalize else grid
+    return jsonify({'piece': piece, 'source': source, 'normalize': normalize, 'total': total, 'heatmap': out})
 
 @app.route('/api/heatmaps', methods=['GET'])
 @handle_api_errors
