@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea, QFileDialog, QTextEdit, QSplitter,
-    QScrollBar, QMainWindow
+    QScrollBar, QMainWindow, QTabWidget
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
@@ -229,8 +229,6 @@ class ChessViewer(QMainWindow):
 
         # Console output area
         self.console_output = QTextEdit()
-        self.console_output.setMaximumHeight(200)
-        self.console_output.setMinimumHeight(150)
         self.console_output.setReadOnly(True)
         self.console_output.setStyleSheet("""
             QTextEdit {
@@ -243,15 +241,23 @@ class ChessViewer(QMainWindow):
             }
         """)
         self.console_output.setPlainText("Console output will appear here during auto-play...")
+        # Make console 4 lines shorter than previous ~200px cap and stick to bottom
+        try:
+            line_h = self.console_output.fontMetrics().lineSpacing()
+            new_h = max(80, 200 - 4 * line_h)
+            self.console_output.setFixedHeight(new_h)
+        except Exception:
+            # Fallback height if metrics unavailable
+            self.console_output.setFixedHeight(140)
         
         # Ensure console is visible and properly sized
         self.console_output.setVisible(True)
 
         left_col = QVBoxLayout()
         left_col.addWidget(self.board_frame)
+        left_col.addStretch(1)  # консоль притискаємо до нижнього краю
         left_col.addWidget(QLabel("Console Output:"))
         left_col.addWidget(self.console_output)
-        left_col.addStretch(1)  # підштовхує дошку догори
 
         # ---- ПРАВА КОЛОНКА: КНОПКИ + СТАТУСИ ----
         right_col = QVBoxLayout()
@@ -306,26 +312,21 @@ class ChessViewer(QMainWindow):
             lab.setWordWrap(True)
             right_col.addWidget(lab)
 
-        right_col.addWidget(QLabel("Dynamic usage (W):"))
+        # Підготовка віджетів для вкладок (табів)
         self.chart_usage_w = OverallUsageChart()
-        right_col.addWidget(self.chart_usage_w)
-
-        right_col.addWidget(QLabel("Dynamic usage (B):"))
         self.chart_usage_b = OverallUsageChart()
-        right_col.addWidget(self.chart_usage_b)
 
         # Список ходів SAN
-        right_col.addWidget(QLabel("Moves:"))
         self.moves_list = QListWidget()
-        right_col.addWidget(self.moves_list)
 
         # Таймлайн застосованих модулів
-        right_col.addWidget(QLabel("Usage timeline:"))
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
-        right_col.addWidget(self.timeline)
 
         # Heatmap selection panel
+        # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
+        heatmaps_tab = QWidget()
+        heatmaps_tab_layout = QVBoxLayout(heatmaps_tab)
         if self.drawer_manager.heatmaps:
             heatmap_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
                 self._on_heatmap_piece,
@@ -335,13 +336,14 @@ class ChessViewer(QMainWindow):
                 current_set=default_heatmap_set,
                 current_piece=default_heatmap_piece,
             )
-            right_col.addLayout(heatmap_layout)
+            heatmaps_tab_layout.addLayout(heatmap_layout)
             self._populate_heatmap_pieces(default_heatmap_piece)
             self._sync_heatmap_set_selection()
             self._save_heatmap_preferences(
                 set_name=self.drawer_manager.active_heatmap_set,
                 piece_name=self.drawer_manager.active_heatmap_piece,
             )
+            heatmaps_tab_layout.addStretch(1)
         else:
             msg = QLabel(
                 "🔍 <b>Heatmap Visualization Unavailable</b><br><br>"
@@ -356,24 +358,53 @@ class ChessViewer(QMainWindow):
             )
             msg.setWordWrap(True)
             msg.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; }")
-            right_col.addWidget(msg)
+            heatmaps_tab_layout.addWidget(msg)
             btn_gen_heatmaps = QPushButton("🔧 Generate heatmaps now")
             btn_gen_heatmaps.setStyleSheet("QPushButton { background-color: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; }")
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
-            right_col.addWidget(btn_gen_heatmaps)
+            heatmaps_tab_layout.addWidget(btn_gen_heatmaps)
+            heatmaps_tab_layout.addStretch(1)
 
-        # Загальна діаграма використання модулів (нижня панель)
-        right_col.addWidget(QLabel("Overall module usage:"))
+        # Загальна діаграма використання модулів (у вкладці)
         self.overall_chart = OverallUsageChart()
         runs = load_runs("runs")
         self.overall_chart.set_data(aggregate_module_usage(runs))
         chart_scroll = QScrollArea()
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
-        right_col.addWidget(chart_scroll)
 
-        # Add some spacing at the bottom but don't push everything to the top
-        right_col.addStretch(0)  # Allow natural spacing
+        # Побудова вкладок праворуч (після кнопок і метрик)
+        tabs = QTabWidget()
+        # Вкладка Usage (динаміка та таймлайн)
+        usage_tab = QWidget()
+        usage_layout = QVBoxLayout(usage_tab)
+        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
+        usage_layout.addWidget(self.chart_usage_w)
+        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
+        usage_layout.addWidget(self.chart_usage_b)
+        usage_layout.addWidget(QLabel("Usage timeline:"))
+        usage_layout.addWidget(self.timeline)
+        usage_layout.addStretch(1)
+        tabs.addTab(usage_tab, "Usage")
+
+        # Вкладка Moves (список ходів)
+        moves_tab = QWidget()
+        moves_layout = QVBoxLayout(moves_tab)
+        moves_layout.addWidget(QLabel("Moves:"))
+        moves_layout.addWidget(self.moves_list)
+        tabs.addTab(moves_tab, "Moves")
+
+        # Вкладка Heatmaps
+        tabs.addTab(heatmaps_tab, "Heatmaps")
+
+        # Вкладка Overall (з прокруткою)
+        overall_tab = QWidget()
+        overall_layout = QVBoxLayout(overall_tab)
+        overall_layout.addWidget(QLabel("Overall module usage:"))
+        overall_layout.addWidget(chart_scroll)
+        tabs.addTab(overall_tab, "Overall")
+
+        right_col.addWidget(tabs)
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
         main = QHBoxLayout(self.central_widget)
@@ -1511,12 +1542,17 @@ class ChessViewer(QMainWindow):
         except Exception as exc:
             logger.error(f"Failed to save game or update ELO: {exc}")
 
-        QMessageBox.information(
-            self,
-            "🎯 Game Complete",
-            f"🏁 <b>Result:</b> {res}\n\n"
-            f"📋 <b>Moves:</b> {self._moves_san_string()}" + heatmap_msg,
-        )
+        # Виводимо результат в ліву нижню консоль замість MessageBox
+        self._append_to_console("=== Game Complete ===")
+        self._append_to_console(f"Result: {res}")
+        self._append_to_console(f"Moves: {len(self.board.move_stack)}")
+        if heatmap_msg:
+            # Очистимо HTML і залишимо коротке повідомлення
+            if "Heatmaps updated" in heatmap_msg:
+                self._append_to_console("Heatmaps: updated")
+            elif "Heatmap update failed" in heatmap_msg:
+                self._append_to_console("Heatmaps: update failed")
+        self._append_to_console("")
 
 # ====== Запуск ======
 if __name__ == "__main__":
