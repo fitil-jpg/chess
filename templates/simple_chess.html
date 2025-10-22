@@ -321,6 +321,7 @@
         <div class="controls">
             <button class="btn" id="btn-reset">🔄 Нова гра</button>
             <button class="btn" id="btn-bot-move">🤖 Хід бота</button>
+            <button class="btn" id="btn-auto">▶️ Автогра</button>
             <button class="btn" id="btn-legal-moves">📋 Можливі ходи</button>
         </div>
         
@@ -373,12 +374,15 @@
     </div>
 
     <script>
+        const MOVE_DELAY_MS = 400; // мінімальна затримка між ходами
         let currentBoard = null;
         let selectedSquare = null;
         let possibleMoves = [];
         let movesCount = 0;
         let lastPGN = '';
         let lastSAN = '';
+        let autoPlay = false;
+        let autoTimeoutId = null;
 
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
@@ -624,8 +628,31 @@
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus(`Бот зробив хід: ${data.move}`, 'success');
                     loadStats();
+
+                    // Зупиняємо автогру якщо партія завершена
+                    if (data.is_game_over || data.is_checkmate || data.is_stalemate || data.result) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
                 } else {
                     showStatus(`Помилка бота: ${data.error}`, 'error');
+                    // Якщо немає можливих ходів — завершуємо автогру
+                    if (autoPlay && /немає можливих ходів/i.test(String(data.error || ''))) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
                 }
             } catch (error) {
                 console.error('Помилка ходу бота:', error);
@@ -699,6 +726,7 @@
             document.getElementById('btn-reset').addEventListener('click', resetBoard);
             document.getElementById('btn-bot-move').addEventListener('click', makeBotMove);
             document.getElementById('btn-legal-moves').addEventListener('click', showLegalMoves);
+            document.getElementById('btn-auto').addEventListener('click', toggleAutoPlay);
             document.getElementById('btn-make-move').addEventListener('click', () => {
                 const moveInput = document.getElementById('move-input');
                 const move = moveInput.value.trim();
@@ -731,6 +759,40 @@
                     document.getElementById('btn-make-move').click();
                 }
             });
+        }
+
+        // Автогра: боти ходять по черзі з затримкою 400мс
+        async function autoPlayStep() {
+            if (!autoPlay) return;
+            // Захист від подвійного виклику
+            if (autoTimeoutId) {
+                clearTimeout(autoTimeoutId);
+                autoTimeoutId = null;
+            }
+            // Виконуємо хід поточного боку
+            await makeBotMove();
+            // Якщо гра не завершена — плануємо наступний крок
+            autoTimeoutId = setTimeout(autoPlayStep, MOVE_DELAY_MS);
+        }
+
+        function toggleAutoPlay() {
+            autoPlay = !autoPlay;
+            const btn = document.getElementById('btn-auto');
+            btn.textContent = autoPlay ? '⏸️ Пауза автогри' : '▶️ Автогра';
+            // Блокуємо ручні дії під час автогри
+            document.getElementById('btn-bot-move').disabled = autoPlay;
+            document.getElementById('btn-legal-moves').disabled = autoPlay;
+            document.getElementById('btn-make-move').disabled = autoPlay;
+            document.getElementById('move-input').disabled = autoPlay;
+            if (autoPlay) {
+                autoPlayStep();
+            } else {
+                if (autoTimeoutId) {
+                    clearTimeout(autoTimeoutId);
+                    autoTimeoutId = null;
+                }
+                showStatus('Автогру зупинено', 'info');
+            }
         }
 
         // Показати статус
