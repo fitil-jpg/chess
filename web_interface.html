@@ -422,7 +422,7 @@
                 <h3>♟️ Шахова доска</h3>
                 <div class="chess-board" id="chess-board"></div>
                 <div class="controls">
-                    <button class="btn" id="btn-start">▶️ Почати гру</button>
+                    <button class="btn" id="btn-start">▶️ Автогра</button>
                     <button class="btn" id="btn-pause" disabled>⏸️ Пауза</button>
                     <button class="btn" id="btn-stop" disabled>⏹️ Стоп</button>
                     <button class="btn" id="btn-reset">🔄 Скинути</button>
@@ -488,11 +488,12 @@
 
     <script>
         // Глобальні змінні
+        const MOVE_DELAY_MS = 400; // мінімальна затримка між ходами
         let game = null;
         let currentGame = null;
         let gameHistory = [];
         let isPlaying = false;
-        let gameInterval = null;
+        let gameInterval = null; // використовується як timeoutId у режимі автогри
         let selectedGame = null;
 
         // Універсальний конструктор Chess для UMD/ESM збірок chess.js
@@ -1014,11 +1015,16 @@
                     document.getElementById('btn-pause').disabled = false;
                     document.getElementById('btn-stop').disabled = false;
                     document.getElementById('game-status').textContent = 'Гра в процесі...';
-                    
-                    // Автоматична гра через сервер
-                    gameInterval = setInterval(async () => {
+
+                    // Автоматична гра через сервер з мінімальною затримкою 400мс та без накладання викликів
+                    const autoPlayStep = async () => {
+                        if (!isPlaying) return;
                         await makeServerMove();
-                    }, 2000);
+                        if (isPlaying) {
+                            gameInterval = setTimeout(autoPlayStep, MOVE_DELAY_MS);
+                        }
+                    };
+                    autoPlayStep();
                 } else {
                     // Запускаємо локальну гру якщо сервер недоступний
                     console.log('Запуск локальної гри...');
@@ -1031,11 +1037,13 @@
                     document.getElementById('btn-stop').disabled = false;
                     document.getElementById('game-status').textContent = 'Локальна гра в процесі...';
                     
-                    // Простий локальний режим
-                    gameInterval = setInterval(() => {
-                        // Тут можна додати логіку для локальної гри
+                    // Простий локальний режим — просто оновлюємо статус із затримкою 400мс
+                    const localAutoStep = () => {
+                        if (!isPlaying) return;
                         updateGameStatus();
-                    }, 2000);
+                        gameInterval = setTimeout(localAutoStep, MOVE_DELAY_MS);
+                    };
+                    localAutoStep();
                 }
             } catch (error) {
                 console.error('Помилка початку гри:', error);
@@ -1046,7 +1054,7 @@
         // Пауза гри
         function pauseGame() {
             isPlaying = false;
-            clearInterval(gameInterval);
+            clearTimeout(gameInterval);
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-pause').disabled = true;
             document.getElementById('game-status').textContent = 'Гра на паузі';
@@ -1055,7 +1063,7 @@
         // Зупинка гри (локальна версія)
         function stopGameLocal() {
             isPlaying = false;
-            clearInterval(gameInterval);
+            clearTimeout(gameInterval);
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-pause').disabled = true;
             document.getElementById('btn-stop').disabled = true;
@@ -1137,7 +1145,7 @@
             }
             
             isPlaying = false;
-            clearInterval(gameInterval);
+            clearTimeout(gameInterval);
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-pause').disabled = true;
             document.getElementById('btn-stop').disabled = true;
