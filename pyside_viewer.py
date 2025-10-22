@@ -247,15 +247,23 @@ class ChessViewer(QMainWindow):
             }
         """)
         self.console_output.setPlainText("Console output will appear here during auto-play...")
+        # Make console 4 lines shorter than previous ~200px cap and stick to bottom
+        try:
+            line_h = self.console_output.fontMetrics().lineSpacing()
+            new_h = max(80, 200 - 4 * line_h)
+            self.console_output.setFixedHeight(new_h)
+        except Exception:
+            # Fallback height if metrics unavailable
+            self.console_output.setFixedHeight(140)
         
         # Ensure console is visible and properly sized
         self.console_output.setVisible(True)
 
         left_col = QVBoxLayout()
         left_col.addWidget(self.board_frame)
+        left_col.addStretch(1)  # консоль притискаємо до нижнього краю
         left_col.addWidget(QLabel("Console Output:"))
         left_col.addWidget(self.console_output)
-        left_col.addStretch(1)  # підштовхує дошку догори
 
         # ---- ПРАВА КОЛОНКА: КНОПКИ + ТАБИ ----
         right_col = QVBoxLayout()
@@ -321,6 +329,16 @@ class ChessViewer(QMainWindow):
         status_layout.addStretch()
         self.tab_widget.addTab(self.status_tab, "📊 Статуси")
 
+        # Підготовка віджетів для вкладок (табів)
+        self.chart_usage_w = OverallUsageChart()
+        self.chart_usage_b = OverallUsageChart()
+
+        # Список ходів SAN
+        self.moves_list = QListWidget()
+
+        # Таймлайн застосованих модулів
+        self.timeline = UsageTimeline()
+        self.timeline.moveClicked.connect(self._on_timeline_click)
         # Таб 2: Usage та Timeline
         self.usage_tab = QWidget()
         usage_layout = QVBoxLayout(self.usage_tab)
@@ -358,6 +376,9 @@ class ChessViewer(QMainWindow):
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
         
         # Heatmap selection panel
+        # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
+        heatmaps_tab = QWidget()
+        heatmaps_tab_layout = QVBoxLayout(heatmaps_tab)
         if self.drawer_manager.heatmaps:
             heatmap_panel_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
                 self._on_heatmap_piece,
@@ -374,15 +395,7 @@ class ChessViewer(QMainWindow):
                 set_name=self.drawer_manager.active_heatmap_set,
                 piece_name=self.drawer_manager.active_heatmap_piece,
             )
-            # Підсумкова статистика хітмапів
-            heatmap_layout.addWidget(QLabel("Статистика теплокарт:"))
-            self.lbl_heatmap_counts = QLabel()
-            self.lbl_heatmap_counts.setWordWrap(True)
-            self.lbl_heatmap_counts.setStyleSheet(
-                "QLabel { background-color: #f3f6ff; border: 1px solid #ccd8ff; border-radius: 4px; padding: 6px; }"
-            )
-            heatmap_layout.addWidget(self.lbl_heatmap_counts)
-            self._update_heatmap_counts()
+            heatmaps_tab_layout.addStretch(1)
         else:
             msg = QLabel(
                 "🔍 <b>Heatmap Visualization Unavailable</b><br><br>"
@@ -423,8 +436,38 @@ class ChessViewer(QMainWindow):
         overall_layout.addStretch()
         self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
 
-        # Add some spacing at the bottom but don't push everything to the top
-        right_col.addStretch(0)  # Allow natural spacing
+        # Побудова вкладок праворуч (після кнопок і метрик)
+        tabs = QTabWidget()
+        # Вкладка Usage (динаміка та таймлайн)
+        usage_tab = QWidget()
+        usage_layout = QVBoxLayout(usage_tab)
+        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
+        usage_layout.addWidget(self.chart_usage_w)
+        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
+        usage_layout.addWidget(self.chart_usage_b)
+        usage_layout.addWidget(QLabel("Usage timeline:"))
+        usage_layout.addWidget(self.timeline)
+        usage_layout.addStretch(1)
+        tabs.addTab(usage_tab, "Usage")
+
+        # Вкладка Moves (список ходів)
+        moves_tab = QWidget()
+        moves_layout = QVBoxLayout(moves_tab)
+        moves_layout.addWidget(QLabel("Moves:"))
+        moves_layout.addWidget(self.moves_list)
+        tabs.addTab(moves_tab, "Moves")
+
+        # Вкладка Heatmaps
+        tabs.addTab(heatmaps_tab, "Heatmaps")
+
+        # Вкладка Overall (з прокруткою)
+        overall_tab = QWidget()
+        overall_layout = QVBoxLayout(overall_tab)
+        overall_layout.addWidget(QLabel("Overall module usage:"))
+        overall_layout.addWidget(chart_scroll)
+        tabs.addTab(overall_tab, "Overall")
+
+        right_col.addWidget(tabs)
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
         main = QHBoxLayout(self.central_widget)
