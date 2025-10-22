@@ -123,18 +123,13 @@ class ChessViewer(QMainWindow):
         super().__init__()
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
-        
-        # Create central widget and scroll area
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        
-        # Create scroll area
+
+        # Create scroll area (single central widget)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setWidget(self.central_widget)
-        
+
         # Style the scroll area
         self.scroll_area.setStyleSheet("""
             QScrollArea {
@@ -168,7 +163,7 @@ class ChessViewer(QMainWindow):
                 background-color: #495057;
             }
         """)
-        
+
         # Set scroll area as central widget
         self.setCentralWidget(self.scroll_area)
 
@@ -416,8 +411,9 @@ class ChessViewer(QMainWindow):
         right_col.addStretch(1)  # все тримаємо вгорі
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
-        content_widget = QWidget()
-        main = QHBoxLayout(content_widget)
+        # Wrap content in a single widget placed into the scroll area
+        self.content_widget = QWidget()
+        main = QHBoxLayout(self.content_widget)
         main.setContentsMargins(8, 8, 8, 8)
         main.setSpacing(12)
         main.addLayout(left_col, stretch=0)
@@ -425,15 +421,8 @@ class ChessViewer(QMainWindow):
 
         self.board_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
-        # Enable scrolling when content does not fit
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(content_widget)
-
-        outer = QVBoxLayout()
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(scroll)
-        self.setLayout(outer)
+        # Install the content into the main scroll area
+        self.scroll_area.setWidget(self.content_widget)
 
         # Таймер автогри
         self.auto_timer = QTimer()
@@ -464,8 +453,9 @@ class ChessViewer(QMainWindow):
 
     def _configure_scrollbars(self):
         """Configure scrollbars to ensure proper content display"""
-        # Ensure the central widget has a minimum size
-        self.central_widget.setMinimumSize(960, 600)
+        # Ensure the content widget has a minimum size
+        if hasattr(self, "content_widget") and self.content_widget is not None:
+            self.content_widget.setMinimumSize(960, 600)
         
         # Update scroll area size policy
         self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
