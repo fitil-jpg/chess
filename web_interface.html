@@ -88,6 +88,8 @@
             align-items: center;
             justify-content: center;
             font-size: 2.5rem;
+            font-family: "DejaVu Sans", "Segoe UI Symbol", "Noto Sans Symbols2", "Arial Unicode MS", sans-serif;
+            line-height: 1;
             cursor: pointer;
             transition: all 0.2s ease;
             position: relative;
@@ -133,6 +135,9 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn:hover {
@@ -422,7 +427,7 @@
                 <h3>♟️ Шахова доска</h3>
                 <div class="chess-board" id="chess-board"></div>
                 <div class="controls">
-                    <button class="btn" id="btn-start">▶️ Автогра</button>
+                    <button class="btn" id="btn-start"><span aria-hidden="true">▶</span><span>Автогра</span></button>
                     <button class="btn" id="btn-pause" disabled>⏸️ Пауза</button>
                     <button class="btn" id="btn-stop" disabled>⏹️ Стоп</button>
                     <button class="btn" id="btn-reset">🔄 Скинути</button>
@@ -521,7 +526,7 @@
             if (!game) {
                 loadBoardStateAndRender();
             }
-        }
+        });
 
         // Ініціалізація шахової доски
         function initializeChessBoard() {
