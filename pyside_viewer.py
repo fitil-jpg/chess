@@ -450,38 +450,7 @@ class ChessViewer(QMainWindow):
         overall_layout.addStretch()
         self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
 
-        # Побудова вкладок праворуч (після кнопок і метрик)
-        tabs = QTabWidget()
-        # Вкладка Usage (динаміка та таймлайн)
-        usage_tab = QWidget()
-        usage_layout = QVBoxLayout(usage_tab)
-        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
-        usage_layout.addWidget(self.chart_usage_w)
-        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
-        usage_layout.addWidget(self.chart_usage_b)
-        usage_layout.addWidget(QLabel("Usage timeline:"))
-        usage_layout.addWidget(self.timeline)
-        usage_layout.addStretch(1)
-        tabs.addTab(usage_tab, "Usage")
-
-        # Вкладка Moves (список ходів)
-        moves_tab = QWidget()
-        moves_layout = QVBoxLayout(moves_tab)
-        moves_layout.addWidget(QLabel("Moves:"))
-        moves_layout.addWidget(self.moves_list)
-        tabs.addTab(moves_tab, "Moves")
-
-        # Вкладка Heatmaps
-        tabs.addTab(heatmaps_tab, "Heatmaps")
-
-        # Вкладка Overall (з прокруткою)
-        overall_tab = QWidget()
-        overall_layout = QVBoxLayout(overall_tab)
-        overall_layout.addWidget(QLabel("Overall module usage:"))
-        overall_layout.addWidget(chart_scroll)
-        tabs.addTab(overall_tab, "Overall")
-
-        right_col.addWidget(tabs)
+        # Додаємо таби до основного лейауту (вже створені вище)
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
         main = QHBoxLayout(self.central_widget)
@@ -494,14 +463,10 @@ class ChessViewer(QMainWindow):
 
         # Таймер автогри
         self.auto_timer = QTimer()
-        self.auto_timer.setInterval(650)
+        self.auto_timer.setInterval(1000)  # Збільшено інтервал для стабільності
         self.auto_timer.timeout.connect(self.auto_step)
         self.auto_running = False
         self.move_in_progress = False
-        
-        # Мінімальний час для ходу (400мс)
-        self.min_move_time = 400
-        self.move_start_time = 0
         
         # Настройки автоматического воспроизведения
         self.auto_play_games = 10  # Количество игр для автоматического воспроизведения
@@ -920,11 +885,7 @@ class ChessViewer(QMainWindow):
                     self._show_game_over()
                 return
 
-            # Запам'ятовуємо час початку ходу
-            import time
-            self.move_start_time = time.time()
-            # Початок кроку — будемо гарантувати мінімум 400 мс до застосування ходу
-            step_start = time.perf_counter()
+            # Спрощена логіка без складного таймінгу
 
             mover_color = self.board.turn
             agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
@@ -982,72 +943,45 @@ class ChessViewer(QMainWindow):
                         self.heatmap_piece_combo.blockSignals(False)
                 self._refresh_board()
 
-            # Обчислити затримку до мінімальних 400 мс від початку цього кроку
-            elapsed_ms = (time.perf_counter() - step_start) * 1000.0
-            delay_ms = max(0, int(self.min_move_delay_ms - elapsed_ms))
+            # Застосовуємо хід одразу
+            self.board.push(move)
+            self.fen_history.append(self.board.fen())
 
-            def _apply_move_after_preview():
-                # Власне застосування ходу після затримки/попереднього показу
-                self.board.push(move)
-                self.fen_history.append(self.board.fen())
+            # Оновлюємо дошку
+            self._init_pieces()
+            self._refresh_board()
 
-                self._init_pieces()
-                self._refresh_board()
+            # Отримуємо інформацію про хід
+            reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
+            feats = agent.get_last_features() if hasattr(agent, "get_last_features") else None
 
-                reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
-                feats  = agent.get_last_features() if hasattr(agent, "get_last_features") else None
-
-                # Оновити usage + таймлайн
-                key = self._extract_reason_key(reason)
-                if mover_color == chess.WHITE:
-                    self.usage_w[key] += 1
-                    self.timeline_w.append(key)
-                else:
-                    self.usage_b[key] += 1
-                    self.timeline_b.append(key)
-
-                # Консольний дебаг
-                if self.debug_verbose.isChecked():
-                    print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
-
-                # Добавити хід у консоль під час auto-play
-                if self.auto_play_mode:
-                    move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
-                    self._append_to_console(move_info)
-
-            # Перевіряємо, чи пройшов мінімальний час
-            elapsed_time = (time.time() - self.move_start_time) * 1000  # в мілісекундах
-            if elapsed_time < self.min_move_time:
-                remaining_time = self.min_move_time - elapsed_time
-                QTimer.singleShot(int(remaining_time), self._continue_after_timing)
-                return
-
-            if self.board.is_game_over():
-                self.pause_auto()
-                self._show_game_over()
-                self._update_status(reason, feats)
-
-                # Додати у список ходів
-                self.moves_list.addItem(f"{prefix}{san}")
-                self.moves_list.setCurrentRow(self.moves_list.count() - 1)
-                self.moves_list.scrollToBottom()
-
-                if self.board.is_game_over():
-                    self.pause_auto()
-                    self._show_game_over()
-
-            # Застосувати після необхідної паузи
-            def _wrap_apply():
-                try:
-                    _apply_move_after_preview()
-                finally:
-                    self.move_in_progress = False
-            # Встановити прапорець лише коли вже маємо валідний хід і плануємо застосування
-            self.move_in_progress = True
-            if delay_ms > 0:
-                QTimer.singleShot(delay_ms, _wrap_apply)
+            # Оновлюємо статистику
+            key = self._extract_reason_key(reason)
+            if mover_color == chess.WHITE:
+                self.usage_w[key] += 1
+                self.timeline_w.append(key)
             else:
-                _wrap_apply()
+                self.usage_b[key] += 1
+                self.timeline_b.append(key)
+
+            # Додаємо хід до списку
+            self.moves_list.addItem(f"{prefix}{san}")
+            self.moves_list.setCurrentRow(self.moves_list.count() - 1)
+            self.moves_list.scrollToBottom()
+
+            # Оновлюємо статус
+            self._update_status(reason, feats)
+
+            # Консольний вивід
+            if self.debug_verbose.isChecked():
+                print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
+
+            if self.auto_play_mode:
+                move_info = f"Move {len(self.board.move_stack)}: {prefix}{san} ({key})"
+                self._append_to_console(move_info)
+
+            # Знімаємо блокування
+            self.move_in_progress = False
                 
         except Exception as exc:
             logger.error(f"Unexpected error in auto_step: {exc}")
@@ -1063,10 +997,6 @@ class ChessViewer(QMainWindow):
                     f"<b>Game paused.</b> You may need to restart the application."
                 )
 
-    def _continue_after_timing(self):
-        """Продовжити після мінімального часу ходу."""
-        if self.auto_running and not self.board.is_game_over():
-            self.auto_step()
 
     def _load_heatmap_for_piece(self, move):
         """Завантажити хітмап для фігури, яка робить хід."""
