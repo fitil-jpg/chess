@@ -5,8 +5,17 @@
 
 import os
 import sys
+import site
 import subprocess
 from pathlib import Path
+
+# Ensure user site-packages (used by pip --user) is on sys.path
+try:
+    user_site = site.getusersitepackages()
+    if user_site and user_site not in sys.path:
+        sys.path.append(user_site)
+except Exception:
+    pass
 
 def check_dependencies():
     """Перевірити наявність залежностей"""

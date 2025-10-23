@@ -31,7 +31,12 @@ from chess_ai.bot_agent import make_agent
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
-from chess_ai.elo_sync_manager import ELOSyncManager
+# Опційно імпортуємо ELOSyncManager (може вимагати aiohttp)
+try:
+    from chess_ai.elo_sync_manager import ELOSyncManager  # type: ignore
+except Exception as e:  # ImportError, RuntimeError, etc.
+    ELOSyncManager = None  # type: ignore
+    print(f"[web_server] ELOSyncManager недоступний: {e}", file=sys.stderr)
 from utils.integration import generate_heatmaps as integration_generate_heatmaps
 
 # Налаштування логування
@@ -567,6 +572,9 @@ def get_available_bots():
 def get_elo_ratings():
     """Отримати ELO рейтинги"""
     try:
+        if ELOSyncManager is None:
+            logger.info("ELOSyncManager відключено (aiohttp не встановлено)")
+            return jsonify({})
         if not game_data['elo_manager']:
             game_data['elo_manager'] = ELOSyncManager()
         
@@ -937,6 +945,17 @@ def signal_handler(signum, frame):
         logger.info(f"Активних з'єднань: {connection_stats['active_connections']}")
     
     logger.info("Сервер готовий до закриття")
+    # Завершуємо процес, щоб зупинити werkzeug/Flask dev-сервер
+    # Спробуємо коректно зупинити Flask сервер. Якщо не вдається — форсований вихід.
+    try:
+        # Якщо запускалось через Werkzeug, можна завершити через shutdown ф-ю
+        func = request.environ.get('werkzeug.server.shutdown') if 'request' in globals() else None
+        if callable(func):
+            func()
+        else:
+            sys.exit(0)
+    except Exception:
+        os._exit(0)
 
 def _detect_local_ip() -> Optional[str]:
     """Attempt to detect a non-loopback local IPv4 address for logging purposes."""
@@ -970,9 +989,15 @@ def run_server(host='0.0.0.0', port=5000, debug=False):
     else:
         logger.info(f"Відкрийте http://{host}:{port} у браузері")
     
-    # Встановлюємо обробники сигналів
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # Встановлюємо обробники сигналів тільки у головному потоці
+    try:
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+        else:
+            logger.debug("Пропущено встановлення обробників сигналів (не головний потік)")
+    except Exception as e:
+        logger.debug(f"Не вдалося встановити обробники сигналів: {e}")
     
     # Запускаємо фонове логування статистики
     global stats_thread
