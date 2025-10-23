@@ -48,6 +48,7 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             margin: 0 auto 30px;
             max-width: 500px;
+            position: relative; /* Для накладання полотна теплової карти */
         }
 
         .cell {
@@ -304,6 +305,28 @@
             flex-wrap: wrap;
             margin-top: 10px;
         }
+
+        /* Полотно для теплової карти */
+        #heatmap-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* щоб кліки проходили до клітинок */
+        }
+        .heatmap-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0 0;
+        }
+        .heatmap-controls select, .heatmap-controls input[type="range"] {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -312,6 +335,7 @@
         
         <div class="chess-board" id="chess-board">
             <!-- Доска буде створена JavaScript -->
+            <canvas id="heatmap-canvas"></canvas>
         </div>
         
         <div class="status" id="game-status">
@@ -328,6 +352,29 @@
         <div class="move-input">
             <input type="text" id="move-input" placeholder="Введіть хід (наприклад: e4)">
             <button class="btn" id="btn-make-move">Зробити хід</button>
+        </div>
+
+        <div class="heatmap-controls">
+            <label>Теплова карта:</label>
+            <select id="heatmap-piece">
+                <option value="knight">Кінь</option>
+                <option value="pawn">Пішак</option>
+                <option value="bishop">Слон</option>
+                <option value="rook">Тура</option>
+                <option value="queen">Ферзь</option>
+                <option value="king">Король</option>
+            </select>
+            <select id="heatmap-source">
+                <option value="current">Поточна партія</option>
+                <option value="set">Набір (JSON)</option>
+            </select>
+            <select id="heatmap-set" disabled>
+                <option value="base">base</option>
+            </select>
+            <label style="margin-left:6px;">Прозорість</label>
+            <input id="heatmap-opacity" type="range" min="0" max="1" step="0.05" value="0.6" />
+            <button class="btn" id="btn-apply-heatmap">Оновити</button>
+            <button class="btn" id="btn-toggle-heatmap">Приховати</button>
         </div>
         
         <div class="legal-moves" id="legal-moves" style="display: none;">
@@ -383,6 +430,8 @@
         let lastSAN = '';
         let autoPlay = false;
         let autoTimeoutId = null;
+        let heatmapVisible = true;
+        let cachedOverlay = null; // кеш останніх даних теплової карти
 
         // Ініціалізація
         document.addEventListener('DOMContentLoaded', function() {
@@ -390,6 +439,11 @@
             loadBoard();
             setupEventListeners();
             loadStats();
+            initHeatmapControls();
+            updateHeatmapOverlay();
+            window.addEventListener('resize', () => {
+                if (cachedOverlay && heatmapVisible) drawHeatmapOverlay(cachedOverlay);
+            });
         });
 
         // Ініціалізація доски
@@ -442,6 +496,8 @@
                     cell.style.color = piece.color === 'white' ? '#fff' : '#000';
                 }
             });
+            // Перемальовуємо теплову карту поверх нової дошки
+            updateHeatmapOverlay();
         }
 
         // Оновлення статусу
@@ -595,6 +651,7 @@
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus(`Хід: ${data.move}`, 'success');
                     loadStats();
+                    updateHeatmapOverlay();
                 } else {
                     showStatus(`Помилка: ${data.error}`, 'error');
                 }
@@ -628,6 +685,7 @@
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus(`Бот зробив хід: ${data.move}`, 'success');
                     loadStats();
+                    updateHeatmapOverlay();
 
                     // Зупиняємо автогру якщо партія завершена
                     if (data.is_game_over || data.is_checkmate || data.is_stalemate || data.result) {
@@ -683,6 +741,7 @@
                     document.getElementById('moves-count').textContent = movesCount;
                     showStatus('Нова гра розпочата', 'success');
                     loadStats();
+                    updateHeatmapOverlay();
                 }
             } catch (error) {
                 console.error('Помилка скидання:', error);
@@ -759,6 +818,24 @@
                     document.getElementById('btn-make-move').click();
                 }
             });
+
+            // Heatmap controls
+            document.getElementById('heatmap-source').addEventListener('change', (e) => {
+                const useSet = e.target.value === 'set';
+                const sel = document.getElementById('heatmap-set');
+                sel.disabled = !useSet;
+            });
+            document.getElementById('btn-apply-heatmap').addEventListener('click', updateHeatmapOverlay);
+            document.getElementById('heatmap-opacity').addEventListener('input', () => {
+                if (cachedOverlay && heatmapVisible) drawHeatmapOverlay(cachedOverlay);
+            });
+            document.getElementById('btn-toggle-heatmap').addEventListener('click', () => {
+                heatmapVisible = !heatmapVisible;
+                document.getElementById('btn-toggle-heatmap').textContent = heatmapVisible ? 'Приховати' : 'Показати';
+                const cvs = document.getElementById('heatmap-canvas');
+                cvs.style.display = heatmapVisible ? 'block' : 'none';
+                if (heatmapVisible && cachedOverlay) drawHeatmapOverlay(cachedOverlay);
+            });
         }
 
         // Автогра: боти ходять по черзі з затримкою 400мс
@@ -792,6 +869,7 @@
                     autoTimeoutId = null;
                 }
                 showStatus('Автогру зупинено', 'info');
+                updateHeatmapOverlay();
             }
         }
 
@@ -811,6 +889,96 @@
         // Приховати завантаження
         function hideLoading() {
             // Статус буде оновлений в updateStatus
+        }
+
+        // ====== Теплові карти: клієнтська частина ======
+        async function initHeatmapControls() {
+            try {
+                const resp = await fetch('/api/heatmaps/sets');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const sets = (data.sets || []).map(s => s.name);
+                const sel = document.getElementById('heatmap-set');
+                sel.innerHTML = '';
+                sets.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    sel.appendChild(opt);
+                });
+                if (!sets.includes('base')) {
+                    const opt = document.createElement('option');
+                    opt.value = 'base';
+                    opt.textContent = 'base';
+                    sel.appendChild(opt);
+                }
+                sel.value = 'base';
+            } catch (e) {
+                console.warn('Не вдалося завантажити набори теплових карт');
+            }
+        }
+
+        async function updateHeatmapOverlay() {
+            try {
+                const piece = document.getElementById('heatmap-piece').value;
+                const source = document.getElementById('heatmap-source').value;
+                const setName = document.getElementById('heatmap-set').value || 'base';
+                const params = new URLSearchParams({ piece, source, normalize: '1' });
+                if (source === 'set') params.set('pattern_set', setName);
+                const resp = await fetch(`/api/heatmap/overlay?${params.toString()}`);
+                if (!resp.ok) {
+                    cachedOverlay = null;
+                    drawHeatmapOverlay(null);
+                    return;
+                }
+                const data = await resp.json();
+                cachedOverlay = data;
+                drawHeatmapOverlay(data);
+            } catch (e) {
+                console.warn('Помилка оновлення теплової карти', e);
+            }
+        }
+
+        function drawHeatmapOverlay(data) {
+            const canvas = document.getElementById('heatmap-canvas');
+            const board = document.getElementById('chess-board');
+            const ctx = canvas.getContext('2d');
+            // Розміри полотна = розміри дошки
+            const rect = board.getBoundingClientRect();
+            const width = Math.floor(rect.width);
+            const height = Math.floor(rect.height);
+            // Якщо елемент прихований, не малюємо
+            canvas.width = width;
+            canvas.height = height;
+            ctx.clearRect(0, 0, width, height);
+            if (!data || !data.heatmap || !heatmapVisible) return;
+            const grid = data.heatmap; // 8x8 значення [0..1]
+            const cellW = width / 8;
+            const cellH = height / 8;
+            const baseAlpha = parseFloat(document.getElementById('heatmap-opacity').value || '0.6');
+            // Малюємо прямокутники з прозорістю залежно від значення
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const v = Math.max(0, Math.min(1, Number(grid[r][c]) || 0));
+                    if (v <= 0) continue;
+                    const alpha = Math.min(1, v * baseAlpha);
+                    ctx.fillStyle = `rgba(255, 69, 0, ${alpha})`; // помаранчево-червоний
+                    ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+                }
+            }
+            // Легка сітка для читабельності
+            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 8; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellW, 0);
+                ctx.lineTo(i * cellW, height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellH);
+                ctx.lineTo(width, i * cellH);
+                ctx.stroke();
+            }
         }
     </script>
 </body>
