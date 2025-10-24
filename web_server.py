@@ -375,6 +375,20 @@ def health_check():
 # Ініціалізуємо час запуску для health check
 health_check.start_time = time.time()
 
+@app.route('/favicon.ico')
+def favicon():
+    """Повертає favicon для браузера"""
+    # Підтримуємо як svg у static, так і запасний шлях
+    static_path = Path('static')
+    svg_path = static_path / 'favicon.svg'
+    if svg_path.exists():
+        return send_from_directory('static', 'favicon.svg')
+    # Якщо немає svg, спробуємо ico, інакше 404 відправить Flask
+    ico_path = static_path / 'favicon.ico'
+    if ico_path.exists():
+        return send_from_directory('static', 'favicon.ico')
+    return ('', 204)
+
 @app.route('/api/status')
 @handle_api_errors
 def get_status():
