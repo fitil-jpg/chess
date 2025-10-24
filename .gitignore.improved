@@ -1,0 +1,126 @@
+# venv
+.venv/
+venv/
+
+# Python build/cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE/OS
+.vscode/*
+!.vscode/launch.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+
+# Env/config
+.env
+.env.*
+*.local
+
+# Qt/PySide (збірки)
+*.qrc.dep
+*.qm
+
+stats/usage_counts.json
+
+# Analysis outputs
+analysis/heatmaps/default/fens.csv
+
+# Heatmaps (bins8)
+heatmaps/heatmap_B_bins8.json
+heatmaps/heatmap_K_bins8.json
+heatmaps/heatmap_N_bins8.json
+heatmaps/heatmap_P_bins8.json
+heatmaps/heatmap_Q_bins8.json
+heatmaps/heatmap_R_bins8.json
+
+# Generated heatmap visualizations (keep base images, ignore generated ones)
+heatmap_visualizations/*.png
+heatmap_visualizations/*.json
+!heatmap_visualizations/all_pieces_heatmap.png
+!heatmap_visualizations/bishop_heatmap.png
+!heatmap_visualizations/combined_heatmap.png
+!heatmap_visualizations/king_heatmap.png
+!heatmap_visualizations/knight_heatmap.png
+!heatmap_visualizations/pawn_heatmap.png
+!heatmap_visualizations/queen_heatmap.png
+!heatmap_visualizations/rook_heatmap.png
+
+## Run logs - УЛУЧШЕННАЯ ВЕРСИЯ
+# Игнорируем временные файлы, но сохраняем важные логи
+runs/*.tmp
+runs/temp_*
+runs/debug_*
+# Сохраняем основные файлы игр
+!runs/*.json
+!runs/.gitkeep
+
+## Logs - УЛУЧШЕННАЯ ВЕРСИЯ  
+# Игнорируем временные логи, но сохраняем важные
+logs/*.tmp
+logs/temp_*
+logs/debug_*
+# Сохраняем основные логи игр
+!logs/*.log
+!logs/.gitkeep
+
+## Output - УЛУЧШЕННАЯ ВЕРСИЯ
+# Игнорируем временные файлы, но сохраняем важные результаты
+output/*.tmp
+output/temp_*
+output/debug_*
+# Сохраняем основные результаты
+!output/*.json
+!output/*.txt
+!output/*.csv
+!output/.gitkeep
+
+## Ignore generated heatmap data (keep source scripts)
+analysis/heatmaps/*.json
+analysis/heatmaps/*.csv
+analysis/heatmaps/*/
+!analysis/heatmaps/.gitkeep
+!analysis/heatmaps/generate_heatmaps.R
+!analysis/heatmaps/generate_heatmaps_python.py
+heatmaps/*
+!heatmaps/.gitkeep
+
+# Analysis single-file outputs
+analysis/agent_metrics.json
+analysis/synergy.json
+
+# ML weights / checkpoints
+*.pth
+*.pt
+
+# PST training artifacts (keep minimal template in repo)
+pst.json
+
+# Test screenshots (generated locally, not committed)
+test_screenshots/*
+!test_screenshots/.gitkeep
+
+# Важные файлы, которые НЕ должны игнорироваться
+!ratings.json
+!stats/
+!stats/.gitkeep
