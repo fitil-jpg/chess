@@ -43,9 +43,15 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
+from ui.mini_board_widget import MiniBoardWidget
+from ui.method_status_widget import MethodStatusWidget
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
+from utils.timing_config import get_timing_config
+from core.move_object import MoveObject, create_move_object
 from chess_ai.elo_sync_manager import ELOSyncManager
+from chess_ai.wfc_engine import WFCEngine, create_chess_wfc_engine
+from chess_ai.bsp_engine import BSPEngine, create_chess_bsp_engine
 
 # Set Stockfish path if available
 import os
@@ -125,8 +131,8 @@ class ChessViewer(QMainWindow):
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
         
-        # Мінімальна затримка між застосуванням ходів (мс)
-        self.min_move_delay_ms = 400
+        # Мінімальна затримка між застосуванням ходів (мс) - now from config
+        self.min_move_delay_ms = 400  # Will be overridden by config
         
         # Create central widget
         self.central_widget = QWidget()
@@ -165,6 +171,16 @@ class ChessViewer(QMainWindow):
         self.drawer_manager = DrawerManager()
         self.heatmap_set_combo = None
         self.heatmap_piece_combo = None
+        
+        # Timing configuration
+        self.timing_config = get_timing_config()
+        
+        # WFC and BSP engines
+        self.wfc_engine = create_chess_wfc_engine()
+        self.bsp_engine = create_chess_bsp_engine()
+        
+        # Current move object being evaluated
+        self.current_move_obj: Optional[MoveObject] = None
 
         if saved_set:
             self.drawer_manager.set_heatmap_set(saved_set)
@@ -357,6 +373,11 @@ class ChessViewer(QMainWindow):
         self.timeline.moveClicked.connect(self._on_timeline_click)
         usage_layout.addWidget(self.timeline)
         
+        # Method Status Widget
+        usage_layout.addWidget(QLabel("Method Status Pipeline:"))
+        self.method_status_widget = MethodStatusWidget()
+        usage_layout.addWidget(self.method_status_widget)
+        
         usage_layout.addStretch()
         self.tab_widget.addTab(self.usage_tab, "📈 Usage")
 
@@ -388,6 +409,10 @@ class ChessViewer(QMainWindow):
             }
         """)
         heatmap_layout.addWidget(self.heatmap_stats_label)
+        
+        # Mini Board Widget
+        self.mini_board_widget = MiniBoardWidget()
+        heatmap_layout.addWidget(self.mini_board_widget)
         
         # Heatmap selection panel
         # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
@@ -890,9 +915,22 @@ class ChessViewer(QMainWindow):
             mover_color = self.board.turn
             agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
 
+            # Create move object for tracking
+            self.current_move_obj = None
+            
             # Отримати хід з обробкою помилок
             try:
                 move = agent.choose_move(self.board)
+                
+                # Create move object for visualization
+                if move:
+                    bot_name = f"WFC > {agent.__class__.__name__}" if hasattr(agent, 'wfc_engine') else agent.__class__.__name__
+                    self.current_move_obj = create_move_object(move, self.board, bot_name)
+                    
+                    # Update mini board and method status widgets
+                    self.mini_board_widget.set_board(self.board)
+                    self.mini_board_widget.set_current_move(self.current_move_obj)
+                    self.method_status_widget.set_move(self.current_move_obj)
             except Exception as exc:
                 logger.error(f"Agent {agent.__class__.__name__} failed to choose move: {exc}")
                 self.pause_auto()

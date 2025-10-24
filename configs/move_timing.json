@@ -1,0 +1,31 @@
+{
+  "description": "Move timing configuration for chess AI",
+  "version": "1.0",
+  
+  "timing": {
+    "move_time_ms": 700,
+    "min_move_delay_ms": 400,
+    "visualization_delay_ms": 50,
+    "cell_animation_delay_ms": 50,
+    "heatmap_update_delay_ms": 100
+  },
+  
+  "auto_play": {
+    "games_count": 10,
+    "game_delay_ms": 2000,
+    "move_delay_ms": 1000
+  },
+  
+  "visualization": {
+    "show_intermediate_steps": true,
+    "highlight_current_cell": true,
+    "animate_transitions": true,
+    "show_method_status": true
+  },
+  
+  "thresholds": {
+    "minimax_value_threshold_percent": 10,
+    "display_move_threshold": 0.1,
+    "guardrails_penalty_factor": 0.5
+  }
+}

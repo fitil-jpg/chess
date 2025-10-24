@@ -224,35 +224,98 @@ class WFCEngine:
         
     def add_opening_patterns(self) -> None:
         """Add common opening patterns to the engine."""
-        # King's Pawn Opening
+        # COW Opening - Center Opening with Wing development
+        # This is a flexible opening system focusing on central control
+        # and rapid wing development (COW = Central Opening Wing)
+        
+        # COW Opening: e4 + d4 pawn center
+        cow_center_pattern = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.E2, chess.E4, chess.D2, chess.D4),
+            pieces=(
+                chess.Piece(chess.PAWN, chess.WHITE),
+                chess.Piece(chess.PAWN, chess.WHITE),
+                chess.Piece(chess.PAWN, chess.WHITE),
+                chess.Piece(chess.PAWN, chess.WHITE)
+            ),
+            constraints=(("center_control", True), ("cow_opening", True)),
+            frequency=0.9  # High frequency for COW opening
+        )
+        self.add_pattern(cow_center_pattern)
+        
+        # COW Opening: Kingside knight development (Nf3)
+        cow_knight_kingside = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.G1, chess.F3),
+            pieces=(
+                chess.Piece(chess.KNIGHT, chess.WHITE),
+                chess.Piece(chess.KNIGHT, chess.WHITE)
+            ),
+            constraints=(("development", True), ("cow_opening", True), ("kingside", True)),
+            frequency=0.85
+        )
+        self.add_pattern(cow_knight_kingside)
+        
+        # COW Opening: Queenside knight development (Nc3)
+        cow_knight_queenside = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.B1, chess.C3),
+            pieces=(
+                chess.Piece(chess.KNIGHT, chess.WHITE),
+                chess.Piece(chess.KNIGHT, chess.WHITE)
+            ),
+            constraints=(("development", True), ("cow_opening", True), ("queenside", True)),
+            frequency=0.85
+        )
+        self.add_pattern(cow_knight_queenside)
+        
+        # COW Opening: Kingside bishop fianchetto (g3, Bg2)
+        cow_bishop_fianchetto_k = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.G2, chess.G3, chess.F1, chess.G2),
+            pieces=(
+                chess.Piece(chess.PAWN, chess.WHITE),
+                chess.Piece(chess.PAWN, chess.WHITE),
+                chess.Piece(chess.BISHOP, chess.WHITE),
+                chess.Piece(chess.BISHOP, chess.WHITE)
+            ),
+            constraints=(("fianchetto", True), ("cow_opening", True), ("kingside", True)),
+            frequency=0.75
+        )
+        self.add_pattern(cow_bishop_fianchetto_k)
+        
+        # COW Opening: Early castling preparation
+        cow_castle_prep = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.E1, chess.G1),
+            pieces=(
+                chess.Piece(chess.KING, chess.WHITE),
+                chess.Piece(chess.KING, chess.WHITE)
+            ),
+            constraints=(("king_safety", True), ("cow_opening", True), ("castling", True)),
+            frequency=0.8
+        )
+        self.add_pattern(cow_castle_prep)
+        
+        # Alternative: King's Pawn Opening (lower frequency than COW)
         king_pawn_pattern = ChessPattern(
             pattern_type=PatternType.OPENING,
             squares=(chess.E2, chess.E4),
             pieces=(chess.Piece(chess.PAWN, chess.WHITE), chess.Piece(chess.PAWN, chess.WHITE)),
             constraints=(("center_control", True), ("development", True)),
-            frequency=0.8
+            frequency=0.5  # Reduced frequency
         )
         self.add_pattern(king_pawn_pattern)
         
-        # Queen's Pawn Opening
+        # Queen's Pawn Opening (lower frequency than COW)
         queen_pawn_pattern = ChessPattern(
             pattern_type=PatternType.OPENING,
             squares=(chess.D2, chess.D4),
             pieces=(chess.Piece(chess.PAWN, chess.WHITE), chess.Piece(chess.PAWN, chess.WHITE)),
             constraints=(("center_control", True), ("development", True)),
-            frequency=0.7
+            frequency=0.5  # Reduced frequency
         )
         self.add_pattern(queen_pawn_pattern)
-        
-        # Knight Development
-        knight_pattern = ChessPattern(
-            pattern_type=PatternType.OPENING,
-            squares=(chess.B1, chess.C3),
-            pieces=(chess.Piece(chess.KNIGHT, chess.WHITE), chess.Piece(chess.KNIGHT, chess.WHITE)),
-            constraints=(("development", True), ("center_control", True)),
-            frequency=0.6
-        )
-        self.add_pattern(knight_pattern)
         
     def add_tactical_patterns(self) -> None:
         """Add common tactical patterns to the engine."""
