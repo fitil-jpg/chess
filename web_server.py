@@ -456,6 +456,7 @@ def start_game():
         data = request.get_json() or {}
         white_bot = data.get('white_bot', 'StockfishBot')
         black_bot = data.get('black_bot', 'DynamicBot')
+        infinite_mode = data.get('infinite_mode', False)
         
         # Ініціалізуємо ботів
         if not game_manager.initialize_agents(white_bot, black_bot):
@@ -466,10 +467,14 @@ def start_game():
         game_data['is_playing'] = True
         game_manager.start_time = time.time()
         
+        # Зберігаємо режим гри
+        game_data['infinite_mode'] = infinite_mode
+        
         return jsonify({
             'success': True,
             'message': f'Гра розпочата: {white_bot} vs {black_bot}',
-            'board_state': game_manager.get_board_state()
+            'board_state': game_manager.get_board_state(),
+            'infinite_mode': infinite_mode
         })
         
     except Exception as e:
@@ -548,6 +553,45 @@ def stop_game():
         return jsonify({'success': True, 'message': 'Гра зупинена'})
     except Exception as e:
         logger.error(f"Помилка зупинки гри: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/game/end', methods=['POST'])
+@handle_api_errors
+def end_game():
+    """Обробка завершення гри з оновленням ELO та збереженням hitmap"""
+    try:
+        data = request.get_json() or {}
+        result = data.get('result', '*')
+        moves = data.get('moves', [])
+        modules = data.get('modules', {'white': [], 'black': []})
+        game_number = data.get('game_number', 1)
+        
+        # Оновлюємо ELO рейтинги
+        await update_elo_ratings(result, modules)
+        
+        # Зберігаємо дані для hitmap (тільки JSON, без зображень)
+        await save_hitmap_data(result, moves, modules, game_number)
+        
+        # Оновлюємо статистику
+        game_data['game_history'].append({
+            'id': len(game_data['game_history']) + 1,
+            'result': result,
+            'moves': moves,
+            'modules': modules,
+            'duration': int((time.time() - game_manager.start_time) * 1000) if game_manager.start_time else 0,
+            'timestamp': data.get('timestamp', datetime.now().isoformat()),
+            'game_number': game_number
+        })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Гра #{game_number} завершена: {result}',
+            'elo_updated': True,
+            'hitmap_saved': True
+        })
+        
+    except Exception as e:
+        logger.error(f"Помилка обробки завершення гри: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/game/reset', methods=['POST'])
@@ -1245,6 +1289,123 @@ def evaluate_mobility(board):
         'white': white_moves,
         'black': black_moves
     }
+
+async def update_elo_ratings(result, modules):
+    """Оновлення ELO рейтингів після завершення гри"""
+    try:
+        if ELOSyncManager is None:
+            logger.info("ELOSyncManager відключено, пропускаємо оновлення ELO")
+            return
+        
+        if not game_data['elo_manager']:
+            game_data['elo_manager'] = ELOSyncManager()
+        
+        # Визначаємо ботів з модулів
+        white_bot = modules.get('white', ['Unknown'])[0] if modules.get('white') else 'Unknown'
+        black_bot = modules.get('black', ['Unknown'])[0] if modules.get('black') else 'Unknown'
+        
+        # Реєструємо ботів якщо вони не існують
+        if not game_data['elo_manager'].get_bot_rating(white_bot):
+            game_data['elo_manager'].register_bot(white_bot, 1500.0)
+        if not game_data['elo_manager'].get_bot_rating(black_bot):
+            game_data['elo_manager'].register_bot(black_bot, 1500.0)
+        
+        # Оновлюємо рейтинги на основі результату
+        if result == '1-0':  # Білі виграли
+            update_bot_elo(white_bot, black_bot, 1.0)
+        elif result == '0-1':  # Чорні виграли
+            update_bot_elo(black_bot, white_bot, 1.0)
+        else:  # Нічия
+            update_bot_elo(white_bot, black_bot, 0.5)
+            
+        logger.info(f"ELO оновлено: {white_bot} vs {black_bot} - {result}")
+        
+    except Exception as e:
+        logger.error(f"Помилка оновлення ELO: {e}")
+
+def update_bot_elo(winner_bot, loser_bot, score):
+    """Оновлення ELO рейтингів для двох ботів"""
+    try:
+        K = 32  # K-фактор для ELO
+        
+        winner_rating = game_data['elo_manager'].get_bot_rating(winner_bot)
+        loser_rating = game_data['elo_manager'].get_bot_rating(loser_bot)
+        
+        if winner_rating and loser_rating:
+            # Розрахунок очікуваного результату
+            expected_winner = 1 / (1 + 10 ** ((loser_rating.elo - winner_rating.elo) / 400))
+            expected_loser = 1 - expected_winner
+            
+            # Оновлення рейтингів
+            new_winner_elo = winner_rating.elo + K * (score - expected_winner)
+            new_loser_elo = loser_rating.elo + K * ((1 - score) - expected_loser)
+            
+            # Зберігаємо оновлення
+            game_data['elo_manager'].update_bot_rating(winner_bot, new_winner_elo, reason=f"Game result: {score}")
+            game_data['elo_manager'].update_bot_rating(loser_bot, new_loser_elo, reason=f"Game result: {1 - score}")
+            
+    except Exception as e:
+        logger.error(f"Помилка розрахунку ELO: {e}")
+
+async def save_hitmap_data(result, moves, modules, game_number):
+    """Збереження даних для hitmap (тільки JSON, без зображень)"""
+    try:
+        # Створюємо директорію для hitmap даних
+        hitmap_dir = Path("heatmaps/infinite_games")
+        hitmap_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Створюємо дані для hitmap
+        hitmap_data = {
+            'game_number': game_number,
+            'result': result,
+            'moves': moves,
+            'modules': modules,
+            'timestamp': datetime.now().isoformat(),
+            'piece_movements': extract_piece_movements(moves)
+        }
+        
+        # Зберігаємо JSON файл
+        json_file = hitmap_dir / f"game_{game_number:06d}.json"
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(hitmap_data, f, indent=2, ensure_ascii=False)
+        
+        logger.info(f"Hitmap дані збережено: {json_file}")
+        
+    except Exception as e:
+        logger.error(f"Помилка збереження hitmap даних: {e}")
+
+def extract_piece_movements(moves):
+    """Витягти рухи фігур з списку ходів"""
+    try:
+        board = chess.Board()
+        movements = {}
+        
+        for move_san in moves:
+            try:
+                move = board.parse_san(move_san)
+                piece = board.piece_at(move.from_square)
+                
+                if piece:
+                    piece_symbol = piece.symbol()
+                    if piece_symbol not in movements:
+                        movements[piece_symbol] = []
+                    
+                    # Конвертуємо квадрат в координати
+                    to_file = chess.square_file(move.to_square)
+                    to_rank = chess.square_rank(move.to_square)
+                    movements[piece_symbol].append([to_file, to_rank])
+                
+                board.push(move)
+                
+            except Exception as e:
+                logger.warning(f"Помилка парсингу ходу {move_san}: {e}")
+                continue
+        
+        return movements
+        
+    except Exception as e:
+        logger.error(f"Помилка витягування рухів фігур: {e}")
+        return {}
 
 # Статичні файли
 @app.route('/static/<path:filename>')
