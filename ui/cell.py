@@ -21,6 +21,9 @@ class Cell(QLabel):
         self._piece_symbol = None
         self.attack_count = 0
         self._border_highlight = False
+        # Optional alternate overlay channels
+        self._tactical_overlay: QColor | None = None  # blue-ish mask
+        self._pruned_overlay: QColor | None = None    # violet mask for >10% minimax
 
     def set_piece(self, piece_symbol):
         self._piece_symbol = piece_symbol
@@ -101,6 +104,20 @@ class Cell(QLabel):
                 painter.setBrush(QColor("yellow"))
                 painter.setPen(Qt.NoPen)
                 painter.drawEllipse(int(42 * self.scale), int(4 * self.scale), int(10 * self.scale), int(10 * self.scale))
+            elif overlay_type == "tactical":
+                # Light blue translucent fill
+                painter.setBrush(QColor(64, 156, 255,))
+                painter.setPen(Qt.NoPen)
+                painter.setOpacity(0.35)
+                painter.drawRect(0, 0, self.width(), self.height())
+                painter.setOpacity(1.0)
+            elif overlay_type == "pruned":
+                # Violet translucent fill for >10% value candidates
+                painter.setBrush(QColor(186, 85, 211))
+                painter.setPen(Qt.NoPen)
+                painter.setOpacity(0.30)
+                painter.drawRect(0, 0, self.width(), self.height())
+                painter.setOpacity(1.0)
             elif overlay_type == "gradient":
                 painter.setBrush(QColor(color))
                 painter.setPen(Qt.NoPen)

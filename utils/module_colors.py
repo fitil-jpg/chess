@@ -28,6 +28,7 @@ except Exception:  # pragma: no cover - headless/server environments
 # Order of priority used when extracting a module key from a reason string.
 REASON_PRIORITY = [
     "AGGRESSIVE", "SAFE_CHECK", "FORTIFY", "COW",
+    "WFC", "BSP", "PATTERN",
     "DEPTH3", "DEPTH2", "ENDGAME", "CENTER",
     "UTILITY", "RANDOM", "LEGACY", "THREAT",
 ]
@@ -38,6 +39,9 @@ MODULE_COLORS = {
     "SAFE_CHECK": QColor(255, 159, 64),   # orange
     "FORTIFY":    QColor(13, 110, 253),   # blue
     "COW":        QColor(40, 167, 69),    # green
+    "WFC":        QColor(23, 162, 184),   # cyan
+    "BSP":        QColor(66, 139, 202),   # steel blue
+    "PATTERN":    QColor(100, 181, 246),  # light blue
     "DEPTH3":     QColor(111, 66, 193),   # purple
     "DEPTH2":     QColor(153, 102, 255),  # light purple
     "ENDGAME":    QColor(102, 16, 242),   # indigo

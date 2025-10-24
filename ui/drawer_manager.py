@@ -19,6 +19,9 @@ class DrawerManager:
         self.active_heatmap_piece = None
         self._load_heatmaps()
         self.agent_metrics = self._load_agent_metrics()
+        # Staging for auxiliary overlays (tactical/blue, pruned/violet)
+        self._tactical_cells: set[tuple[int, int]] = set()
+        self._pruned_cells: set[tuple[int, int]] = set()
 
     # ------------------------------------------------------------------
     def _load_heatmaps(self):
@@ -108,6 +111,8 @@ class DrawerManager:
     def collect_overlays(self, piece_objects, board):
         self.overlays.clear()
         self.scenarios.clear()
+        self._tactical_cells.clear()
+        self._pruned_cells.clear()
         for sq, obj in piece_objects.items():
             if hasattr(obj, "safe_moves"):
                 for s in obj.safe_moves:
@@ -160,6 +165,9 @@ class DrawerManager:
             logger.warning(f"Scenario detection failed: {exc}")
 
         self._apply_heatmaps()
+        # Apply auxiliary channels last so they sit over gradients
+        self._apply_tactical_overlays()
+        self._apply_pruned_overlays()
 
     # ------------------------------------------------------------------
     def set_heatmap_set(self, name):
@@ -228,6 +236,28 @@ class DrawerManager:
                     logger.warning(f"Invalid heatmap value at ({r}, {c}): {val} - {exc}")
                     continue
                 self._add_gradient_overlay(r, c, v)
+
+    # ------------------------------------------------------------------
+    # Public API to feed blue and violet overlays from engines/evaluators
+    def mark_tactical_cells(self, cells: list[tuple[int, int]] | set[tuple[int, int]]):
+        """Mark cells as tactical (blue overlay).
+
+        Cells are in board grid coordinates (row 0 is top). Duplicate inputs are ignored.
+        Call :meth:`collect_overlays` or :meth:`_apply_tactical_overlays` afterwards to render.
+        """
+        self._tactical_cells.update((int(r), int(c)) for r, c in cells)
+
+    def mark_pruned_cells(self, cells: list[tuple[int, int]] | set[tuple[int, int]]):
+        """Mark cells as high-value candidates (violet overlay)."""
+        self._pruned_cells.update((int(r), int(c)) for r, c in cells)
+
+    def _apply_tactical_overlays(self):
+        for r, c in sorted(self._tactical_cells):
+            self._add_overlay(r, c, "tactical", "blue")
+
+    def _apply_pruned_overlays(self):
+        for r, c in sorted(self._pruned_cells):
+            self._add_overlay(r, c, "pruned", "violet")
 
     # ------------------------------------------------------------------
     def _add_overlay(self, row, col, overlay_type, color):
