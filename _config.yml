@@ -1,0 +1,18 @@
+title: Chess Bots
+# Use GitHub Pages default theme
+# (already provided by github-pages gem in the action)
+theme: jekyll-theme-primer
+
+# Keep Jekyll from scanning large binaries and tooling directories
+exclude:
+  - bin/
+  - bin/**
+  - runs/
+  - output/
+  - .github/
+  - vendors/
+  - scripts/
+  - tests/
+  - test_*/
+  - Dockerfile*
+  - docker-compose*.yml

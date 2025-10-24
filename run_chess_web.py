@@ -1,31 +1,22 @@
 #!/usr/bin/env python3
 """
-Скрипт для запуску веб-сервера Chess AI Dashboard
+Скрипт для запуску шахового веб-сервера
 """
 
 import os
 import sys
-import site
 import subprocess
 from pathlib import Path
-
-# Ensure user site-packages (used by pip --user) is on sys.path
-try:
-    user_site = site.getusersitepackages()
-    if user_site and user_site not in sys.path:
-        sys.path.append(user_site)
-except Exception:
-    pass
 
 def check_dependencies():
     """Перевірити наявність залежностей"""
     try:
         import flask
-        import flask_cors
-        print("✅ Flask залежності знайдені")
+        import chess
+        print("✅ Flask та chess залежності знайдені")
         return True
-    except ImportError:
-        print("❌ Flask залежності не знайдені")
+    except ImportError as e:
+        print(f"❌ Відсутні залежності: {e}")
         return False
 
 def install_dependencies():
@@ -33,7 +24,7 @@ def install_dependencies():
     print("📦 Встановлення залежностей...")
     try:
         subprocess.run([
-            sys.executable, "-m", "pip", "install", "-r", "web_requirements.txt"
+            sys.executable, "-m", "pip", "install", "flask", "python-chess"
         ], check=True)
         print("✅ Залежності встановлені успішно")
         return True
@@ -43,7 +34,7 @@ def install_dependencies():
 
 def main():
     """Головна функція"""
-    print("🚀 Запуск Chess AI Web Dashboard")
+    print("🚀 Запуск шахового веб-сервера")
     print("=" * 50)
     
     # Перевіряємо залежності
@@ -53,22 +44,15 @@ def main():
             print("❌ Не вдалося встановити залежності")
             sys.exit(1)
     
-    # Встановлюємо змінні середовища
-    if not os.environ.get("STOCKFISH_PATH"):
-        stockfish_path = "/workspace/bin/stockfish-bin"
-        if os.path.exists(stockfish_path):
-            os.environ["STOCKFISH_PATH"] = stockfish_path
-            print(f"✅ Встановлено STOCKFISH_PATH: {stockfish_path}")
-    
     # Запускаємо сервер
     print("\n🌐 Запуск веб-сервера...")
-    print("Відкрийте http://localhost:5000 у браузері")
+    print("Відкрийте http://localhost:5001 у браузері")
     print("Натисніть Ctrl+C для зупинки")
     print("=" * 50)
     
     try:
-        from web_server import run_server
-        run_server(host='0.0.0.0', port=5000, debug=True)
+        from simple_chess_flask import app
+        app.run(host='0.0.0.0', port=5001, debug=True)
     except KeyboardInterrupt:
         print("\n👋 Сервер зупинено")
     except Exception as e:
