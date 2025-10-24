@@ -1,6 +1,13 @@
-# venv
+# ===========================================
+# Python
+# ===========================================
+# Virtual environments
 .venv/
 venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # Python build/cache
 __pycache__/
@@ -8,6 +15,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.so
+*.egg
 *.egg-info/
 dist/
 build/
@@ -16,47 +24,179 @@ build/
 .mypy_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
 
-# Jupyter
+# Jupyter Notebook
 .ipynb_checkpoints/
+*.ipynb
 
-# IDE/OS
+# ===========================================
+# IDE & Editors
+# ===========================================
+# VSCode
 .vscode/*
 !.vscode/launch.json
-.idea/
-.DS_Store
-Thumbs.db
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 
-# Logs & temp
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===========================================
+# Operating System
+# ===========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# Logs & Temporary Files
+# ===========================================
 *.log
 *.tmp
+*.temp
 *.swp
+*.swo
+*.bak
+*.backup
+*.orig
+*.rej
+*.pid
+*.seed
+*.pid.lock
 
-# Env/config
+# ===========================================
+# Environment & Configuration
+# ===========================================
 .env
 .env.*
 *.local
+config.local.*
+secrets.json
+credentials.json
+.secrets
 
-# Qt/PySide (збірки)
+# ===========================================
+# Qt/PySide
+# ===========================================
 *.qrc.dep
 *.qm
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+Makefile*
+*build-*
+*.qm
+*.prl
 
+# ===========================================
+# Chess AI Project Specific
+# ===========================================
+
+# Usage statistics
 stats/usage_counts.json
 
 # Analysis outputs
 analysis/heatmaps/default/fens.csv
+analysis/agent_metrics.json
+analysis/synergy.json
 
-# Heatmaps (bins8)
+# Heatmap data files (keep structure, ignore generated data)
 heatmaps/heatmap_B_bins8.json
 heatmaps/heatmap_K_bins8.json
 heatmaps/heatmap_N_bins8.json
 heatmaps/heatmap_P_bins8.json
 heatmaps/heatmap_Q_bins8.json
 heatmaps/heatmap_R_bins8.json
+heatmaps/*.json
+heatmaps/*.csv
+heatmaps/*/
+!heatmaps/.gitkeep
 
 # Generated heatmap visualizations (keep base images, ignore generated ones)
 heatmap_visualizations/*.png
 heatmap_visualizations/*.json
+heatmap_visualizations/generated/
+heatmap_visualizations/game_phases/
+heatmap_visualizations/piece_analysis/
+heatmap_visualizations/bot_specific/
+!heatmap_visualizations/.gitkeep
 !heatmap_visualizations/all_pieces_heatmap.png
 !heatmap_visualizations/bishop_heatmap.png
 !heatmap_visualizations/combined_heatmap.png
@@ -66,37 +206,149 @@ heatmap_visualizations/*.json
 !heatmap_visualizations/queen_heatmap.png
 !heatmap_visualizations/rook_heatmap.png
 
-## Run logs
-# Ignore entire run logs directory but keep placeholder
-runs/
-!runs/.gitkeep
-
-## Ignore generated heatmap data (keep source scripts)
+# Analysis heatmaps directory
 analysis/heatmaps/*.json
 analysis/heatmaps/*.csv
 analysis/heatmaps/*/
 !analysis/heatmaps/.gitkeep
 !analysis/heatmaps/generate_heatmaps.R
 !analysis/heatmaps/generate_heatmaps_python.py
-heatmaps/*
-!heatmaps/.gitkeep
 
-# Output artifacts (keep dir via .gitkeep)
-output/*
+# Run logs and outputs
+runs/
+!runs/.gitkeep
+output/
 !output/.gitkeep
 output/ratings_latest.json
 
-# Analysis single-file outputs
-analysis/agent_metrics.json
-analysis/synergy.json
-
-# ML weights / checkpoints
+# ML weights and checkpoints
 *.pth
 *.pt
+*.ckpt
+*.h5
+*.hdf5
+*.pb
+*.pkl
+*.pickle
 
 # PST training artifacts (keep minimal template in repo)
 pst.json
+pst_*.json
 
 # Test screenshots (generated locally, not committed)
 test_screenshots/*
 !test_screenshots/.gitkeep
+
+# ===========================================
+# Database & Data Files
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ===========================================
+# Archives
+# ===========================================
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.war
+*.ear
+*.sar
+*.class
+
+# ===========================================
+# Documentation builds
+# ===========================================
+docs/_build/
+docs/build/
+site/
+_site/
+
+# ===========================================
+# Node.js (if any frontend components)
+# ===========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+package-lock.json
+yarn.lock
+
+# ===========================================
+# Docker
+# ===========================================
+.dockerignore
+docker-compose.override.yml
+
+# ===========================================
+# Chess Engine specific
+# ===========================================
+# Stockfish logs
+stockfish.log
+engine.log
+
+# UCI engine temporary files
+*.uci
+*.fen
+
+# ===========================================
+# Wolfram Engine
+# ===========================================
+*.nb
+*.wl
+*.wls
+*.wdx
+*.wdx~
+
+# ===========================================
+# Additional project-specific patterns
+# ===========================================
+# Rating files (keep structure, ignore generated)
+ratings_*.json
+ratings_latest.json
+
+# Heatmap configuration (keep template, ignore generated)
+heatmap_config_*.json
+
+# Bot game results
+bot_game_*.json
+match_results_*.json
+
+# ELO sync data
+elo_sync_*.json
+
+# Analysis reports
+*_report.html
+*_analysis.json
+*_metrics.json
+
+# Temporary analysis files
+temp_*.json
+temp_*.csv
+temp_*.txt
+
+# Generated documentation
+*.html
+!*.md
+!index.html
+!web_interface.html
+!heatmap_web_interface.html
+!chess_board.html
+!chess_board_standalone.html
+!chess-demo-simple.html
+!chess-react-demo.html
+!minimal_chess_test.html
+!test_chess.html
+!test_chess_js.html
+!__index.html

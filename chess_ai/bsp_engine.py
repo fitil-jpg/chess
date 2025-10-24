@@ -343,6 +343,47 @@ class BSPEngine:
         }
         return importance_map.get(zone_type, 1.0)
     
+    def analyze_move(self, board: chess.Board, move: chess.Move) -> Dict[str, Any]:
+        """Analyze a specific move using BSP zones."""
+        if not self.leaf_nodes:
+            self.build_tree()
+        
+        analysis = {
+            "move_zone": None,
+            "zone_control": {},
+            "zone_importance": 0.0,
+            "adjacent_zones": [],
+            "bsp_zones": []
+        }
+        
+        # Get zone for move destination
+        move_zone = self.get_zone_for_square(move.to_square)
+        analysis["move_zone"] = move_zone
+        
+        if move_zone:
+            analysis["zone_importance"] = self._get_zone_importance(move_zone.zone_type)
+            analysis["adjacent_zones"] = self.get_adjacent_zones(move_zone)
+            
+            # Add all squares in the move zone for visualization
+            analysis["bsp_zones"] = move_zone.get_squares_in_zone()
+        
+        # Calculate zone control for the moving color
+        analysis["zone_control"] = self.calculate_zone_control(board, board.turn)
+        
+        return analysis
+    
+    def get_zones_for_visualization(self) -> Dict[str, List[chess.Square]]:
+        """Get zones organized by type for visualization."""
+        zones_by_type = {}
+        
+        for node in self.leaf_nodes:
+            zone_type = node.zone_type or "unknown"
+            if zone_type not in zones_by_type:
+                zones_by_type[zone_type] = []
+            zones_by_type[zone_type].extend(node.get_squares_in_zone())
+        
+        return zones_by_type
+    
     def visualize_zones(self) -> str:
         """Create a visual representation of the BSP zones."""
         if not self.leaf_nodes:
