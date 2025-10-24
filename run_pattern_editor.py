@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """
 <<<<<<< HEAD
+<<<<<<< HEAD
 Runner script for the Chess Pattern Editor/Viewer
 
 This script launches the pattern editor with proper environment setup.
 =======
 Launcher script for the Chess Pattern Editor/Viewer.
 >>>>>>> main
+=======
+Launcher script for the Chess Pattern Editor/Viewer.
+>>>>>>> d718755 (feat: Implement chess pattern editor and viewer)
 """
 
 import sys
 import os
 from pathlib import Path
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 # Add the workspace to Python path
 workspace_path = Path(__file__).parent
@@ -41,6 +46,8 @@ def main():
 if __name__ == "__main__":
     main()
 =======
+=======
+>>>>>>> d718755 (feat: Implement chess pattern editor and viewer)
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
@@ -61,4 +68,7 @@ if __name__ == "__main__":
     print("during bot vs bot games for learning and analysis.")
     print("=" * 60)
     main()
+<<<<<<< HEAD
 >>>>>>> main
+=======
+>>>>>>> d718755 (feat: Implement chess pattern editor and viewer)
