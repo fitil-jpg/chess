@@ -36,6 +36,7 @@ from core.pst_trainer import update_from_board, update_from_history
 from core.piece import piece_class_factory
 from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
+from ui.mini_board import MiniBoard
 from chess_ai.bot_agent import make_agent
 from chess_ai.threat_map import ThreatMap
 from utils.load_runs import load_runs
@@ -47,6 +48,9 @@ from ui.mini_board import MiniBoard
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 from chess_ai.elo_sync_manager import ELOSyncManager
+from chess_ai.bsp_engine import create_chess_bsp_engine
+from chess_ai.wfc_engine import create_chess_wfc_engine
+from core.pattern_loader import PatternResponder
 
 # Set Stockfish path if available
 import os
@@ -323,6 +327,18 @@ class ChessViewer(QMainWindow):
         timing_row.addStretch()
         right_col.addLayout(timing_row)
 
+        # Speed controls
+        speed_row = QHBoxLayout()
+        speed_row.addWidget(QLabel("⏱ Delay (ms):"))
+        self.spin_delay = QSpinBox()
+        self.spin_delay.setRange(100, 3000)
+        self.spin_delay.setSingleStep(50)
+        self.spin_delay.setValue(self.min_move_delay_ms)
+        self.spin_delay.setToolTip("Интервал авто-хода, мс")
+        self.spin_delay.valueChanged.connect(self._on_delay_changed)
+        speed_row.addWidget(self.spin_delay)
+        right_col.addLayout(speed_row)
+
         # Зв’язки
         self.btn_auto.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
@@ -529,6 +545,22 @@ class ChessViewer(QMainWindow):
         self.auto_play_results = []  # Результаты автоматических игр
         self.auto_play_mode = False  # Режим автоматического воспроизведения
 
+        # Engines and patterns for auxiliary visualisation
+        try:
+            self.bsp_engine = create_chess_bsp_engine()
+        except Exception:
+            self.bsp_engine = None
+        try:
+            from pathlib import Path as _P
+            pattern_path = _P("configs") / "patterns.json"
+            self.pattern_responder = PatternResponder.from_file(pattern_path) if pattern_path.exists() else None
+        except Exception:
+            self.pattern_responder = None
+        try:
+            self.wfc_engine = create_chess_wfc_engine()
+        except Exception:
+            self.wfc_engine = None
+
         # Початкова ініціалізація
         self._init_pieces()
         if default_heatmap_piece:
@@ -538,6 +570,7 @@ class ChessViewer(QMainWindow):
         
         # Оновлюємо статистику хітмапів
         self._update_heatmap_stats()
+        self._refresh_mini_board_visuals()
         
         # Update enhanced heatmap widget
         if hasattr(self, 'enhanced_heatmap_widget'):
@@ -577,6 +610,14 @@ class ChessViewer(QMainWindow):
             chess.KING: "king",
         }
         return mapping.get(piece_type)
+
+    # ---------- Controls ----------
+    def _on_delay_changed(self, value: int) -> None:
+        try:
+            self.min_move_delay_ms = int(value)
+            self.auto_timer.setInterval(self.min_move_delay_ms)
+        except Exception:
+            pass
 
     def _update_heatmap_counts(self) -> None:
         """Показати кількість активних клітин теплокарт (> 0) по фігурам і сумарно."""
@@ -791,6 +832,12 @@ class ChessViewer(QMainWindow):
                     except Exception as exc:
                         logger.warning(f"Failed to update cell at row {row}, col {col}: {exc}")
                         
+            # Keep the mini-board in sync
+            try:
+                self._refresh_mini_board_visuals()
+            except Exception as _exc:
+                logger.warning(f"Mini-board refresh failed: {_exc}")
+
         except Exception as exc:
             logger.error(f"Failed to refresh board: {exc}")
             QMessageBox.warning(
@@ -1053,6 +1100,7 @@ class ChessViewer(QMainWindow):
             # Оновлюємо дошку
             self._init_pieces()
             self._refresh_board()
+            self._refresh_mini_board_visuals()
 
             # Отримуємо інформацію про хід
             reason = agent.get_last_reason() if hasattr(agent, "get_last_reason") else "-"
