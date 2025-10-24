@@ -44,6 +44,7 @@ from ui.panels import create_heatmap_panel
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 from chess_ai.elo_sync_manager import ELOSyncManager
+from ui.mini_board import MiniBoard
 
 # Set up logging
 logging.basicConfig(
@@ -169,6 +170,7 @@ class GameWorker(QThread):
     gameCompleted = Signal(object)  # GameResult
     progressUpdated = Signal(int)   # progress percentage
     statusUpdated = Signal(str)     # status message
+    patternDetected = Signal(object)  # streamed pattern objects during play
     
     def __init__(self, white_agent, black_agent, num_games=10):
         super().__init__()
@@ -211,6 +213,12 @@ class GameWorker(QThread):
             agent = self.white_agent if mover_color == chess.WHITE else self.black_agent
             
             try:
+                # Count legal moves for branching metric
+                try:
+                    legal_count = sum(1 for _ in board.legal_moves)
+                except Exception:
+                    legal_count = 0
+
                 move = agent.choose_move(board)
                 if move is None or not board.is_legal(move):
                     break
@@ -226,6 +234,14 @@ class GameWorker(QThread):
                     modules_w.append(key)
                 else:
                     modules_b.append(key)
+
+                # Try to build and emit an interesting pattern before applying move
+                try:
+                    pattern_obj = self._build_pattern_if_interesting(board, move, san, mover_color, legal_count, game_id, len(moves))
+                    if pattern_obj is not None:
+                        self.patternDetected.emit(pattern_obj)
+                except Exception:
+                    pass
                 
                 board.push(move)
                 fens.append(board.fen())
@@ -246,6 +262,126 @@ class GameWorker(QThread):
             fens=fens,
             duration_ms=duration_ms
         )
+
+    # ---------------- Pattern collection helpers -----------------
+    def _piece_type_to_name(self, piece_type: int) -> Optional[str]:
+        mapping = {
+            chess.PAWN: "pawn",
+            chess.KNIGHT: "knight",
+            chess.BISHOP: "bishop",
+            chess.ROOK: "rook",
+            chess.QUEEN: "queen",
+            chess.KING: "king",
+        }
+        return mapping.get(piece_type)
+
+    def _build_pattern_if_interesting(
+        self,
+        board: chess.Board,
+        move: chess.Move,
+        san: str,
+        mover_color: chess.Color,
+        legal_count: int,
+        game_id: int,
+        move_index: int,
+    ) -> Optional[dict]:
+        """Create a compact 'pattern' dict when a move looks interesting.
+
+        Heuristics:
+        - High branching factor before the move
+        - Captures high-value piece, gives check, or promotes
+        """
+        # Evaluate tactical flags on a copy
+        temp = board.copy()
+        is_capture = temp.is_capture(move)
+        captured_value = 0
+        captured_piece_symbol = None
+        if is_capture:
+            target = temp.piece_at(move.to_square)
+            if target:
+                captured_piece_symbol = target.symbol()
+                values = {1: 1, 2: 3, 3: 3, 4: 5, 5: 9, 6: 0}
+                captured_value = values.get(target.piece_type, 0)
+
+        temp.push(move)
+        gives_check = temp.is_check()
+        is_promotion = move.promotion is not None
+
+        # Basic importance score
+        importance = 0.0
+        if legal_count >= 30:
+            importance += 0.15
+        elif legal_count >= 20:
+            importance += 0.08
+        importance += min(0.3, captured_value * 0.03)
+        if gives_check:
+            importance += 0.2
+        if is_promotion:
+            importance += 0.25
+
+        # Lightweight fork hint for knights
+        fork_hint = False
+        src_piece = board.piece_at(move.from_square)
+        if src_piece and src_piece.piece_type == chess.KNIGHT:
+            attacks = board.attacks(move.from_square)
+            hits = 0
+            for sq in attacks:
+                pc = board.piece_at(sq)
+                if pc and pc.color != mover_color and pc.piece_type in (chess.QUEEN, chess.ROOK, chess.KING):
+                    hits += 1
+            if hits >= 2:
+                fork_hint = True
+                importance += 0.15
+
+        # Threshold for interesting pattern
+        if importance < 0.25 and not fork_hint and legal_count < 25:
+            return None
+
+        piece_name = self._piece_type_to_name(src_piece.piece_type) if src_piece else None
+
+        # Influencer squares around destination (defenders/attackers)
+        influencers = {
+            "friendly_defenders": list(board.attackers(mover_color, move.to_square)),
+            "enemy_attackers": list(board.attackers(not mover_color, move.to_square)),
+        }
+
+        highlight_squares = set(influencers["friendly_defenders"]) | set(influencers["enemy_attackers"]) | {move.from_square, move.to_square}
+
+        tags = []
+        if legal_count >= 25:
+            tags.append("high_branching")
+        if is_capture:
+            tags.append("capture")
+            if captured_value >= 5:
+                tags.append("big_capture")
+        if gives_check:
+            tags.append("check")
+        if is_promotion:
+            tags.append("promotion")
+        if fork_hint:
+            tags.append("fork")
+
+        pattern = {
+            "game_id": game_id,
+            "move_index": move_index,
+            "color": "white" if mover_color == chess.WHITE else "black",
+            "san": san,
+            "uci": move.uci(),
+            "fen": board.fen(),
+            "board_fen": board.board_fen(),
+            "legal_moves": legal_count,
+            "importance": round(importance, 3),
+            "tags": tags,
+            "moving_piece": piece_name,
+            "captured_piece": captured_piece_symbol,
+            "influencers": {
+                "friendly_defenders": [int(sq) for sq in influencers["friendly_defenders"]],
+                "enemy_attackers": [int(sq) for sq in influencers["enemy_attackers"]],
+            },
+            "highlight_squares": [int(sq) for sq in highlight_squares],
+            "heatmap_piece": piece_name,
+        }
+        return pattern
     
     def _extract_reason_key(self, reason: str) -> str:
         """Извлечь ключ модуля из reason"""
@@ -336,8 +472,7 @@ class InteractiveChessViewer(QMainWindow):
         # Инициализация таймеров
         self._init_timers()
         
-        # Запуск автоматического воспроизведения
-        self._start_auto_play()
+        # Не запускаем авто-плей автоматически, чтобы кнопка Start не была серой
         
         # Ensure scrollbars are properly configured
         self._configure_scrollbars()
@@ -443,6 +578,10 @@ class InteractiveChessViewer(QMainWindow):
         # Таб 4: Временная шкала
         timeline_tab = self._create_timeline_tab()
         tab_widget.addTab(timeline_tab, "Move Timeline")
+
+        # Таб 5: Редактор паттернов
+        patterns_tab = self._create_patterns_tab()
+        tab_widget.addTab(patterns_tab, "Pattern Editor")
         
         layout.addWidget(tab_widget)
         
@@ -519,6 +658,68 @@ class InteractiveChessViewer(QMainWindow):
         layout.addWidget(settings_group)
         layout.addStretch()
         
+        return widget
+
+    def _create_patterns_tab(self) -> QWidget:
+        """Создать вкладку редактора паттернов с предпросмотром и тегами."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        # Список найденных паттернов
+        self.patterns_list = QListWidget()
+        self.patterns_list.itemClicked.connect(self._on_pattern_item_clicked)
+        layout.addWidget(QLabel("Discovered patterns (auto-updating during games):"))
+        layout.addWidget(self.patterns_list)
+
+        # Мини-доска предпросмотра
+        self.pattern_preview = MiniBoard(scale=0.35)
+        layout.addWidget(self.pattern_preview)
+
+        # Категории/теги
+        tags_row1 = QHBoxLayout()
+        tags_row2 = QHBoxLayout()
+        self.combo_category = QComboBox()
+        self.combo_category.addItems(["tactical", "opening", "positional", "endgame"])
+        tags_row1.addWidget(QLabel("Category:"))
+        tags_row1.addWidget(self.combo_category)
+
+        def mk(tag: str) -> QCheckBox:
+            cb = QCheckBox(tag)
+            cb.setChecked(False)
+            return cb
+
+        self.cb_fork = mk("fork")
+        self.cb_pin = mk("pin")
+        self.cb_skewer = mk("skewer")
+        self.cb_discovered = mk("discovered")
+        self.cb_check = mk("check")
+        self.cb_capture = mk("capture")
+        self.cb_promotion = mk("promotion")
+        self.cb_high_branching = mk("high_branching")
+        self.cb_trick = mk("trick")
+
+        for w in [self.cb_fork, self.cb_pin, self.cb_skewer, self.cb_discovered, self.cb_check]:
+            tags_row1.addWidget(w)
+        for w in [self.cb_capture, self.cb_promotion, self.cb_high_branching, self.cb_trick]:
+            tags_row2.addWidget(w)
+
+        layout.addLayout(tags_row1)
+        layout.addLayout(tags_row2)
+
+        # Кнопки управления
+        btns = QHBoxLayout()
+        self.btn_prev_pattern = QPushButton("◀ Prev")
+        self.btn_next_pattern = QPushButton("Next ▶")
+        self.btn_save_pattern = QPushButton("💾 Save pattern")
+        self.btn_prev_pattern.clicked.connect(lambda: self._navigate_pattern(-1))
+        self.btn_next_pattern.clicked.connect(lambda: self._navigate_pattern(1))
+        self.btn_save_pattern.clicked.connect(self._save_selected_pattern)
+        btns.addWidget(self.btn_prev_pattern)
+        btns.addWidget(self.btn_next_pattern)
+        btns.addStretch()
+        btns.addWidget(self.btn_save_pattern)
+        layout.addLayout(btns)
+
         return widget
         
     def _create_modules_tab(self) -> QWidget:
@@ -611,6 +812,7 @@ class InteractiveChessViewer(QMainWindow):
         self.game_worker.gameCompleted.connect(self._on_game_completed)
         self.game_worker.progressUpdated.connect(self._on_progress_updated)
         self.game_worker.statusUpdated.connect(self._on_status_updated)
+        self.game_worker.patternDetected.connect(self._on_pattern_detected)
         self.game_worker.start()
         
         self.status_label.setText("Starting auto play...")
@@ -662,6 +864,128 @@ class InteractiveChessViewer(QMainWindow):
     def _on_status_updated(self, status: str):
         """Обновление статуса"""
         self.status_label.setText(status)
+
+    # ---------------- Pattern editor logic -----------------
+    def _on_pattern_detected(self, pattern: dict):
+        """Получен новый паттерн во время автоигры."""
+        self.discovered_patterns.append(pattern)
+        label = f"G{pattern.get('game_id', '?')} M{pattern.get('move_index', '?')}: {pattern.get('san', '')} [{', '.join(pattern.get('tags', []))}]"
+        self.patterns_list.addItem(label)
+        self.patterns_list.setCurrentRow(self.patterns_list.count() - 1)
+        self._load_pattern_preview(pattern)
+
+    def _on_pattern_item_clicked(self, item):
+        idx = self.patterns_list.row(item)
+        if 0 <= idx < len(self.discovered_patterns):
+            self._load_pattern_preview(self.discovered_patterns[idx])
+
+    def _load_pattern_preview(self, pattern: dict):
+        try:
+            fen = pattern.get("fen") or pattern.get("board_fen")
+            if fen:
+                self.pattern_preview.set_fen(fen)
+            highlights = pattern.get("highlight_squares", [])
+            self.pattern_preview.set_border_highlights(highlights)
+            try:
+                piece = pattern.get("heatmap_piece")
+                if piece:
+                    self.pattern_preview.drawer_manager.active_heatmap_piece = piece
+                    # Rebuild overlays by reapplying the same FEN
+                    self.pattern_preview.set_fen(self.pattern_preview.board.fen())
+            except Exception:
+                pass
+
+            tags = set(pattern.get("tags", []))
+            self.cb_fork.setChecked("fork" in tags)
+            self.cb_pin.setChecked("pin" in tags)
+            self.cb_skewer.setChecked("skewer" in tags)
+            self.cb_discovered.setChecked("discovered" in tags)
+            self.cb_check.setChecked("check" in tags)
+            self.cb_capture.setChecked("capture" in tags or "big_capture" in tags)
+            self.cb_promotion.setChecked("promotion" in tags)
+            self.cb_high_branching.setChecked("high_branching" in tags)
+        except Exception as exc:
+            logger.warning(f"Failed to load pattern preview: {exc}")
+
+    def _navigate_pattern(self, delta: int):
+        cur = self.patterns_list.currentRow()
+        if cur < 0 and self.patterns_list.count() > 0:
+            cur = 0
+        nxt = max(0, min(self.patterns_list.count() - 1, cur + delta))
+        if nxt != cur:
+            self.patterns_list.setCurrentRow(nxt)
+            item = self.patterns_list.item(nxt)
+            if item:
+                self._on_pattern_item_clicked(item)
+
+    def _save_selected_pattern(self):
+        """Сохранить выбранный паттерн в configs/patterns.json и журнал JSONL."""
+        idx = self.patterns_list.currentRow()
+        if idx < 0 or idx >= len(self.discovered_patterns):
+            QMessageBox.information(self, "No pattern", "Select a pattern to save")
+            return
+        pattern = dict(self.discovered_patterns[idx])
+
+        # Merge UI tag selections
+        extra_tags = []
+        for cb, name in (
+            (self.cb_fork, "fork"),
+            (self.cb_pin, "pin"),
+            (self.cb_skewer, "skewer"),
+            (self.cb_discovered, "discovered"),
+            (self.cb_check, "check"),
+            (self.cb_capture, "capture"),
+            (self.cb_promotion, "promotion"),
+            (self.cb_high_branching, "high_branching"),
+            (self.cb_trick, "trick"),
+        ):
+            if cb.isChecked():
+                extra_tags.append(name)
+        tags = sorted(set(pattern.get("tags", [])) | set(extra_tags))
+        pattern["tags"] = tags
+        pattern["category"] = self.combo_category.currentText()
+
+        # Append to configs/patterns.json
+        try:
+            import json, os
+            path = os.path.join("configs", "patterns.json")
+            data = {"patterns": []}
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as fh:
+                    try:
+                        existing = json.load(fh)
+                        if isinstance(existing, dict) and "patterns" in existing:
+                            data = existing
+                        elif isinstance(existing, list):
+                            data = {"patterns": existing}
+                    except Exception:
+                        pass
+            entry = {
+                "situation": pattern.get("board_fen") or (pattern.get("fen") or "").split(" ")[0],
+                "action": pattern.get("uci", ""),
+                "name": f"auto_{pattern.get('moving_piece','?')}_{pattern.get('san','')}",
+                "description": f"tags={','.join(tags)}; importance={pattern.get('importance',0)}",
+                "confidence": max(0.5, min(0.99, float(pattern.get("importance", 0.4) + 0.4))),
+                "game_phase": "opening" if pattern.get("move_index", 0) <= 10 else "any",
+            }
+            data.setdefault("patterns", []).append(entry)
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            logger.error(f"Failed to save to configs/patterns.json: {exc}")
+            QMessageBox.warning(self, "Save failed", f"Could not update configs/patterns.json: {exc}")
+            return
+
+        # Append verbose record to runs/patterns_captured.jsonl
+        try:
+            import json, os
+            os.makedirs("runs", exist_ok=True)
+            with open(os.path.join("runs", "patterns_captured.jsonl"), "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(pattern, ensure_ascii=False) + "\n")
+        except Exception as exc:
+            logger.warning(f"Failed to append JSONL record: {exc}")
+
+        self.status_label.setText("Pattern saved ✔")
         
     def _on_module_clicked(self, module: str, data: dict):
         """Обработка клика по модулю"""
