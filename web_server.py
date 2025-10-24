@@ -567,10 +567,10 @@ def end_game():
         game_number = data.get('game_number', 1)
         
         # Оновлюємо ELO рейтинги
-        await update_elo_ratings(result, modules)
+        update_elo_ratings(result, modules)
         
         # Зберігаємо дані для hitmap (тільки JSON, без зображень)
-        await save_hitmap_data(result, moves, modules, game_number)
+        save_hitmap_data(result, moves, modules, game_number)
         
         # Оновлюємо статистику
         game_data['game_history'].append({
@@ -1290,7 +1290,7 @@ def evaluate_mobility(board):
         'black': black_moves
     }
 
-async def update_elo_ratings(result, modules):
+def update_elo_ratings(result, modules):
     """Оновлення ELO рейтингів після завершення гри"""
     try:
         if ELOSyncManager is None:
@@ -1347,7 +1347,7 @@ def update_bot_elo(winner_bot, loser_bot, score):
     except Exception as e:
         logger.error(f"Помилка розрахунку ELO: {e}")
 
-async def save_hitmap_data(result, moves, modules, game_number):
+def save_hitmap_data(result, moves, modules, game_number):
     """Збереження даних для hitmap (тільки JSON, без зображень)"""
     try:
         # Створюємо директорію для hitmap даних
