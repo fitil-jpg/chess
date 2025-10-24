@@ -221,38 +221,195 @@ class WFCEngine:
                             board.set_piece_at(square, piece)
                             
         return board
+    
+    def analyze_move(self, board: chess.Board, move: chess.Move) -> Dict[str, Any]:
+        """Analyze a specific move using WFC patterns."""
+        analysis = {
+            "compatible_patterns": [],
+            "constraint_violations": 0,
+            "pattern_confidence": 0.0,
+            "tactical_value": 0.0,
+            "positional_value": 0.0,
+            "wfc_zones": []
+        }
+        
+        # Check if move is compatible with existing patterns
+        for pattern in self.patterns:
+            if self._move_compatible_with_pattern(board, move, pattern):
+                analysis["compatible_patterns"].append({
+                    "pattern_type": pattern.pattern_type.value,
+                    "squares": pattern.squares,
+                    "constraints": pattern.constraints,
+                    "frequency": pattern.frequency
+                })
+                
+                # Calculate values based on pattern type
+                if pattern.pattern_type == PatternType.TACTICAL:
+                    analysis["tactical_value"] += pattern.frequency * 0.3
+                elif pattern.pattern_type == PatternType.OPENING:
+                    analysis["positional_value"] += pattern.frequency * 0.2
+                elif pattern.pattern_type == PatternType.ENDGAME:
+                    analysis["positional_value"] += pattern.frequency * 0.25
+        
+        # Calculate overall pattern confidence
+        if analysis["compatible_patterns"]:
+            analysis["pattern_confidence"] = sum(
+                p["frequency"] for p in analysis["compatible_patterns"]
+            ) / len(analysis["compatible_patterns"])
+        
+        # Identify WFC zones (squares that match pattern constraints)
+        analysis["wfc_zones"] = self._identify_wfc_zones(board, move)
+        
+        return analysis
+    
+    def _move_compatible_with_pattern(self, board: chess.Board, move: chess.Move, pattern: ChessPattern) -> bool:
+        """Check if a move is compatible with a specific pattern."""
+        # Check if move involves pattern squares
+        move_squares = {move.from_square, move.to_square}
+        pattern_squares = set(pattern.squares)
+        
+        # If move doesn't involve pattern squares, it might still be compatible
+        if not move_squares.intersection(pattern_squares):
+            return False
+        
+        # Check constraints
+        for constraint_name, constraint_value in pattern.constraints:
+            if not self._check_constraint(board, move, constraint_name, constraint_value):
+                return False
+        
+        return True
+    
+    def _check_constraint(self, board: chess.Board, move: chess.Move, constraint_name: str, constraint_value: Any) -> bool:
+        """Check if a move satisfies a specific constraint."""
+        if constraint_name == "center_control":
+            center_squares = {chess.D4, chess.D5, chess.E4, chess.E5}
+            return move.to_square in center_squares
+        
+        elif constraint_name == "development":
+            piece = board.piece_at(move.from_square)
+            if piece and piece.piece_type in [chess.KNIGHT, chess.BISHOP]:
+                # Check if moving from starting position
+                starting_rank = 0 if piece.color == chess.WHITE else 7
+                return chess.square_rank(move.from_square) == starting_rank
+        
+        elif constraint_name == "tactical":
+            # Check if move creates tactical opportunities
+            temp_board = board.copy()
+            temp_board.push(move)
+            return self._has_tactical_opportunities(temp_board)
+        
+        elif constraint_name == "cow_opening":
+            # COW opening specific constraints
+            return self._is_cow_opening_move(board, move)
+        
+        return True
+    
+    def _has_tactical_opportunities(self, board: chess.Board) -> bool:
+        """Check if position has tactical opportunities."""
+        # Simple tactical check - can be enhanced
+        for square in chess.SQUARES:
+            piece = board.piece_at(square)
+            if piece:
+                attackers = board.attackers(not piece.color, square)
+                if len(attackers) > 1:  # Multiple attackers
+                    return True
+        return False
+    
+    def _is_cow_opening_move(self, board: chess.Board, move: chess.Move) -> bool:
+        """Check if move follows COW opening principles."""
+        piece = board.piece_at(move.from_square)
+        if not piece:
+            return False
+        
+        # COW opening moves
+        cow_moves = {
+            chess.PAWN: {chess.E2: chess.E4, chess.D2: chess.D3},
+            chess.KNIGHT: {chess.G1: chess.G3, chess.B1: chess.B3},
+            chess.BISHOP: {chess.C1: chess.E2, chess.F1: chess.D2}
+        }
+        
+        if piece.piece_type in cow_moves:
+            expected_moves = cow_moves[piece.piece_type]
+            return move.from_square in expected_moves and move.to_square == expected_moves[move.from_square]
+        
+        return False
+    
+    def _identify_wfc_zones(self, board: chess.Board, move: chess.Move) -> List[chess.Square]:
+        """Identify squares that are part of WFC zones for visualization."""
+        zones = []
+        
+        # Add move squares
+        zones.extend([move.from_square, move.to_square])
+        
+        # Add squares from compatible patterns
+        for pattern in self.patterns:
+            if self._move_compatible_with_pattern(board, move, pattern):
+                zones.extend(pattern.squares)
+        
+        return list(set(zones))  # Remove duplicates
         
     def add_opening_patterns(self) -> None:
         """Add common opening patterns to the engine."""
-        # King's Pawn Opening
+        # COW Opening patterns
+        # King's Pawn Opening (e2-e4)
         king_pawn_pattern = ChessPattern(
             pattern_type=PatternType.OPENING,
             squares=(chess.E2, chess.E4),
             pieces=(chess.Piece(chess.PAWN, chess.WHITE), chess.Piece(chess.PAWN, chess.WHITE)),
-            constraints=(("center_control", True), ("development", True)),
+            constraints=(("center_control", True), ("development", True), ("cow_opening", True)),
             frequency=0.8
         )
         self.add_pattern(king_pawn_pattern)
         
-        # Queen's Pawn Opening
+        # Queen's Pawn Opening (d2-d3)
         queen_pawn_pattern = ChessPattern(
             pattern_type=PatternType.OPENING,
-            squares=(chess.D2, chess.D4),
+            squares=(chess.D2, chess.D3),
             pieces=(chess.Piece(chess.PAWN, chess.WHITE), chess.Piece(chess.PAWN, chess.WHITE)),
-            constraints=(("center_control", True), ("development", True)),
+            constraints=(("center_control", True), ("development", True), ("cow_opening", True)),
             frequency=0.7
         )
         self.add_pattern(queen_pawn_pattern)
         
-        # Knight Development
-        knight_pattern = ChessPattern(
+        # Knight Development (g1-g3)
+        knight_g_pattern = ChessPattern(
             pattern_type=PatternType.OPENING,
-            squares=(chess.B1, chess.C3),
+            squares=(chess.G1, chess.G3),
             pieces=(chess.Piece(chess.KNIGHT, chess.WHITE), chess.Piece(chess.KNIGHT, chess.WHITE)),
-            constraints=(("development", True), ("center_control", True)),
+            constraints=(("development", True), ("center_control", True), ("cow_opening", True)),
             frequency=0.6
         )
-        self.add_pattern(knight_pattern)
+        self.add_pattern(knight_g_pattern)
+        
+        # Knight Development (b1-b3)
+        knight_b_pattern = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.B1, chess.B3),
+            pieces=(chess.Piece(chess.KNIGHT, chess.WHITE), chess.Piece(chess.KNIGHT, chess.WHITE)),
+            constraints=(("development", True), ("center_control", True), ("cow_opening", True)),
+            frequency=0.6
+        )
+        self.add_pattern(knight_b_pattern)
+        
+        # Bishop Development (c1-e2)
+        bishop_c_pattern = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.C1, chess.E2),
+            pieces=(chess.Piece(chess.BISHOP, chess.WHITE), chess.Piece(chess.BISHOP, chess.WHITE)),
+            constraints=(("development", True), ("center_control", True), ("cow_opening", True)),
+            frequency=0.5
+        )
+        self.add_pattern(bishop_c_pattern)
+        
+        # Bishop Development (f1-d2)
+        bishop_f_pattern = ChessPattern(
+            pattern_type=PatternType.OPENING,
+            squares=(chess.F1, chess.D2),
+            pieces=(chess.Piece(chess.BISHOP, chess.WHITE), chess.Piece(chess.BISHOP, chess.WHITE)),
+            constraints=(("development", True), ("center_control", True), ("cow_opening", True)),
+            frequency=0.5
+        )
+        self.add_pattern(bishop_f_pattern)
         
     def add_tactical_patterns(self) -> None:
         """Add common tactical patterns to the engine."""
@@ -279,6 +436,55 @@ class WFCEngine:
             frequency=0.3
         )
         self.add_pattern(pin_pattern)
+        
+        # Skewer pattern
+        skewer_pattern = ChessPattern(
+            pattern_type=PatternType.TACTICAL,
+            squares=(chess.E1, chess.E7, chess.E8),
+            pieces=(chess.Piece(chess.ROOK, chess.WHITE),
+                   chess.Piece(chess.QUEEN, chess.BLACK),
+                   chess.Piece(chess.KING, chess.BLACK)),
+            constraints=(("tactical", True), ("skewer", True)),
+            frequency=0.25
+        )
+        self.add_pattern(skewer_pattern)
+        
+        # Discovered attack pattern
+        discovered_attack_pattern = ChessPattern(
+            pattern_type=PatternType.TACTICAL,
+            squares=(chess.D1, chess.D4, chess.D7),
+            pieces=(chess.Piece(chess.QUEEN, chess.WHITE),
+                   chess.Piece(chess.PAWN, chess.WHITE),
+                   chess.Piece(chess.QUEEN, chess.BLACK)),
+            constraints=(("tactical", True), ("discovered_attack", True)),
+            frequency=0.3
+        )
+        self.add_pattern(discovered_attack_pattern)
+        
+        # Double attack pattern
+        double_attack_pattern = ChessPattern(
+            pattern_type=PatternType.TACTICAL,
+            squares=(chess.C3, chess.D5, chess.F5, chess.G7),
+            pieces=(chess.Piece(chess.KNIGHT, chess.WHITE),
+                   chess.Piece(chess.QUEEN, chess.BLACK),
+                   chess.Piece(chess.ROOK, chess.BLACK),
+                   chess.Piece(chess.KING, chess.BLACK)),
+            constraints=(("tactical", True), ("double_attack", True)),
+            frequency=0.2
+        )
+        self.add_pattern(double_attack_pattern)
+        
+        # Deflection pattern
+        deflection_pattern = ChessPattern(
+            pattern_type=PatternType.TACTICAL,
+            squares=(chess.E4, chess.E5, chess.E6),
+            pieces=(chess.Piece(chess.PAWN, chess.WHITE),
+                   chess.Piece(chess.PAWN, chess.BLACK),
+                   chess.Piece(chess.KING, chess.BLACK)),
+            constraints=(("tactical", True), ("deflection", True)),
+            frequency=0.15
+        )
+        self.add_pattern(deflection_pattern)
 
 
 def create_chess_wfc_engine() -> WFCEngine:
