@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea, QFileDialog, QTextEdit, QSplitter,
-    QScrollBar, QMainWindow, QTabWidget, QSlider, QSpinBox
+    QScrollBar, QMainWindow, QTabWidget, QSpinBox, QComboBox
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
@@ -44,6 +44,7 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
+from ui.mini_board import MiniBoard
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 from chess_ai.elo_sync_manager import ELOSyncManager
@@ -129,8 +130,12 @@ class ChessViewer(QMainWindow):
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
         
+        # Import timing configuration
+        from core.timing_config import timing_manager
+        self.timing_manager = timing_manager
+        
         # Мінімальна затримка між застосуванням ходів (мс)
-        self.min_move_delay_ms = 700
+        self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
         
         # Create central widget
         self.central_widget = QWidget()
@@ -293,6 +298,34 @@ class ChessViewer(QMainWindow):
         for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
+        
+        # Timing controls
+        timing_row = QHBoxLayout()
+        timing_row.addWidget(QLabel("Move Time:"))
+        self.move_time_spinbox = QSpinBox()
+        self.move_time_spinbox.setRange(100, 5000)
+        self.move_time_spinbox.setSuffix(" ms")
+        self.move_time_spinbox.setValue(self.timing_manager.get_move_time_ms())
+        self.move_time_spinbox.valueChanged.connect(self._on_move_time_changed)
+        timing_row.addWidget(self.move_time_spinbox)
+        
+        timing_row.addWidget(QLabel("Viz Delay:"))
+        self.viz_delay_spinbox = QSpinBox()
+        self.viz_delay_spinbox.setRange(10, 500)
+        self.viz_delay_spinbox.setSuffix(" ms")
+        self.viz_delay_spinbox.setValue(self.timing_manager.get_visualization_delay_ms())
+        self.viz_delay_spinbox.valueChanged.connect(self._on_viz_delay_changed)
+        timing_row.addWidget(self.viz_delay_spinbox)
+        
+        self.timing_profile_combo = QComboBox()
+        self.timing_profile_combo.addItems(["fast", "normal", "slow", "debug"])
+        self.timing_profile_combo.setCurrentText("normal")
+        self.timing_profile_combo.currentTextChanged.connect(self._on_timing_profile_changed)
+        timing_row.addWidget(QLabel("Profile:"))
+        timing_row.addWidget(self.timing_profile_combo)
+        
+        timing_row.addStretch()
+        right_col.addLayout(timing_row)
 
         # Speed controls
         speed_row = QHBoxLayout()
@@ -391,6 +424,16 @@ class ChessViewer(QMainWindow):
         self.heatmap_tab = QWidget()
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
         
+        # Enhanced heatmap widget
+        from ui.enhanced_heatmap_widget import EnhancedHeatmapWidget
+        self.enhanced_heatmap_widget = EnhancedHeatmapWidget()
+        self.enhanced_heatmap_widget.heatmap_changed.connect(self._on_enhanced_heatmap_changed)
+        heatmap_layout.addWidget(self.enhanced_heatmap_widget)
+        
+        # Real-time visualization integrator
+        from ui.real_time_evaluator import RealTimeVisualizationIntegrator
+        self.real_time_integrator = RealTimeVisualizationIntegrator(self)
+        
         # Heatmap statistics
         self.heatmap_stats_label = QLabel()
         self.heatmap_stats_label.setWordWrap(True)
@@ -446,15 +489,22 @@ class ChessViewer(QMainWindow):
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
             heatmap_layout.addWidget(btn_gen_heatmaps)
         
-        # Mini board preview with current overlays
+        # Mini preview board for the currently considered piece/heatmap
         self.mini_board = MiniBoard(scale=0.35)
-        heatmap_layout.addWidget(QLabel("Mini-board preview (heatmaps + tactical/BSP zones)"))
+        heatmap_layout.addWidget(QLabel("Mini heatmap board (active piece pattern):"))
         heatmap_layout.addWidget(self.mini_board)
+        self.lbl_current_move = QLabel("Current move: —")
+        heatmap_layout.addWidget(self.lbl_current_move)
 
         heatmap_layout.addStretch()
         self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
 
-        # Таб 5: Загальна статистика
+        # Таб 5: Bot Usage Statistics
+        from ui.bot_usage_tracker import BotUsageTracker
+        self.bot_usage_tracker = BotUsageTracker()
+        self.tab_widget.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
+        
+        # Таб 6: Загальна статистика
         self.overall_tab = QWidget()
         overall_layout = QVBoxLayout(self.overall_tab)
         
@@ -484,7 +534,7 @@ class ChessViewer(QMainWindow):
 
         # Таймер автогри
         self.auto_timer = QTimer()
-        self.auto_timer.setInterval(self.min_move_delay_ms)
+        self.auto_timer.setInterval(self.timing_manager.get_auto_play_interval_ms())
         self.auto_timer.timeout.connect(self.auto_step)
         self.auto_running = False
         self.move_in_progress = False
@@ -521,6 +571,12 @@ class ChessViewer(QMainWindow):
         # Оновлюємо статистику хітмапів
         self._update_heatmap_stats()
         self._refresh_mini_board_visuals()
+        
+        # Update enhanced heatmap widget
+        if hasattr(self, 'enhanced_heatmap_widget'):
+            self.enhanced_heatmap_widget.set_board(self.board)
+            if hasattr(self.drawer_manager, 'heatmaps'):
+                self.enhanced_heatmap_widget.set_heatmap_data(self.drawer_manager.heatmaps)
         
         # Refresh ELO ratings display
         self._refresh_elo_ratings()
@@ -923,6 +979,40 @@ class ChessViewer(QMainWindow):
         self._append_to_console("=" * 50)
         self._append_to_console("Auto Play Complete!")
         self._append_to_console("")
+    
+    def _on_move_time_changed(self, value: int) -> None:
+        """Handle move time change."""
+        self.timing_manager.set_move_time_ms(value)
+        self.min_move_delay_ms = value
+        self.auto_timer.setInterval(max(value, self.timing_manager.get_auto_play_interval_ms()))
+    
+    def _on_viz_delay_changed(self, value: int) -> None:
+        """Handle visualization delay change."""
+        self.timing_manager.set_visualization_delay_ms(value)
+    
+    def _on_timing_profile_changed(self, profile_name: str) -> None:
+        """Handle timing profile change."""
+        if self.timing_manager.apply_predefined_profile(profile_name):
+            # Update UI controls to reflect new values
+            self.move_time_spinbox.blockSignals(True)
+            self.viz_delay_spinbox.blockSignals(True)
+            
+            self.move_time_spinbox.setValue(self.timing_manager.get_move_time_ms())
+            self.viz_delay_spinbox.setValue(self.timing_manager.get_visualization_delay_ms())
+            
+            self.move_time_spinbox.blockSignals(False)
+            self.viz_delay_spinbox.blockSignals(False)
+            
+            # Update internal timing
+            self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
+            self.auto_timer.setInterval(self.timing_manager.get_auto_play_interval_ms())
+    
+    def _on_enhanced_heatmap_changed(self, heatmap_name: str) -> None:
+        """Handle enhanced heatmap selection change."""
+        if heatmap_name != "none":
+            self.drawer_manager.active_heatmap_piece = heatmap_name
+            self._refresh_board()
+            self._update_heatmap_stats()
 
     def auto_step(self):
         try:
@@ -995,6 +1085,14 @@ class ChessViewer(QMainWindow):
                         self.heatmap_piece_combo.blockSignals(False)
                 self._refresh_board()
 
+            # Start real-time evaluation visualization if enabled
+            if hasattr(self, 'real_time_integrator') and hasattr(self, 'debug_verbose'):
+                if self.debug_verbose.isChecked():
+                    # Create a copy of the board before the move for evaluation
+                    eval_board = self.board.copy()
+                    agent_name = WHITE_AGENT if mover_color == chess.WHITE else BLACK_AGENT
+                    self.real_time_integrator.start_real_time_evaluation(eval_board, move, agent_name)
+            
             # Застосовуємо хід одразу
             self.board.push(move)
             self.fen_history.append(self.board.fen())

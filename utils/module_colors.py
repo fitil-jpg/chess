@@ -26,7 +26,10 @@ except Exception:  # pragma: no cover - headless/server environments
             return f"#{self._r:02x}{self._g:02x}{self._b:02x}"
 
 # Order of priority used when extracting a module key from a reason string.
+# Include analysis engines and safety layers so they appear distinctly in
+# timelines and charts.
 REASON_PRIORITY = [
+    "WFC", "BSP", "GUARD", "GUARDRAILS",
     "AGGRESSIVE", "SAFE_CHECK", "FORTIFY", "COW",
     "WFC", "BSP", "PATTERN",
     "DEPTH3", "DEPTH2", "ENDGAME", "CENTER",
@@ -35,6 +38,11 @@ REASON_PRIORITY = [
 
 # Mapping from module key to colours used in charts / timelines.
 MODULE_COLORS = {
+    # Engines / safety layers
+    "WFC":       QColor(56, 189, 248),   # sky blue
+    "BSP":       QColor(59, 130, 246),   # blue
+    "GUARD":     QColor(16, 185, 129),   # emerald/teal
+    "GUARDRAILS": QColor(5, 150, 105),   # darker teal
     "AGGRESSIVE": QColor(220, 53, 69),    # red
     "SAFE_CHECK": QColor(255, 159, 64),   # orange
     "FORTIFY":    QColor(13, 110, 253),   # blue

@@ -13,7 +13,8 @@ const ChessBoard = ({
   apiEndpoint = '/api/game',
   autoPlay = false,
   whiteBot = 'StockfishBot',
-  blackBot = 'DynamicBot'
+  blackBot = 'DynamicBot',
+  infiniteMode = false
 }) => {
   // Стан гри
   const [game, setGame] = useState(new Chess());
@@ -102,6 +103,13 @@ const ChessBoard = ({
             setIsPlaying(false);
             setGameStatus(`Гра закінчена: ${getGameResultText(game.result())}`);
             onGameEnd(moveData);
+            
+            // В безкінечному режимі автоматично перезапускаємо гру
+            if (infiniteMode) {
+              setTimeout(() => {
+                startGame();
+              }, 1000);
+            }
           } else {
             setGameStatus(`Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`);
           }
@@ -152,6 +160,13 @@ const ChessBoard = ({
               setIsPlaying(false);
               setGameStatus(`Гра закінчена: ${getGameResultText(game.result())}`);
               onGameEnd(moveData);
+              
+              // В безкінечному режимі автоматично перезапускаємо гру
+              if (infiniteMode) {
+                setTimeout(() => {
+                  startGame();
+                }, 1000);
+              }
             } else {
               setGameStatus(`Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`);
             }
@@ -171,7 +186,8 @@ const ChessBoard = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           white_bot: whiteBot,
-          black_bot: blackBot
+          black_bot: blackBot,
+          infinite_mode: infiniteMode
         })
       });
 
@@ -182,7 +198,7 @@ const ChessBoard = ({
         setSelectedSquare(null);
         setPossibleMoves([]);
         setIsPlaying(true);
-        setGameStatus('Гра розпочата');
+        setGameStatus(infiniteMode ? 'Безкінечна гра розпочата' : 'Гра розпочата');
         
         if (autoPlay) {
           await makeBotMove();
@@ -191,7 +207,7 @@ const ChessBoard = ({
     } catch (error) {
       console.error('Помилка початку гри:', error);
     }
-  }, [apiEndpoint, whiteBot, blackBot, autoPlay, makeBotMove]);
+  }, [apiEndpoint, whiteBot, blackBot, autoPlay, makeBotMove, infiniteMode]);
 
   // Скинути гру
   const resetGame = useCallback(async () => {
