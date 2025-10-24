@@ -5,6 +5,7 @@ from pathlib import Path
 import chess
 
 from scenarios import detect_scenarios
+from chess_ai.bsp_engine import create_chess_bsp_engine
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class DrawerManager:
         self.active_heatmap_set = "default"
         self.heatmaps = {}
         self.active_heatmap_piece = None
+        self._bsp_enabled = True
         self._load_heatmaps()
         self.agent_metrics = self._load_agent_metrics()
 
@@ -160,6 +162,13 @@ class DrawerManager:
             logger.warning(f"Scenario detection failed: {exc}")
 
         self._apply_heatmaps()
+        # Apply BSP zone overlays as a secondary, low-opacity layer to
+        # provide spatial context (center/edge/flank etc.).
+        try:
+            if self._bsp_enabled:
+                self._apply_bsp_zones(board)
+        except Exception as exc:
+            logger.warning(f"BSP overlay failed: {exc}")
 
     # ------------------------------------------------------------------
     def set_heatmap_set(self, name):
@@ -241,6 +250,37 @@ class DrawerManager:
         g = int((1 - value) * 255)
         color = f"#{r:02x}{g:02x}00"
         self._add_overlay(row, col, "gradient", color)
+
+    # ------------------------------------------------------------------
+    def enable_bsp(self, enabled: bool) -> None:
+        self._bsp_enabled = bool(enabled)
+
+    def _apply_bsp_zones(self, board: chess.Board) -> None:
+        """Overlay BSP zones as bluish tiles for visual guidance.
+
+        Center squares are rendered with a stronger blue, flanks lighter,
+        edges and corners the lightest. The overlay is intentionally subtle
+        so it does not obscure heatmaps or tactical markers.
+        """
+
+        engine = create_chess_bsp_engine()
+        engine.analyze_board(board)
+
+        zone_color = {
+            "center": "#6cb2ff",   # brighter blue
+            "flank":  "#9cc6ff",   # medium blue
+            "edge":   "#b7d6ff",   # light blue
+            "corner": "#cfe4ff",   # very light blue
+            "general": "#d9eaff",
+        }
+
+        for node in engine.leaf_nodes:
+            zt = node.zone_type or "general"
+            color = zone_color.get(zt, "#d9eaff")
+            for square in node.get_squares_in_zone():
+                row = 7 - chess.square_rank(square)
+                col = chess.square_file(square)
+                self._add_overlay(row, col, "bsp", color)
 
     # ------------------------------------------------------------------
     def get_cell_overlays(self, row, col):

@@ -43,6 +43,7 @@ from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
 from ui.usage_timeline import UsageTimeline
 from ui.panels import create_heatmap_panel
+from ui.mini_board import MiniBoard
 from utils.integration import generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 from chess_ai.elo_sync_manager import ELOSyncManager
@@ -430,6 +431,13 @@ class ChessViewer(QMainWindow):
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
             heatmap_layout.addWidget(btn_gen_heatmaps)
         
+        # Mini preview board for the currently considered piece/heatmap
+        self.mini_board = MiniBoard(scale=0.35)
+        heatmap_layout.addWidget(QLabel("Mini heatmap board (active piece pattern):"))
+        heatmap_layout.addWidget(self.mini_board)
+        self.lbl_current_move = QLabel("Current move: —")
+        heatmap_layout.addWidget(self.lbl_current_move)
+
         heatmap_layout.addStretch()
         self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
 
