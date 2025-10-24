@@ -7,6 +7,7 @@ import './ChessBoard.css';
  */
 const ChessApp = () => {
   const [gameData, setGameData] = useState({
+    currentGame: 0,
     totalGames: 0,
     whiteWins: 0,
     blackWins: 0,
@@ -19,6 +20,8 @@ const ChessApp = () => {
   });
   const [gameHistory, setGameHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [infiniteMode, setInfiniteMode] = useState(true);
+  const [currentGameNumber, setCurrentGameNumber] = useState(0);
 
   // Завантаження доступних ботів
   useEffect(() => {
@@ -45,6 +48,7 @@ const ChessApp = () => {
         if (response.ok) {
           const games = await response.json();
           const stats = {
+            currentGame: currentGameNumber,
             totalGames: games.length,
             whiteWins: games.filter(g => g.result === '1-0').length,
             blackWins: games.filter(g => g.result === '0-1').length,
@@ -79,6 +83,14 @@ const ChessApp = () => {
       blackWins: gameEndData.result === '0-1' ? prev.blackWins + 1 : prev.blackWins,
       draws: gameEndData.result === '1/2-1/2' ? prev.draws + 1 : prev.draws
     }));
+    
+    // В безкінечному режимі автоматично перезапускаємо гру
+    if (infiniteMode) {
+      setCurrentGameNumber(prev => prev + 1);
+      setTimeout(() => {
+        // Автоматичний перезапуск буде оброблений в ChessBoard компоненті
+      }, 1000);
+    }
   };
 
   // Зміна ботів
@@ -101,6 +113,10 @@ const ChessApp = () => {
         <div className="stats-panel">
           <h3>📊 Статистика ігор</h3>
           <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-value">{gameData.currentGame}</div>
+              <div className="stat-label">Поточна гра</div>
+            </div>
             <div className="stat-card">
               <div className="stat-value">{gameData.totalGames}</div>
               <div className="stat-label">Всього ігор</div>
@@ -147,6 +163,16 @@ const ChessApp = () => {
               </select>
             </div>
           </div>
+          <div className="mode-selector">
+            <label>
+              <input 
+                type="checkbox" 
+                checked={infiniteMode}
+                onChange={(e) => setInfiniteMode(e.target.checked)}
+              />
+              ♾️ Безкінечний режим
+            </label>
+          </div>
         </div>
 
         {/* Шахова доска */}
@@ -159,6 +185,7 @@ const ChessApp = () => {
           autoPlay={true}
           whiteBot={selectedBots.white}
           blackBot={selectedBots.black}
+          infiniteMode={infiniteMode}
         />
 
         {/* Історія ігор */}
