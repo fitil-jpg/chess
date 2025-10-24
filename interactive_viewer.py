@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QListWidget, QScrollArea, QFileDialog, QTabWidget, QProgressBar,
     QSpinBox, QComboBox, QGroupBox, QSplitter, QTextEdit, QMainWindow
 )
-from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
+from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont, QPalette
 from PySide6.QtCharts import (
     QChart, QChartView, QBarSeries, QBarSet, QValueAxis, 
@@ -94,22 +94,30 @@ class InteractiveChart(QChartView):
 
 class ModuleUsageChart(InteractiveBarChart):
     """Интерактивная диаграмма использования модулей"""
-    
+
+    # Унифицированный сигнал клика по данным
+    dataClicked = Signal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__("Module Usage Statistics", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
-    def _on_data_clicked(self, module: str, data: dict):
-        """Обработка клика по модулю"""
+        # Пробрасываем клики с бар-чарта в унифицированный сигнал
+        self.barClicked.connect(self._relay_click)
+
+    def _relay_click(self, module: str, data: dict):
+        """Проброс клика по бару как dataClicked"""
         self.dataClicked.emit(module, data)
 
 class GameResultsChart(InteractivePieChart):
     """Интерактивная диаграмма результатов игр"""
-    
+
+    # Унифицированный сигнал клика по данным
+    dataClicked = Signal(str, dict)
+
     def __init__(self, parent=None):
         super().__init__("Game Results", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
+        # Пробрасываем клики с pie-чарта в унифицированный сигнал
+        self.sliceClicked.connect(self._relay_click)
+
     def set_data(self, results: List[GameResult]):
         """Установить данные результатов игр"""
         results_dict = {}
@@ -127,18 +135,22 @@ class GameResultsChart(InteractivePieChart):
         }
         
         super().set_data(results_dict, colors)
-        
-    def _on_data_clicked(self, result: str, data: dict):
-        """Обработка клика по результату"""
+
+    def _relay_click(self, result: str, data: dict):
+        """Проброс клика по сегменту как dataClicked"""
         self.dataClicked.emit(result, data)
 
 class MoveTimelineChart(InteractiveLineChart):
     """Интерактивная временная шкала ходов"""
-    
+
+    # Унифицированный сигнал клика по данным (индекс точки)
+    dataClicked = Signal(int, dict)
+
     def __init__(self, parent=None):
         super().__init__("Move Timeline", parent)
-        self.dataClicked.connect(self._on_data_clicked)
-        
+        # Пробрасываем клики с line-чарта в унифицированный сигнал
+        self.pointClicked.connect(self._relay_click)
+
     def set_data(self, moves: List[str], modules: List[str]):
         """Установить данные ходов"""
         # Создаем данные для линейного графика
@@ -147,16 +159,16 @@ class MoveTimelineChart(InteractiveLineChart):
             data_points.append((i, 1))  # Простая визуализация
             
         super().set_data(data_points)
-        
-    def _on_data_clicked(self, index: int, data: dict):
-        """Обработка клика по точке"""
+
+    def _relay_click(self, index: int, data: dict):
+        """Проброс клика по точке как dataClicked"""
         self.dataClicked.emit(index, data)
 
 class GameWorker(QThread):
     """Worker thread для выполнения игр в фоне"""
-    gameCompleted = pyqtSignal(object)  # GameResult
-    progressUpdated = pyqtSignal(int)   # progress percentage
-    statusUpdated = pyqtSignal(str)     # status message
+    gameCompleted = Signal(object)  # GameResult
+    progressUpdated = Signal(int)   # progress percentage
+    statusUpdated = Signal(str)     # status message
     
     def __init__(self, white_agent, black_agent, num_games=10):
         super().__init__()
@@ -263,16 +275,11 @@ class InteractiveChessViewer(QMainWindow):
         self.setWindowTitle("Interactive Chess Viewer - Auto Play Mode")
         self.resize(1400, 800)
         
-        # Create central widget and scroll area
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        
-        # Create scroll area
+        # Create scroll area (single central widget)
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll_area.setWidget(self.central_widget)
         
         # Style the scroll area
         self.scroll_area.setStyleSheet("""
@@ -337,8 +344,9 @@ class InteractiveChessViewer(QMainWindow):
         
     def _configure_scrollbars(self):
         """Configure scrollbars to ensure proper content display"""
-        # Ensure the central widget has a minimum size
-        self.central_widget.setMinimumSize(1200, 700)
+        # Ensure the content widget has a minimum size
+        if hasattr(self, "content_widget") and self.content_widget is not None:
+            self.content_widget.setMinimumSize(1200, 700)
         
         # Update scroll area size policy
         self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -358,9 +366,10 @@ class InteractiveChessViewer(QMainWindow):
             
     def _init_ui(self):
         """Инициализация пользовательского интерфейса"""
-        # Главный layout (обернут в QScrollArea для прокрутки)
-        main_layout = QVBoxLayout()
-        
+        # Главный контент, который помещается в центральный scroll area
+        self.content_widget = QWidget()
+        main_layout = QVBoxLayout(self.content_widget)
+
         # Создаем сплиттер для разделения панелей
         splitter = QSplitter(Qt.Horizontal)
         
@@ -375,13 +384,9 @@ class InteractiveChessViewer(QMainWindow):
         # Устанавливаем пропорции
         splitter.setSizes([600, 800])
         
-        # Обернуть контент в область прокрутки, чтобы вмещалось в окно
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(splitter)
-
-        main_layout.addWidget(scroll)
-        self.setLayout(main_layout)
+        # Добавить сплиттер в основной layout и установить в scroll area
+        main_layout.addWidget(splitter)
+        self.scroll_area.setWidget(self.content_widget)
         
     def _create_board_panel(self) -> QWidget:
         """Создать панель с шахматной доской"""

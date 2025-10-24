@@ -4,9 +4,10 @@ FROM python:3.10-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Install minimal system deps
+# Install minimal system deps and Stockfish engine
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    stockfish \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -25,7 +26,8 @@ COPY utils/ ./utils/
 COPY scripts/ ./scripts/
 COPY arena.py ./
 COPY main.py ./
-COPY bin/stockfish-bin /usr/local/bin/stockfish
+# Copy the actual Stockfish binary
+COPY bin/stockfish/stockfish-ubuntu-x86-64-avx2 /usr/local/bin/stockfish
 
 # Ensure Stockfish is executable if present
 RUN chmod +x /usr/local/bin/stockfish || true

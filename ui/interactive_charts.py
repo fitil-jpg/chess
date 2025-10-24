@@ -17,6 +17,7 @@ class InteractiveBarChart(QChartView):
     
     barClicked = Signal(str, dict)  # signal when bar is clicked
     barHovered = Signal(str, dict)  # signal when bar is hovered
+    dataClicked = Signal(str, dict)  # alias for barClicked for compatibility
     
     def __init__(self, title: str = "Interactive Chart", parent=None):
         super().__init__(parent)
@@ -34,6 +35,9 @@ class InteractiveBarChart(QChartView):
         
         # Enable mouse tracking for hover effects
         self.setMouseTracking(True)
+        
+        # Connect barClicked to dataClicked for compatibility
+        self.barClicked.connect(self.dataClicked.emit)
         
     def set_data(self, data: Dict[str, Any], colors: Optional[Dict[str, QColor]] = None):
         """Установить данные для отображения"""
@@ -137,6 +141,7 @@ class InteractivePieChart(QChartView):
     
     sliceClicked = Signal(str, dict)
     sliceHovered = Signal(str, dict)
+    dataClicked = Signal(str, dict)  # alias for sliceClicked for compatibility
     
     def __init__(self, title: str = "Interactive Pie Chart", parent=None):
         super().__init__(parent)
@@ -153,6 +158,9 @@ class InteractivePieChart(QChartView):
         self._selected_slice = None
         
         self.setMouseTracking(True)
+        
+        # Connect sliceClicked to dataClicked for compatibility
+        self.sliceClicked.connect(self.dataClicked.emit)
         
     def set_data(self, data: Dict[str, Any], colors: Optional[Dict[str, QColor]] = None):
         """Установить данные для отображения"""
@@ -220,6 +228,7 @@ class InteractiveLineChart(QChartView):
     
     pointClicked = Signal(int, dict)
     pointHovered = Signal(int, dict)
+    dataClicked = Signal(int, dict)  # alias for pointClicked for compatibility
     
     def __init__(self, title: str = "Interactive Line Chart", parent=None):
         super().__init__(parent)
@@ -235,6 +244,9 @@ class InteractiveLineChart(QChartView):
         self._selected_point = None
         
         self.setMouseTracking(True)
+        
+        # Connect pointClicked to dataClicked for compatibility
+        self.pointClicked.connect(self.dataClicked.emit)
         
     def set_data(self, data: List[tuple], color: Optional[QColor] = None):
         """Установить данные для отображения (список кортежей (x, y))"""

@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахова доска - Python Chess</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1;
+            border: 4px solid #2d3748;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 0 auto 30px;
+            max-width: 500px;
+            position: relative; /* Для накладання полотна теплової карти */
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .cell:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .cell.white {
+            background-color: #f0d9b5;
+        }
+
+        .cell.black {
+            background-color: #b58863;
+        }
+
+        .cell.selected {
+            background-color: #4ecdc4 !important;
+            box-shadow: inset 0 0 0 4px #45b7aa;
+        }
+
+        .cell.possible-move {
+            background-color: #90EE90 !important;
+        }
+
+        .cell.last-move {
+            background-color: #ffd700 !important;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .move-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .move-input input {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 1rem;
+            width: 200px;
+            text-align: center;
+        }
+
+        .move-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .legal-moves {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .legal-moves h3 {
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .moves-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .move-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .move-tag:hover {
+            background: #5a67d8;
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .cell {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+
+        /* Stats panel */
+        .stats-section {
+            margin-top: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .stats-section h2 {
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+            color: #2d3748;
+        }
+        .metrics-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .metrics-list li {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #edf2f7;
+            color: #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.95rem;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 8px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        /* Полотно для теплової карти */
+        #heatmap-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* щоб кліки проходили до клітинок */
+        }
+        .heatmap-controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0 0;
+        }
+        .heatmap-controls select, .heatmap-controls input[type="range"] {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♟️ Шахова доска</h1>
+        
+        <div class="chess-board" id="chess-board">
+            <!-- Доска буде створена JavaScript -->
+            <canvas id="heatmap-canvas"></canvas>
+        </div>
+        
+        <div class="status" id="game-status">
+            Готовий до гри
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="btn-reset">🔄 Нова гра</button>
+            <button class="btn" id="btn-bot-move">🤖 Хід бота</button>
+            <button class="btn" id="btn-auto">▶️ Автогра</button>
+            <button class="btn" id="btn-legal-moves">📋 Можливі ходи</button>
+        </div>
+        
+        <div class="move-input">
+            <input type="text" id="move-input" placeholder="Введіть хід (наприклад: e4)">
+            <button class="btn" id="btn-make-move">Зробити хід</button>
+        </div>
+
+        <div class="heatmap-controls">
+            <label>Теплова карта:</label>
+            <select id="heatmap-piece">
+                <option value="knight">Кінь</option>
+                <option value="pawn">Пішак</option>
+                <option value="bishop">Слон</option>
+                <option value="rook">Тура</option>
+                <option value="queen">Ферзь</option>
+                <option value="king">Король</option>
+            </select>
+            <select id="heatmap-source">
+                <option value="current">Поточна партія</option>
+                <option value="set">Набір (JSON)</option>
+            </select>
+            <select id="heatmap-set" disabled>
+                <option value="base">base</option>
+            </select>
+            <label style="margin-left:6px;">Прозорість</label>
+            <input id="heatmap-opacity" type="range" min="0" max="1" step="0.05" value="0.6" />
+            <button class="btn" id="btn-apply-heatmap">Оновити</button>
+            <button class="btn" id="btn-toggle-heatmap">Приховати</button>
+        </div>
+        
+        <div class="legal-moves" id="legal-moves" style="display: none;">
+            <h3>Можливі ходи:</h3>
+            <div class="moves-list" id="moves-list"></div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="info-value" id="turn-info">Білі</div>
+                <div class="info-label">Хід</div>
+            </div>
+            <div class="info-card">
+                <div class="info-value" id="fen-info">-</div>
+                <div class="info-label">FEN</div>
+            </div>
+            <div class="info-card">
+                <div class="info-value" id="moves-count">0</div>
+                <div class="info-label">Ходів</div>
+            </div>
+            <div class="info-card">
+                <div class="info-value" id="phase-info">-</div>
+                <div class="info-label">Фаза гри</div>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>📊 Статистика (як у PySide)</h2>
+            <ul id="metrics-list" class="metrics-list"></ul>
+            <div style="margin-top:10px;color:#4a5568;font-size:0.95rem;">
+                Легальні ходи: <span id="legal-count">0</span>
+            </div>
+        </div>
+
+        <div class="stats-section">
+            <h2>📜 Ходи (SAN) та PGN</h2>
+            <pre id="san-text" class="code-block">—</pre>
+            <div class="btn-row">
+                <button class="btn" id="btn-copy-san">⧉ Копіювати SAN</button>
+                <button class="btn" id="btn-copy-pgn">⧉ Копіювати PGN</button>
+                <button class="btn" id="btn-download-pgn">⬇ Завантажити PGN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MOVE_DELAY_MS = 400; // мінімальна затримка між ходами
+        let currentBoard = null;
+        let selectedSquare = null;
+        let possibleMoves = [];
+        let movesCount = 0;
+        let lastPGN = '';
+        let lastSAN = '';
+        let autoPlay = false;
+        let autoTimeoutId = null;
+        let heatmapVisible = true;
+        let cachedOverlay = null; // кеш останніх даних теплової карти
+
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBoard();
+            loadBoard();
+            setupEventListeners();
+            loadStats();
+            initHeatmapControls();
+            updateHeatmapOverlay();
+            window.addEventListener('resize', () => {
+                if (cachedOverlay && heatmapVisible) drawHeatmapOverlay(cachedOverlay);
+            });
+        });
+
+        // Ініціалізація доски
+        function initializeBoard() {
+            const board = document.getElementById('chess-board');
+            board.innerHTML = '';
+            
+            for (let rank = 7; rank >= 0; rank--) {
+                for (let file = 0; file < 8; file++) {
+                    const cell = document.createElement('div');
+                    const isWhite = (rank + file) % 2 === 0;
+                    cell.className = `cell ${isWhite ? 'white' : 'black'}`;
+                    cell.dataset.rank = rank;
+                    cell.dataset.file = file;
+                    cell.addEventListener('click', () => handleCellClick(rank, file));
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Завантаження стану дошки
+        async function loadBoard() {
+            try {
+                const response = await fetch('/api/board');
+                const data = await response.json();
+                
+                if (data.board) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                }
+            } catch (error) {
+                console.error('Помилка завантаження дошки:', error);
+                showStatus('Помилка завантаження дошки', 'error');
+            }
+        }
+
+        // Оновлення доски
+        function updateBoard(boardArray) {
+            const cells = document.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                const rank = parseInt(cell.dataset.rank);
+                const file = parseInt(cell.dataset.file);
+                const piece = boardArray[rank][file];
+                
+                cell.innerHTML = piece.symbol || '';
+                cell.classList.remove('selected', 'possible-move', 'last-move');
+                
+                if (piece.color) {
+                    cell.style.color = piece.color === 'white' ? '#fff' : '#000';
+                }
+            });
+            // Перемальовуємо теплову карту поверх нової дошки
+            updateHeatmapOverlay();
+        }
+
+        // Оновлення статусу
+        function updateStatus(data) {
+            const status = document.getElementById('game-status');
+            const turnInfo = document.getElementById('turn-info');
+            const fenInfo = document.getElementById('fen-info');
+            
+            let statusText = '';
+            if (data.is_checkmate) {
+                statusText = `Мат! ${data.turn === 'white' ? 'Чорні' : 'Білі'} виграли`;
+            } else if (data.is_stalemate) {
+                statusText = 'Пат - нічия';
+            } else if (data.is_check) {
+                statusText = `Шах! Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            } else {
+                statusText = `Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            }
+            
+            status.textContent = statusText;
+            turnInfo.textContent = data.turn === 'white' ? 'Білі' : 'Чорні';
+            fenInfo.textContent = data.fen.substring(0, 20) + '...';
+        }
+
+        // Завантаження та відображення розширених статистик
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/stats');
+                const data = await resp.json();
+                if (data && !data.error) {
+                    updateStatsDisplay(data);
+                }
+            } catch (e) {
+                console.error('Помилка завантаження статистики:', e);
+            }
+        }
+
+        function updateStatsDisplay(stats) {
+            // Phase
+            const phaseInfo = document.getElementById('phase-info');
+            phaseInfo.textContent = stats.phase || '-';
+
+            // Metrics list
+            const list = document.getElementById('metrics-list');
+            list.innerHTML = '';
+            (stats.metrics || []).forEach(line => {
+                const li = document.createElement('li');
+                li.textContent = line;
+                list.appendChild(li);
+            });
+
+            // Legal moves count
+            document.getElementById('legal-count').textContent = stats.legal_moves_count ?? 0;
+
+            // SAN / PGN
+            lastSAN = stats.moves_san || '';
+            lastPGN = stats.pgn || '';
+            document.getElementById('san-text').textContent = lastSAN || '—';
+
+            // Move counter sync just in case
+            if (typeof stats.move_count === 'number') {
+                movesCount = stats.move_count;
+                document.getElementById('moves-count').textContent = movesCount;
+            }
+        }
+
+        // Обробка кліку по клітинці
+        function handleCellClick(rank, file) {
+            const square = String.fromCharCode(97 + file) + (8 - rank);
+            
+            if (selectedSquare) {
+                // Намагаємося зробити хід
+                makeMove(selectedSquare + square);
+                selectedSquare = null;
+                clearSelection();
+            } else {
+                // Вибираємо клітинку
+                selectedSquare = square;
+                highlightSquare(rank, file);
+                loadLegalMoves();
+            }
+        }
+
+        // Підсвічування обраної клітинки
+        function highlightSquare(rank, file) {
+            clearSelection();
+            const cell = document.querySelector(`[data-rank="${rank}"][data-file="${file}"]`);
+            if (cell) {
+                cell.classList.add('selected');
+            }
+        }
+
+        // Очищення виділення
+        function clearSelection() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('selected', 'possible-move');
+            });
+        }
+
+        // Завантаження можливих ходів
+        async function loadLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    possibleMoves = data.moves;
+                    highlightPossibleMoves();
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Підсвічування можливих ходів
+        function highlightPossibleMoves() {
+            if (!selectedSquare) return;
+            
+            possibleMoves.forEach(move => {
+                if (move.from === selectedSquare) {
+                    const toSquare = move.to;
+                    const file = toSquare.charCodeAt(0) - 97;
+                    const rank = 8 - parseInt(toSquare[1]);
+                    const cell = document.querySelector(`[data-rank="${rank}"][data-file="${file}"]`);
+                    if (cell) {
+                        cell.classList.add('possible-move');
+                    }
+                }
+            });
+        }
+
+        // Виконання ходу
+        async function makeMove(move) {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ move: move })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Хід: ${data.move}`, 'success');
+                    loadStats();
+                    updateHeatmapOverlay();
+                } else {
+                    showStatus(`Помилка: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Помилка виконання ходу:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Хід бота
+        async function makeBotMove() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/bot_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ bot: 'RandomBot' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Бот зробив хід: ${data.move}`, 'success');
+                    loadStats();
+                    updateHeatmapOverlay();
+
+                    // Зупиняємо автогру якщо партія завершена
+                    if (data.is_game_over || data.is_checkmate || data.is_stalemate || data.result) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
+                } else {
+                    showStatus(`Помилка бота: ${data.error}`, 'error');
+                    // Якщо немає можливих ходів — завершуємо автогру
+                    if (autoPlay && /немає можливих ходів/i.test(String(data.error || ''))) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Помилка ходу бота:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Скидання дошки
+        async function resetBoard() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount = 0;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus('Нова гра розпочата', 'success');
+                    loadStats();
+                    updateHeatmapOverlay();
+                }
+            } catch (error) {
+                console.error('Помилка скидання:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Показати можливі ходи
+        async function showLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    const movesList = document.getElementById('moves-list');
+                    const legalMoves = document.getElementById('legal-moves');
+                    
+                    movesList.innerHTML = '';
+                    data.moves.forEach(move => {
+                        const moveTag = document.createElement('span');
+                        moveTag.className = 'move-tag';
+                        moveTag.textContent = move.san;
+                        moveTag.addEventListener('click', () => {
+                            makeMove(move.san);
+                            legalMoves.style.display = 'none';
+                        });
+                        movesList.appendChild(moveTag);
+                    });
+                    
+                    legalMoves.style.display = legalMoves.style.display === 'none' ? 'block' : 'none';
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Налаштування обробників подій
+        function setupEventListeners() {
+            document.getElementById('btn-reset').addEventListener('click', resetBoard);
+            document.getElementById('btn-bot-move').addEventListener('click', makeBotMove);
+            document.getElementById('btn-legal-moves').addEventListener('click', showLegalMoves);
+            document.getElementById('btn-auto').addEventListener('click', toggleAutoPlay);
+            document.getElementById('btn-make-move').addEventListener('click', () => {
+                const moveInput = document.getElementById('move-input');
+                const move = moveInput.value.trim();
+                if (move) {
+                    makeMove(move);
+                    moveInput.value = '';
+                }
+            });
+            document.getElementById('btn-copy-san').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(lastSAN || ''); showStatus('SAN скопійовано', 'success'); } catch (e) { showStatus('Не вдалося скопіювати SAN', 'error'); }
+            });
+            document.getElementById('btn-copy-pgn').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(lastPGN || ''); showStatus('PGN скопійовано', 'success'); } catch (e) { showStatus('Не вдалося скопіювати PGN', 'error'); }
+            });
+            document.getElementById('btn-download-pgn').addEventListener('click', () => {
+                const blob = new Blob([lastPGN || ''], { type: 'application/x-chess-pgn;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'game.pgn';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            
+            // Enter в поле введення ходу
+            document.getElementById('move-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('btn-make-move').click();
+                }
+            });
+
+            // Heatmap controls
+            document.getElementById('heatmap-source').addEventListener('change', (e) => {
+                const useSet = e.target.value === 'set';
+                const sel = document.getElementById('heatmap-set');
+                sel.disabled = !useSet;
+            });
+            document.getElementById('btn-apply-heatmap').addEventListener('click', updateHeatmapOverlay);
+            document.getElementById('heatmap-opacity').addEventListener('input', () => {
+                if (cachedOverlay && heatmapVisible) drawHeatmapOverlay(cachedOverlay);
+            });
+            document.getElementById('btn-toggle-heatmap').addEventListener('click', () => {
+                heatmapVisible = !heatmapVisible;
+                document.getElementById('btn-toggle-heatmap').textContent = heatmapVisible ? 'Приховати' : 'Показати';
+                const cvs = document.getElementById('heatmap-canvas');
+                cvs.style.display = heatmapVisible ? 'block' : 'none';
+                if (heatmapVisible && cachedOverlay) drawHeatmapOverlay(cachedOverlay);
+            });
+        }
+
+        // Автогра: боти ходять по черзі з затримкою 400мс
+        async function autoPlayStep() {
+            if (!autoPlay) return;
+            // Захист від подвійного виклику
+            if (autoTimeoutId) {
+                clearTimeout(autoTimeoutId);
+                autoTimeoutId = null;
+            }
+            // Виконуємо хід поточного боку
+            await makeBotMove();
+            // Якщо гра не завершена — плануємо наступний крок
+            autoTimeoutId = setTimeout(autoPlayStep, MOVE_DELAY_MS);
+        }
+
+        function toggleAutoPlay() {
+            autoPlay = !autoPlay;
+            const btn = document.getElementById('btn-auto');
+            btn.textContent = autoPlay ? '⏸️ Пауза автогри' : '▶️ Автогра';
+            // Блокуємо ручні дії під час автогри
+            document.getElementById('btn-bot-move').disabled = autoPlay;
+            document.getElementById('btn-legal-moves').disabled = autoPlay;
+            document.getElementById('btn-make-move').disabled = autoPlay;
+            document.getElementById('move-input').disabled = autoPlay;
+            if (autoPlay) {
+                autoPlayStep();
+            } else {
+                if (autoTimeoutId) {
+                    clearTimeout(autoTimeoutId);
+                    autoTimeoutId = null;
+                }
+                showStatus('Автогру зупинено', 'info');
+                updateHeatmapOverlay();
+            }
+        }
+
+        // Показати статус
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('game-status');
+            status.textContent = message;
+            status.style.color = type === 'error' ? '#e53e3e' : type === 'success' ? '#38a169' : '#4a5568';
+        }
+
+        // Показати завантаження
+        function showLoading() {
+            const status = document.getElementById('game-status');
+            status.innerHTML = '<div class="spinner"></div>Завантаження...';
+        }
+
+        // Приховати завантаження
+        function hideLoading() {
+            // Статус буде оновлений в updateStatus
+        }
+
+        // ====== Теплові карти: клієнтська частина ======
+        async function initHeatmapControls() {
+            try {
+                const resp = await fetch('/api/heatmaps/sets');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const sets = (data.sets || []).map(s => s.name);
+                const sel = document.getElementById('heatmap-set');
+                sel.innerHTML = '';
+                sets.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    sel.appendChild(opt);
+                });
+                if (!sets.includes('base')) {
+                    const opt = document.createElement('option');
+                    opt.value = 'base';
+                    opt.textContent = 'base';
+                    sel.appendChild(opt);
+                }
+                sel.value = 'base';
+            } catch (e) {
+                console.warn('Не вдалося завантажити набори теплових карт');
+            }
+        }
+
+        async function updateHeatmapOverlay() {
+            try {
+                const piece = document.getElementById('heatmap-piece').value;
+                const source = document.getElementById('heatmap-source').value;
+                const setName = document.getElementById('heatmap-set').value || 'base';
+                const params = new URLSearchParams({ piece, source, normalize: '1' });
+                if (source === 'set') params.set('pattern_set', setName);
+                const resp = await fetch(`/api/heatmap/overlay?${params.toString()}`);
+                if (!resp.ok) {
+                    cachedOverlay = null;
+                    drawHeatmapOverlay(null);
+                    return;
+                }
+                const data = await resp.json();
+                cachedOverlay = data;
+                drawHeatmapOverlay(data);
+            } catch (e) {
+                console.warn('Помилка оновлення теплової карти', e);
+            }
+        }
+
+        function drawHeatmapOverlay(data) {
+            const canvas = document.getElementById('heatmap-canvas');
+            const board = document.getElementById('chess-board');
+            const ctx = canvas.getContext('2d');
+            // Розміри полотна = розміри дошки
+            const rect = board.getBoundingClientRect();
+            const width = Math.floor(rect.width);
+            const height = Math.floor(rect.height);
+            // Якщо елемент прихований, не малюємо
+            canvas.width = width;
+            canvas.height = height;
+            ctx.clearRect(0, 0, width, height);
+            if (!data || !data.heatmap || !heatmapVisible) return;
+            const grid = data.heatmap; // 8x8 значення [0..1]
+            const cellW = width / 8;
+            const cellH = height / 8;
+            const baseAlpha = parseFloat(document.getElementById('heatmap-opacity').value || '0.6');
+            // Малюємо прямокутники з прозорістю залежно від значення
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const v = Math.max(0, Math.min(1, Number(grid[r][c]) || 0));
+                    if (v <= 0) continue;
+                    const alpha = Math.min(1, v * baseAlpha);
+                    ctx.fillStyle = `rgba(255, 69, 0, ${alpha})`; // помаранчево-червоний
+                    ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+                }
+            }
+            // Легка сітка для читабельності
+            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 8; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellW, 0);
+                ctx.lineTo(i * cellW, height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellH);
+                ctx.lineTo(width, i * cellH);
+                ctx.stroke();
+            }
+        }
+    </script>
+</body>
+</html>

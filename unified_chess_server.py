@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Веб-сервер для Chess AI Analytics Dashboard
-Надає API для взаємодії з шаховими ботами та веб-інтерфейсом
+Об'єднаний веб-сервер для Chess AI з дошкою та хітмапами
+Поєднує функціонал web_server.py та simple_chess_flask.py
 """
 
 import os
@@ -31,12 +31,7 @@ from chess_ai.bot_agent import make_agent
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
 from utils.module_colors import MODULE_COLORS, REASON_PRIORITY
-# Опційно імпортуємо ELOSyncManager (може вимагати aiohttp)
-try:
-    from chess_ai.elo_sync_manager import ELOSyncManager  # type: ignore
-except Exception as e:  # ImportError, RuntimeError, etc.
-    ELOSyncManager = None  # type: ignore
-    print(f"[web_server] ELOSyncManager недоступний: {e}", file=sys.stderr)
+from chess_ai.elo_sync_manager import ELOSyncManager
 from utils.integration import generate_heatmaps as integration_generate_heatmaps
 from utils.metrics_sidebar import build_sidebar_metrics
 
@@ -52,7 +47,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Налаштування для обробки помилок сокетів
-socket.setdefaulttimeout(30)  # 30 секунд таймаут для сокетів
+socket.setdefaulttimeout(30)
 
 # Ініціалізація Flask додатку
 app = Flask(__name__)
@@ -72,6 +67,64 @@ connection_stats = {
     'active_connections': 0,
     'last_reset': time.time()
 }
+
+# Символи шахових фігур (Unicode)
+PIECE_SYMBOLS = {
+    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',  # Білі
+    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'   # Чорні
+}
+
+def get_piece_symbol(piece):
+    """Отримати символ фігури"""
+    if piece is None:
+        return ''
+    return PIECE_SYMBOLS.get(piece.symbol(), '')
+
+def board_to_array(board):
+    """Перетворити дошку в масив для відображення"""
+    board_array = []
+    for rank in range(7, -1, -1):  # Від 8-го рангу до 1-го
+        row = []
+        for file in range(8):  # Від a до h
+            square = chess.square(file, rank)
+            piece = board.piece_at(square)
+            row.append({
+                'symbol': get_piece_symbol(piece),
+                'color': 'white' if piece and piece.color == chess.WHITE else 'black' if piece else None,
+                'square': chess.square_name(square)
+            })
+        board_array.append(row)
+    return board_array
+
+def _moves_san_list(board: chess.Board):
+    """Return list of SAN moves for the current game."""
+    temp = chess.Board()
+    san_list = []
+    for mv in board.move_stack:
+        san_list.append(temp.san(mv))
+        temp.push(mv)
+    return san_list
+
+def _moves_san_string(board: chess.Board) -> str:
+    """Return SAN string with move numbers like '1. e4 e5 2. Nf3 ...'."""
+    parts = _moves_san_list(board)
+    out = []
+    for i, san in enumerate(parts, start=1):
+        if i % 2 == 1:
+            move_no = (i + 1) // 2
+            out.append(f"{move_no}. {san}")
+        else:
+            out.append(san)
+    return " ".join(out)
+
+def _game_pgn_string(board: chess.Board) -> str:
+    """Return a minimal PGN string for the current game."""
+    res = board.result() if board.is_game_over() else "*"
+    return (
+        f"[Event \"WebViewer\"]\n[Site \"Local\"]\n"
+        f"[White \"Web\"]\n[Black \"Web\"]\n"
+        f"[Result \"{res}\"]\n\n{_moves_san_string(board)} {res}\n"
+    )
 
 def log_connection_stats():
     """Логування статистики з'єднань"""
@@ -239,9 +292,9 @@ class GameManager:
                 logger.warning(f"Агент не знайдено для кольору {mover_color}")
                 return None
                 
-            # Додаткова перевірка стану доски
+            # Додаткова перевірка стану дошки
             if not self.current_board.is_valid():
-                logger.error("Недійсний стан доски")
+                logger.error("Недійсний стан дошки")
                 return None
                 
             move = agent.choose_move(self.current_board)
@@ -328,25 +381,27 @@ class GameManager:
 # Ініціалізація менеджера ігор
 game_manager = GameManager()
 
+# ==================== ROUTES ====================
+
 @app.route('/')
 @handle_api_errors
 def index():
-    """Головна сторінка"""
+    """Головна сторінка з об'єднаним інтерфейсом"""
     try:
-        return send_from_directory('.', 'web_interface.html')
+        return render_template('unified_chess.html')
     except FileNotFoundError:
-        logger.warning("Файл web_interface.html не знайдено")
-        return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
+        logger.warning("Файл unified_chess.html не знайдено, використовуємо web_interface.html")
+        return send_from_directory('.', 'web_interface.html')
 
-# Lightweight board viewer (simple Flask UI)
-@app.route('/board')
+@app.route('/simple')
 @handle_api_errors
-def simple_board_page():
+def simple_interface():
+    """Простий інтерфейс з дошкою"""
     try:
         return render_template('simple_chess.html')
-    except Exception as e:
-        logger.error(f"Помилка рендерингу simple_chess.html: {e}")
-        return jsonify({'error': 'Не вдалося завантажити дошку'}), 500
+    except FileNotFoundError:
+        logger.warning("Файл simple_chess.html не знайдено")
+        return jsonify({'error': 'Простий інтерфейс не знайдено'}), 404
 
 @app.route('/heatmaps')
 @handle_api_errors
@@ -375,19 +430,7 @@ def health_check():
 # Ініціалізуємо час запуску для health check
 health_check.start_time = time.time()
 
-@app.route('/favicon.ico')
-def favicon():
-    """Повертає favicon для браузера"""
-    # Підтримуємо як svg у static, так і запасний шлях
-    static_path = Path('static')
-    svg_path = static_path / 'favicon.svg'
-    if svg_path.exists():
-        return send_from_directory('static', 'favicon.svg')
-    # Якщо немає svg, спробуємо ico, інакше 404 відправить Flask
-    ico_path = static_path / 'favicon.ico'
-    if ico_path.exists():
-        return send_from_directory('static', 'favicon.ico')
-    return ('', 204)
+# ==================== API ROUTES ====================
 
 @app.route('/api/status')
 @handle_api_errors
@@ -401,6 +444,211 @@ def get_status():
             'current_game': game_manager.get_board_state() if game_manager.current_board else None
         }
     })
+
+@app.route('/api/board')
+@handle_api_errors
+def get_board():
+    """Отримати поточний стан дошки"""
+    return jsonify({
+        'board': board_to_array(game_manager.current_board),
+        'fen': game_manager.current_board.fen(),
+        'turn': 'white' if game_manager.current_board.turn == chess.WHITE else 'black',
+        'is_check': game_manager.current_board.is_check(),
+        'is_checkmate': game_manager.current_board.is_checkmate(),
+        'is_stalemate': game_manager.current_board.is_stalemate(),
+        'is_game_over': game_manager.current_board.is_game_over(),
+        'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None
+    })
+
+@app.route('/api/move', methods=['POST'])
+@handle_api_errors
+def make_move():
+    """Зробити хід"""
+    try:
+        data = request.get_json() or {}
+        move_notation = data.get('move')
+        
+        if not move_notation:
+            return jsonify({'error': 'Не вказано хід'}), 400
+        
+        # Намагаємося виконати хід
+        try:
+            move = game_manager.current_board.parse_san(move_notation)
+        except ValueError:
+            # Пробуємо UCI нотацію
+            try:
+                move = chess.Move.from_uci(move_notation)
+            except ValueError:
+                return jsonify({'error': 'Недопустимий хід'}), 400
+        
+        if not game_manager.current_board.is_legal(move):
+            return jsonify({'error': 'Недопустимий хід'}), 400
+        
+        # Виконуємо хід
+        game_manager.current_board.push(move)
+        
+        return jsonify({
+            'success': True,
+            'move': move_notation,
+            'board': board_to_array(game_manager.current_board),
+            'fen': game_manager.current_board.fen(),
+            'turn': 'white' if game_manager.current_board.turn == chess.WHITE else 'black',
+            'is_check': game_manager.current_board.is_check(),
+            'is_checkmate': game_manager.current_board.is_checkmate(),
+            'is_stalemate': game_manager.current_board.is_stalemate(),
+            'is_game_over': game_manager.current_board.is_game_over(),
+            'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/legal_moves')
+@handle_api_errors
+def get_legal_moves():
+    """Отримати список можливих ходів"""
+    try:
+        moves = []
+        for move in game_manager.current_board.legal_moves:
+            moves.append({
+                'san': game_manager.current_board.san(move),
+                'uci': move.uci(),
+                'from': chess.square_name(move.from_square),
+                'to': chess.square_name(move.to_square)
+            })
+        return jsonify({'moves': moves})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reset', methods=['POST'])
+@handle_api_errors
+def reset_board():
+    """Скинути дошку до початкової позиції"""
+    game_manager.reset_game()
+    return jsonify({
+        'success': True,
+        'board': board_to_array(game_manager.current_board),
+        'fen': game_manager.current_board.fen()
+    })
+
+@app.route('/api/bot_move', methods=['POST'])
+@handle_api_errors
+def make_bot_move():
+    """Зробити хід ботом"""
+    try:
+        data = request.get_json() or {}
+        bot_name = data.get('bot', 'RandomBot')
+        
+        # Створюємо бота
+        bot = make_agent(bot_name, game_manager.current_board.turn)
+        
+        # Получаємо хід от бота
+        move = bot.choose_move(game_manager.current_board)
+        
+        if not move or not game_manager.current_board.is_legal(move):
+            return jsonify({'error': 'Бот не смог сделать ход'}), 400
+        
+        # Выполняем ход
+        san_move = game_manager.current_board.san(move)
+        game_manager.current_board.push(move)
+        
+        return jsonify({
+            'success': True,
+            'move': san_move,
+            'bot': bot_name,
+            'board': board_to_array(game_manager.current_board),
+            'fen': game_manager.current_board.fen(),
+            'turn': 'white' if game_manager.current_board.turn == chess.WHITE else 'black',
+            'is_check': game_manager.current_board.is_check(),
+            'is_checkmate': game_manager.current_board.is_checkmate(),
+            'is_stalemate': game_manager.current_board.is_stalemate(),
+            'is_game_over': game_manager.current_board.is_game_over(),
+            'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/load_fen', methods=['POST'])
+@handle_api_errors
+def load_fen():
+    """Завантажити позицію з FEN"""
+    try:
+        data = request.get_json() or {}
+        fen = data.get('fen')
+        
+        if not fen:
+            return jsonify({'error': 'Не вказано FEN'}), 400
+        
+        game_manager.current_board = chess.Board(fen)
+        
+        return jsonify({
+            'success': True,
+            'board': board_to_array(game_manager.current_board),
+            'fen': game_manager.current_board.fen(),
+            'turn': 'white' if game_manager.current_board.turn == chess.WHITE else 'black',
+            'is_check': game_manager.current_board.is_check(),
+            'is_checkmate': game_manager.current_board.is_checkmate(),
+            'is_stalemate': game_manager.current_board.is_stalemate(),
+            'is_game_over': game_manager.current_board.is_game_over(),
+            'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stats')
+@handle_api_errors
+def get_stats():
+    """Повернути розширені статистики та текстові метрики як у PySide в'ювері."""
+    try:
+        # High-level text metrics (ThreatMap, Attacks, Leaders, King coeff)
+        metrics_lines = build_sidebar_metrics(game_manager.current_board)
+
+        # Phase heuristic similar to PySide viewer
+        non_king_count = sum(1 for pc in game_manager.current_board.piece_map().values() if pc.piece_type != chess.KING)
+        if non_king_count <= 12:
+            phase = 'endgame'
+        elif non_king_count <= 20:
+            phase = 'midgame'
+        else:
+            phase = 'opening'
+
+        # Legal moves count and list preview (SAN + UCI for current side)
+        legal = []
+        for mv in game_manager.current_board.legal_moves:
+            legal.append({
+                'san': game_manager.current_board.san(mv),
+                'uci': mv.uci(),
+                'from': chess.square_name(mv.from_square),
+                'to': chess.square_name(mv.to_square),
+            })
+
+        # Moves and PGN
+        san_list = _moves_san_list(game_manager.current_board)
+        san_text = _moves_san_string(game_manager.current_board)
+        pgn_text = _game_pgn_string(game_manager.current_board)
+
+        return jsonify({
+            'fen': game_manager.current_board.fen(),
+            'turn': 'white' if game_manager.current_board.turn == chess.WHITE else 'black',
+            'is_check': game_manager.current_board.is_check(),
+            'is_checkmate': game_manager.current_board.is_checkmate(),
+            'is_stalemate': game_manager.current_board.is_stalemate(),
+            'is_game_over': game_manager.current_board.is_game_over(),
+            'result': game_manager.current_board.result() if game_manager.current_board.is_game_over() else None,
+            'phase': phase,
+            'metrics': metrics_lines,
+            'legal_moves_count': len(legal),
+            'legal_moves': legal,
+            'moves_san_list': san_list,
+            'moves_san': san_text,
+            'pgn': pgn_text,
+            'move_count': len(game_manager.current_board.move_stack),
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== GAME MANAGEMENT API ====================
 
 @app.route('/api/games', methods=['GET'])
 @handle_api_errors
@@ -478,8 +726,8 @@ def start_game():
 
 @app.route('/api/game/move', methods=['POST'])
 @handle_api_errors
-def make_move():
-    """Зробити хід"""
+def make_game_move():
+    """Зробити хід в грі"""
     try:
         data = request.get_json() or {}
         
@@ -592,221 +840,11 @@ def get_available_bots():
     ]
     return jsonify(bots)
 
-# ===== Compatibility helpers for simple board endpoints =====
-# Unicode symbols for pieces (for simple board UI)
-PIECE_SYMBOLS = {
-    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
-    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
-}
-
-def _get_piece_symbol(piece):
-    if piece is None:
-        return ''
-    return PIECE_SYMBOLS.get(piece.symbol(), '')
-
-def _board_to_array(board: chess.Board):
-    board_array = []
-    for rank in range(7, -1, -1):
-        row = []
-        for file in range(8):
-            square = chess.square(file, rank)
-            piece = board.piece_at(square)
-            row.append({
-                'symbol': _get_piece_symbol(piece),
-                'color': 'white' if piece and piece.color == chess.WHITE else 'black' if piece else None,
-                'square': chess.square_name(square)
-            })
-        board_array.append(row)
-    return board_array
-
-@app.route('/api/board')
-@handle_api_errors
-def api_board():
-    bd = game_manager.current_board
-    return jsonify({
-        'board': _board_to_array(bd),
-        'fen': bd.fen(),
-        'turn': 'white' if bd.turn == chess.WHITE else 'black',
-        'is_check': bd.is_check(),
-        'is_checkmate': bd.is_checkmate(),
-        'is_stalemate': bd.is_stalemate(),
-        'is_game_over': bd.is_game_over(),
-        'result': bd.result() if bd.is_game_over() else None
-    })
-
-@app.route('/api/legal_moves')
-@handle_api_errors
-def api_legal_moves():
-    bd = game_manager.current_board
-    moves = []
-    for mv in bd.legal_moves:
-        moves.append({
-            'san': bd.san(mv),
-            'uci': mv.uci(),
-            'from': chess.square_name(mv.from_square),
-            'to': chess.square_name(mv.to_square),
-        })
-    return jsonify({'moves': moves})
-
-@app.route('/api/move', methods=['POST'])
-@handle_api_errors
-def api_make_move():
-    data = request.get_json() or {}
-    move_notation = data.get('move')
-    if not move_notation:
-        return jsonify({'error': 'Не вказано хід'}), 400
-    bd = game_manager.current_board
-    # Try SAN first, then UCI
-    try:
-        move = bd.parse_san(move_notation)
-    except Exception:
-        try:
-            move = chess.Move.from_uci(move_notation)
-        except Exception:
-            return jsonify({'error': 'Недопустимий хід'}), 400
-    if not bd.is_legal(move):
-        return jsonify({'error': 'Недопустимий хід'}), 400
-    # Push and record SAN
-    san_move = bd.san(move)
-    bd.push(move)
-    game_manager.game_moves.append(san_move)
-    return jsonify({
-        'success': True,
-        'move': san_move,
-        'board': _board_to_array(bd),
-        'fen': bd.fen(),
-        'turn': 'white' if bd.turn == chess.WHITE else 'black',
-        'is_check': bd.is_check(),
-        'is_checkmate': bd.is_checkmate(),
-        'is_stalemate': bd.is_stalemate(),
-        'is_game_over': bd.is_game_over(),
-        'result': bd.result() if bd.is_game_over() else None
-    })
-
-@app.route('/api/reset', methods=['POST'])
-@handle_api_errors
-def api_reset():
-    game_manager.reset_game()
-    return jsonify({'success': True, 'board': _board_to_array(game_manager.current_board), 'fen': game_manager.current_board.fen()})
-
-@app.route('/api/bot_move', methods=['POST'])
-@handle_api_errors
-def api_bot_move():
-    data = request.get_json() or {}
-    bot_name = (data.get('bot') or '').strip() or 'RandomBot'
-    bd = game_manager.current_board
-    mover_color = bd.turn
-    # Ensure agent exists for current mover
-    try:
-        if mover_color == chess.WHITE and game_manager.white_agent is None:
-            game_manager.white_agent = make_agent(bot_name, chess.WHITE)
-        if mover_color == chess.BLACK and game_manager.black_agent is None:
-            game_manager.black_agent = make_agent(bot_name, chess.BLACK)
-    except Exception as e:
-        logger.warning(f"Не вдалося ініціалізувати агента {bot_name}: {e}. Використовуємо випадковий хід.")
-    agent = game_manager.white_agent if mover_color == chess.WHITE else game_manager.black_agent
-    if agent is None:
-        # Fallback: random legal move
-        legal = list(bd.legal_moves)
-        if not legal:
-            return jsonify({'error': 'Немає можливих ходів'}), 400
-        mv = legal[0]
-    else:
-        mv = agent.choose_move(bd)
-        if mv is None or not bd.is_legal(mv):
-            legal = list(bd.legal_moves)
-            if not legal:
-                return jsonify({'error': 'Немає можливих ходів'}), 400
-            mv = legal[0]
-    san_move = bd.san(mv)
-    bd.push(mv)
-    game_manager.game_moves.append(san_move)
-    return jsonify({
-        'success': True,
-        'move': san_move,
-        'bot': bot_name,
-        'board': _board_to_array(bd),
-        'fen': bd.fen(),
-        'turn': 'white' if bd.turn == chess.WHITE else 'black',
-        'is_check': bd.is_check(),
-        'is_checkmate': bd.is_checkmate(),
-        'is_stalemate': bd.is_stalemate(),
-        'is_game_over': bd.is_game_over(),
-        'result': bd.result() if bd.is_game_over() else None
-    })
-
-@app.route('/api/stats')
-@handle_api_errors
-def api_stats():
-    """Return rich metrics similar to PySide viewer sidebar."""
-    bd = game_manager.current_board
-    # Phase heuristic similar to elsewhere
-    non_kings = sum(1 for pc in bd.piece_map().values() if pc.piece_type != chess.KING)
-    if non_kings <= 12:
-        phase = 'endgame'
-    elif non_kings <= 20:
-        phase = 'midgame'
-    else:
-        phase = 'opening'
-    legal = []
-    for mv in bd.legal_moves:
-        legal.append({
-            'san': bd.san(mv),
-            'uci': mv.uci(),
-            'from': chess.square_name(mv.from_square),
-            'to': chess.square_name(mv.to_square),
-        })
-    # Build sidebar metrics
-    metrics_lines = build_sidebar_metrics(bd)
-    # SAN/PGN
-    # Reconstruct SAN list for current game
-    temp = chess.Board()
-    san_list = []
-    for mv in bd.move_stack:
-        san_list.append(temp.san(mv))
-        temp.push(mv)
-    def _moves_san_string(parts):
-        out = []
-        for i, san in enumerate(parts, start=1):
-            if i % 2 == 1:
-                move_no = (i + 1) // 2
-                out.append(f"{move_no}. {san}")
-            else:
-                out.append(san)
-        return " ".join(out)
-    san_text = _moves_san_string(san_list)
-    res = bd.result() if bd.is_game_over() else "*"
-    pgn_text = (
-        f"[Event \"WebViewer\"]\n[Site \"Local\"]\n"
-        f"[White \"Web\"]\n[Black \"Web\"]\n"
-        f"[Result \"{res}\"]\n\n{san_text} {res}\n"
-    )
-    return jsonify({
-        'fen': bd.fen(),
-        'turn': 'white' if bd.turn == chess.WHITE else 'black',
-        'is_check': bd.is_check(),
-        'is_checkmate': bd.is_checkmate(),
-        'is_stalemate': bd.is_stalemate(),
-        'is_game_over': bd.is_game_over(),
-        'result': bd.result() if bd.is_game_over() else None,
-        'phase': phase,
-        'metrics': metrics_lines,
-        'legal_moves_count': len(legal),
-        'legal_moves': legal,
-        'moves_san_list': san_list,
-        'moves_san': san_text,
-        'pgn': pgn_text,
-        'move_count': len(bd.move_stack),
-    })
-
 @app.route('/api/elo', methods=['GET'])
 @handle_api_errors
 def get_elo_ratings():
     """Отримати ELO рейтинги"""
     try:
-        if ELOSyncManager is None:
-            logger.info("ELOSyncManager відключено (aiohttp не встановлено)")
-            return jsonify({})
         if not game_data['elo_manager']:
             game_data['elo_manager'] = ELOSyncManager()
         
@@ -815,6 +853,8 @@ def get_elo_ratings():
     except Exception as e:
         logger.error(f"Помилка завантаження ELO: {e}")
         return jsonify({})
+
+# ==================== HEATMAP API ====================
 
 HEATMAPS_BASE_DIR = Path(os.environ.get("HEATMAPS_DIR", "analysis/heatmaps"))
 
@@ -854,103 +894,6 @@ def _read_heatmap(pattern_set: str, piece: str) -> Optional[List[List[int]]]:
         return None
     with json_path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
-
-def _aggregate_piece_grids_for_piece(heatmaps: Dict[str, List[List[int]]], piece: str) -> Optional[List[List[int]]]:
-    """Aggregate upper/lower case piece grids into a single 8x8 grid for overlay.
-    piece: one of pawn, knight, bishop, rook, queen, king
-    """
-    mapping = {
-        'pawn': ['P', 'p'], 'knight': ['N', 'n'], 'bishop': ['B', 'b'],
-        'rook': ['R', 'r'], 'queen': ['Q', 'q'], 'king': ['K', 'k']
-    }
-    symbols = mapping.get(piece.lower())
-    if not symbols:
-        return None
-    agg = [[0 for _ in range(8)] for _ in range(8)]
-    for sym in symbols:
-        grid = heatmaps.get(sym)
-        if not grid:
-            continue
-        for r in range(8):
-            for c in range(8):
-                agg[r][c] += int(grid[r][c])
-    return agg
-
-def _normalize_grid(grid: List[List[int]]) -> List[List[float]]:
-    max_val = max((v for row in grid for v in row), default=0)
-    if max_val <= 0:
-        return [[0.0 for _ in range(8)] for _ in range(8)]
-    return [[(v / max_val) for v in row] for row in grid]
-
-def _heatmap_from_current_game(piece: str) -> Dict[str, Any]:
-    """Build per-piece heatmap from current game's SAN move history for overlay."""
-    moves_san = list(game_manager.game_moves)
-    bd = chess.Board()
-    grids = {sym: [[0 for _ in range(8)] for _ in range(8)] for sym in ['P','N','B','R','Q','K','p','n','b','r','q','k']}
-    for san in moves_san:
-        try:
-            mv = bd.parse_san(san)
-            piece_at = bd.piece_at(mv.from_square)
-            if piece_at is not None:
-                sym = piece_at.symbol()
-                to_file = chess.square_file(mv.to_square)
-                to_rank = chess.square_rank(mv.to_square)
-                grids[sym][7 - to_rank][to_file] += 1
-            bd.push(mv)
-        except Exception:
-            # Skip unparsable moves
-            continue
-    agg = _aggregate_piece_grids_for_piece(grids, piece)
-    total = sum(sum(row) for row in agg) if agg else 0
-    return {'heatmap': agg, 'total': total}
-
-@app.route('/api/heatmaps/sets', methods=['GET'])
-@handle_api_errors
-def api_heatmap_sets():
-    return jsonify({'sets': _list_sets()})
-
-@app.route('/api/heatmap/overlay', methods=['GET'])
-@handle_api_errors
-def api_heatmap_overlay():
-    """Return a single 8x8 grid for a given piece suitable for board overlay.
-    Query params:
-      - source: 'current' (default) or 'set'
-      - piece: pawn|knight|bishop|rook|queen|king (required)
-      - pattern_set: when source='set', name of set (e.g. 'base' or folder name)
-      - normalize: 0/1 to scale to [0,1]
-    """
-    piece = (request.args.get('piece') or '').lower()
-    source = (request.args.get('source') or 'current').lower()
-    normalize = request.args.get('normalize', '1') in ('1', 'true', 'yes')
-    if piece not in ('pawn','knight','bishop','rook','queen','king'):
-        return jsonify({'error': 'piece required: pawn|knight|bishop|rook|queen|king'}), 400
-    grid: Optional[List[List[int]]] = None
-    total = 0
-    if source == 'set':
-        pattern_set = (request.args.get('pattern_set') or 'base')
-        # Read JSONs for both cases and aggregate
-        upper_lower = {
-            'pawn': ['P','p'], 'knight': ['N','n'], 'bishop': ['B','b'],
-            'rook': ['R','r'], 'queen': ['Q','q'], 'king': ['K','k']
-        }[piece]
-        hm = {}
-        for sym in upper_lower:
-            # filenames use lowercase piece names in some repos; here _read_heatmap expects names like 'knight', etc.
-            name_map = {'P':'pawn','N':'knight','B':'bishop','R':'rook','Q':'queen','K':'king',
-                        'p':'pawn','n':'knight','b':'bishop','r':'rook','q':'queen','k':'king'}
-            arr = _read_heatmap(pattern_set, name_map[sym])
-            if arr:
-                hm[sym] = arr
-        grid = _aggregate_piece_grids_for_piece(hm, piece)
-        total = sum(sum(row) for row in grid) if grid else 0
-    else:
-        res = _heatmap_from_current_game(piece)
-        grid = res.get('heatmap')
-        total = int(res.get('total') or 0)
-    if grid is None:
-        return jsonify({'error': 'heatmap not available'}), 404
-    out = _normalize_grid(grid) if normalize else grid
-    return jsonify({'piece': piece, 'source': source, 'normalize': normalize, 'total': total, 'heatmap': out})
 
 @app.route('/api/heatmaps', methods=['GET'])
 @handle_api_errors
@@ -1043,6 +986,69 @@ def analyze_heatmap():
         logger.error(f"Помилка аналізу теплової карти: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/heatmaps/data', methods=['GET'])
+@handle_api_errors
+def get_heatmap_data():
+    """Отримати дані теплової карти для накладання на дошку"""
+    try:
+        bot_name = request.args.get('bot', 'DynamicBot')
+        game_phase = request.args.get('phase', 'all')
+        piece_type = request.args.get('piece', 'all')
+        
+        # Шукаємо відповідний JSON файл з даними хітмапи
+        heatmap_data = None
+        
+        # Спочатку шукаємо в базовій директорії
+        base_files = list(Path('.').glob('heatmap_*.json'))
+        for file_path in base_files:
+            if bot_name.lower() in file_path.stem.lower():
+                with open(file_path, 'r') as f:
+                    heatmap_data = json.load(f)
+                break
+        
+        # Якщо не знайшли, шукаємо в директорії heatmaps
+        if not heatmap_data:
+            heatmap_dir = Path("heatmap_visualizations")
+            if heatmap_dir.exists():
+                for file_path in heatmap_dir.glob("*.json"):
+                    if bot_name.lower() in file_path.stem.lower():
+                        with open(file_path, 'r') as f:
+                            heatmap_data = json.load(f)
+                        break
+        
+        if not heatmap_data:
+            # Генеруємо тестові дані
+            heatmap_data = generate_mock_heatmap_data()
+        
+        return jsonify({
+            'success': True,
+            'heatmap_data': heatmap_data,
+            'bot_name': bot_name,
+            'game_phase': game_phase,
+            'piece_type': piece_type
+        })
+        
+    except Exception as e:
+        logger.error(f"Помилка отримання даних теплової карти: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def generate_mock_heatmap_data():
+    """Генерувати тестові дані теплової карти"""
+    import random
+    # Генеруємо 8x8 матрицю з випадковими значеннями
+    data = []
+    for row in range(8):
+        row_data = []
+        for col in range(8):
+            # Центр дошки має більші значення
+            center_distance = abs(row - 3.5) + abs(col - 3.5)
+            value = max(0, 10 - center_distance + random.uniform(-2, 2))
+            row_data.append(value)
+        data.append(row_data)
+    return data
+
+# ==================== ANALYTICS API ====================
+
 @app.route('/api/game/analytics', methods=['GET'])
 @handle_api_errors
 def get_game_analytics():
@@ -1078,90 +1084,7 @@ def get_game_analytics():
         logger.error(f"Помилка отримання аналітики: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/game/move/analyze', methods=['POST'])
-@handle_api_errors
-def analyze_move():
-    """Аналіз конкретного ходу"""
-    try:
-        data = request.get_json() or {}
-        move_san = data.get('move')
-        fen = data.get('fen')
-        
-        if not move_san or not fen:
-            return jsonify({'error': 'Необхідні параметри: move, fen'}), 400
-        
-        # Створюємо тимчасову дошку для аналізу
-        temp_board = chess.Board(fen)
-        
-        # Перевіряємо чи хід легальний
-        try:
-            move = temp_board.parse_san(move_san)
-        except:
-            return jsonify({'error': 'Недійсний хід'}), 400
-        
-        # Аналізуємо хід
-        analysis = {
-            'move': move_san,
-            'isLegal': temp_board.is_legal(move),
-            'isCheck': False,
-            'isCheckmate': False,
-            'isStalemate': False,
-            'isCapture': temp_board.is_capture(move),
-            'isCastling': temp_board.is_castling(move),
-            'isEnPassant': temp_board.is_en_passant(move),
-            'isPromotion': temp_board.is_promotion(move)
-        }
-        
-        # Виконуємо хід для аналізу
-        temp_board.push(move)
-        analysis.update({
-            'isCheck': temp_board.is_check(),
-            'isCheckmate': temp_board.is_checkmate(),
-            'isStalemate': temp_board.is_stalemate(),
-            'isGameOver': temp_board.is_game_over(),
-            'result': temp_board.result() if temp_board.is_game_over() else None
-        })
-        
-        return jsonify(analysis)
-        
-    except Exception as e:
-        logger.error(f"Помилка аналізу ходу: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/game/position/evaluate', methods=['POST'])
-@handle_api_errors
-def evaluate_position():
-    """Оцінка позиції"""
-    try:
-        data = request.get_json() or {}
-        fen = data.get('fen')
-        
-        if not fen:
-            return jsonify({'error': 'Необхідний параметр: fen'}), 400
-        
-        board = chess.Board(fen)
-        
-        # Базова оцінка позиції
-        evaluation = {
-            'fen': fen,
-            'turn': 'white' if board.turn == chess.WHITE else 'black',
-            'isCheck': board.is_check(),
-            'isCheckmate': board.is_checkmate(),
-            'isStalemate': board.is_stalemate(),
-            'isGameOver': board.is_game_over(),
-            'result': board.result() if board.is_game_over() else None,
-            'legalMoves': len(list(board.legal_moves)),
-            'materialBalance': calculate_material_balance(board),
-            'kingSafety': evaluate_king_safety(board),
-            'centerControl': evaluate_center_control(board),
-            'mobility': evaluate_mobility(board)
-        }
-        
-        return jsonify(evaluation)
-        
-    except Exception as e:
-        logger.error(f"Помилка оцінки позиції: {e}")
-        return jsonify({'error': str(e)}), 500
+# ==================== UTILITY FUNCTIONS ====================
 
 def calculate_material_balance(board):
     """Розрахунок матеріального балансу"""
@@ -1274,17 +1197,6 @@ def signal_handler(signum, frame):
         logger.info(f"Активних з'єднань: {connection_stats['active_connections']}")
     
     logger.info("Сервер готовий до закриття")
-    # Завершуємо процес, щоб зупинити werkzeug/Flask dev-сервер
-    # Спробуємо коректно зупинити Flask сервер. Якщо не вдається — форсований вихід.
-    try:
-        # Якщо запускалось через Werkzeug, можна завершити через shutdown ф-ю
-        func = request.environ.get('werkzeug.server.shutdown') if 'request' in globals() else None
-        if callable(func):
-            func()
-        else:
-            sys.exit(0)
-    except Exception:
-        os._exit(0)
 
 def _detect_local_ip() -> Optional[str]:
     """Attempt to detect a non-loopback local IPv4 address for logging purposes."""
@@ -1306,10 +1218,9 @@ def _detect_local_ip() -> Optional[str]:
     except Exception:
         return None
 
-
 def run_server(host='0.0.0.0', port=5000, debug=False):
     """Запуск сервера з покращеною обробкою помилок"""
-    logger.info(f"Запуск веб-сервера на {host}:{port}")
+    logger.info(f"Запуск об'єднаного веб-сервера на {host}:{port}")
     if host in ("0.0.0.0", "::"):
         logger.info(f"Відкрийте http://127.0.0.1:{port} у браузері")
         local_ip = _detect_local_ip()
@@ -1318,15 +1229,9 @@ def run_server(host='0.0.0.0', port=5000, debug=False):
     else:
         logger.info(f"Відкрийте http://{host}:{port} у браузері")
     
-    # Встановлюємо обробники сигналів тільки у головному потоці
-    try:
-        if threading.current_thread() is threading.main_thread():
-            signal.signal(signal.SIGINT, signal_handler)
-            signal.signal(signal.SIGTERM, signal_handler)
-        else:
-            logger.debug("Пропущено встановлення обробників сигналів (не головний потік)")
-    except Exception as e:
-        logger.debug(f"Не вдалося встановити обробники сигналів: {e}")
+    # Встановлюємо обробники сигналів
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
     # Запускаємо фонове логування статистики
     global stats_thread
@@ -1371,7 +1276,7 @@ def run_server(host='0.0.0.0', port=5000, debug=False):
 if __name__ == '__main__':
     import argparse
     
-    parser = argparse.ArgumentParser(description='Chess AI Web Server')
+    parser = argparse.ArgumentParser(description='Unified Chess AI Web Server')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=5000, help='Port to bind to')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')

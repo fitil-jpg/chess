@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   bot-game:
     build:
@@ -19,7 +17,7 @@ services:
       - DISPLAY=:99
       
       # Путь к Stockfish
-      - STOCKFISH_PATH=/app/bin/stockfish-bin
+      - STOCKFISH_PATH=stockfish
       
     volumes:
       # Монтируем директории для логов и результатов

@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess AI - Об'єднаний інтерфейс</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js';document.head.appendChild(s);})();"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .panel h3 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .chess-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            aspect-ratio: 1;
+            border: 3px solid #2d3748;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .cell.white {
+            background-color: #f0d9b5;
+        }
+
+        .cell.black {
+            background-color: #b58863;
+        }
+
+        .cell.highlight {
+            background-color: #ffd700 !important;
+            box-shadow: inset 0 0 0 3px #ff6b6b;
+        }
+
+        .cell.selected {
+            background-color: #4ecdc4 !important;
+            box-shadow: inset 0 0 0 3px #45b7aa;
+        }
+
+        .cell.possible-move {
+            background-color: #90EE90 !important;
+        }
+
+        .cell.heatmap-overlay {
+            position: relative;
+        }
+
+        .cell.heatmap-overlay::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.active {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.05);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #f8f9fa;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .heatmap-controls {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .heatmap-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+            text-align: center;
+        }
+
+        .heatmap-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .metrics-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .metrics-list li {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #edf2f7;
+            color: #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.95rem;
+        }
+
+        .code-block {
+            background: #1e1e1e;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 8px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid #2d3748;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .move-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .move-input input {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 1rem;
+            width: 200px;
+            text-align: center;
+        }
+
+        .move-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .legal-moves {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .legal-moves h3 {
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .moves-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .move-tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .move-tag:hover {
+            background: #5a67d8;
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .cell {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>♟️ Chess AI - Об'єднаний інтерфейс</h1>
+            <p>Дошка, аналітика та теплові карти в одному місці</p>
+        </div>
+
+        <div class="main-layout">
+            <!-- Ліва панель - Статистика та управління -->
+            <div class="panel">
+                <h3>📊 Статистика та управління</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="turn-info">Білі</div>
+                        <div class="stat-label">Хід</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="moves-count">0</div>
+                        <div class="stat-label">Ходів</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="phase-info">-</div>
+                        <div class="stat-label">Фаза</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="legal-count">0</div>
+                        <div class="stat-label">Можливих ходів</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="btn-reset">🔄 Нова гра</button>
+                    <button class="btn" id="btn-bot-move">🤖 Хід бота</button>
+                    <button class="btn" id="btn-auto">▶️ Автогра</button>
+                    <button class="btn" id="btn-legal-moves">📋 Можливі ходи</button>
+                </div>
+
+                <div class="move-input">
+                    <input type="text" id="move-input" placeholder="Введіть хід (наприклад: e4)">
+                    <button class="btn" id="btn-make-move">Зробити хід</button>
+                </div>
+
+                <div class="legal-moves" id="legal-moves" style="display: none;">
+                    <h3>Можливі ходи:</h3>
+                    <div class="moves-list" id="moves-list"></div>
+                </div>
+            </div>
+
+            <!-- Центральна панель - Шахова доска -->
+            <div class="panel">
+                <h3>♟️ Шахова доска</h3>
+                <div class="chess-board" id="chess-board"></div>
+                
+                <div id="game-status" class="status">
+                    Готовий до гри
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active" data-tab="stats">Статистика</div>
+                    <div class="tab" data-tab="heatmaps">Теплові карти</div>
+                </div>
+
+                <div class="tab-content active" id="stats-tab">
+                    <h4>📊 Детальна статистика</h4>
+                    <ul id="metrics-list" class="metrics-list"></ul>
+                    
+                    <h4>📜 Ходи (SAN) та PGN</h4>
+                    <pre id="san-text" class="code-block">—</pre>
+                </div>
+
+                <div class="tab-content" id="heatmaps-tab">
+                    <div class="heatmap-controls">
+                        <div class="form-group">
+                            <label for="heatmap-bot">Бот:</label>
+                            <select id="heatmap-bot">
+                                <option value="DynamicBot">DynamicBot</option>
+                                <option value="StockfishBot">StockfishBot</option>
+                                <option value="RandomBot">RandomBot</option>
+                                <option value="AggressiveBot">AggressiveBot</option>
+                                <option value="FortifyBot">FortifyBot</option>
+                                <option value="EndgameBot">EndgameBot</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="heatmap-phase">Етап гри:</label>
+                            <select id="heatmap-phase">
+                                <option value="all">Вся гра</option>
+                                <option value="opening">Дебют</option>
+                                <option value="middlegame">Мітельшпіль</option>
+                                <option value="endgame">Ендшпіль</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="heatmap-piece">Тип фігури:</label>
+                            <select id="heatmap-piece">
+                                <option value="all">Всі фігури</option>
+                                <option value="pawn">Пішаки</option>
+                                <option value="knight">Коні</option>
+                                <option value="bishop">Слони</option>
+                                <option value="rook">Тури</option>
+                                <option value="queen">Ферзі</option>
+                                <option value="king">Королі</option>
+                            </select>
+                        </div>
+                        <button class="btn" id="btn-generate-heatmap">Генерувати теплову карту</button>
+                        <button class="btn" id="btn-toggle-heatmap">Показати/приховати теплову карту</button>
+                    </div>
+                    <div id="heatmap-display" class="heatmap-grid"></div>
+                </div>
+            </div>
+
+            <!-- Права панель - Аналітика -->
+            <div class="panel">
+                <h3>📈 Аналітика</h3>
+                
+                <div class="tabs">
+                    <div class="tab active" data-tab="games">Ігри</div>
+                    <div class="tab" data-tab="modules">Модулі</div>
+                </div>
+
+                <div class="tab-content active" id="games-tab">
+                    <div id="game-list" style="max-height: 400px; overflow-y: auto;">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Завантаження ігор...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="modules-tab">
+                    <div id="module-usage">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Завантаження модулів...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальні змінні
+        const MOVE_DELAY_MS = 400;
+        let game = null;
+        let currentBoard = null;
+        let selectedSquare = null;
+        let possibleMoves = [];
+        let movesCount = 0;
+        let lastPGN = '';
+        let lastSAN = '';
+        let autoPlay = false;
+        let autoTimeoutId = null;
+        let heatmapVisible = false;
+        let currentHeatmap = null;
+
+        // Ініціалізація
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChessBoard();
+            initializeTabs();
+            loadBoard();
+            setupEventListeners();
+            loadGameData();
+        });
+
+        // Ініціалізація шахової доски
+        function initializeChessBoard() {
+            const board = document.getElementById('chess-board');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => handleCellClick(row, col));
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Ініціалізація табів
+        function initializeTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+        }
+
+        // Перемикання табів
+        function switchTab(tabName) {
+            // Видаляємо активний клас з усіх табів
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Додаємо активний клас до обраного табу
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Завантаження стану дошки
+        async function loadBoard() {
+            try {
+                const response = await fetch('/api/board');
+                const data = await response.json();
+                
+                if (data.board) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Помилка завантаження дошки:', error);
+                showStatus('Помилка завантаження дошки', 'error');
+            }
+        }
+
+        // Оновлення доски
+        function updateBoard(boardArray) {
+            const cells = document.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const piece = boardArray[row][col];
+                
+                cell.innerHTML = piece.symbol || '';
+                cell.classList.remove('selected', 'possible-move', 'last-move');
+                
+                if (piece.color) {
+                    cell.style.color = piece.color === 'white' ? '#fff' : '#000';
+                }
+            });
+        }
+
+        // Оновлення статусу
+        function updateStatus(data) {
+            const status = document.getElementById('game-status');
+            const turnInfo = document.getElementById('turn-info');
+            
+            let statusText = '';
+            if (data.is_checkmate) {
+                statusText = `Мат! ${data.turn === 'white' ? 'Чорні' : 'Білі'} виграли`;
+            } else if (data.is_stalemate) {
+                statusText = 'Пат - нічия';
+            } else if (data.is_check) {
+                statusText = `Шах! Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            } else {
+                statusText = `Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
+            }
+            
+            status.textContent = statusText;
+            turnInfo.textContent = data.turn === 'white' ? 'Білі' : 'Чорні';
+        }
+
+        // Завантаження та відображення розширених статистик
+        async function loadStats() {
+            try {
+                const resp = await fetch('/api/stats');
+                const data = await resp.json();
+                if (data && !data.error) {
+                    updateStatsDisplay(data);
+                }
+            } catch (e) {
+                console.error('Помилка завантаження статистики:', e);
+            }
+        }
+
+        function updateStatsDisplay(stats) {
+            // Phase
+            const phaseInfo = document.getElementById('phase-info');
+            phaseInfo.textContent = stats.phase || '-';
+
+            // Metrics list
+            const list = document.getElementById('metrics-list');
+            list.innerHTML = '';
+            (stats.metrics || []).forEach(line => {
+                const li = document.createElement('li');
+                li.textContent = line;
+                list.appendChild(li);
+            });
+
+            // Legal moves count
+            document.getElementById('legal-count').textContent = stats.legal_moves_count ?? 0;
+
+            // SAN / PGN
+            lastSAN = stats.moves_san || '';
+            lastPGN = stats.pgn || '';
+            document.getElementById('san-text').textContent = lastSAN || '—';
+
+            // Move counter sync
+            if (typeof stats.move_count === 'number') {
+                movesCount = stats.move_count;
+                document.getElementById('moves-count').textContent = movesCount;
+            }
+        }
+
+        // Обробка кліку по клітинці
+        function handleCellClick(row, col) {
+            if (autoPlay) return;
+            
+            const square = String.fromCharCode(97 + col) + (8 - row);
+            
+            if (selectedSquare) {
+                // Намагаємося зробити хід
+                makeMove(selectedSquare + square);
+                selectedSquare = null;
+                clearSelection();
+            } else {
+                // Вибираємо клітинку
+                selectedSquare = square;
+                highlightSquare(row, col);
+                loadLegalMoves();
+            }
+        }
+
+        // Підсвічування обраної клітинки
+        function highlightSquare(row, col) {
+            clearSelection();
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (cell) {
+                cell.classList.add('selected');
+            }
+        }
+
+        // Очищення виділення
+        function clearSelection() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('selected', 'possible-move');
+            });
+        }
+
+        // Завантаження можливих ходів
+        async function loadLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    possibleMoves = data.moves;
+                    highlightPossibleMoves();
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Підсвічування можливих ходів
+        function highlightPossibleMoves() {
+            if (!selectedSquare) return;
+            
+            possibleMoves.forEach(move => {
+                if (move.from === selectedSquare) {
+                    const toSquare = move.to;
+                    const col = toSquare.charCodeAt(0) - 97;
+                    const row = 8 - parseInt(toSquare[1]);
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    if (cell) {
+                        cell.classList.add('possible-move');
+                    }
+                }
+            });
+        }
+
+        // Виконання ходу
+        async function makeMove(move) {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ move: move })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Хід: ${data.move}`, 'success');
+                    loadStats();
+                } else {
+                    showStatus(`Помилка: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Помилка виконання ходу:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Хід бота
+        async function makeBotMove() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/bot_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ bot: 'RandomBot' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount++;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus(`Бот зробив хід: ${data.move}`, 'success');
+                    loadStats();
+
+                    // Зупиняємо автогру якщо партія завершена
+                    if (data.is_game_over || data.is_checkmate || data.is_stalemate || data.result) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
+                } else {
+                    showStatus(`Помилка бота: ${data.error}`, 'error');
+                    if (autoPlay && /немає можливих ходів/i.test(String(data.error || ''))) {
+                        autoPlay = false;
+                        if (autoTimeoutId) { clearTimeout(autoTimeoutId); autoTimeoutId = null; }
+                        const btn = document.getElementById('btn-auto');
+                        btn.textContent = '▶️ Автогра';
+                        document.getElementById('btn-bot-move').disabled = false;
+                        document.getElementById('btn-legal-moves').disabled = false;
+                        document.getElementById('btn-make-move').disabled = false;
+                        document.getElementById('move-input').disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Помилка ходу бота:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Скидання дошки
+        async function resetBoard() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateBoard(data.board);
+                    updateStatus(data);
+                    movesCount = 0;
+                    document.getElementById('moves-count').textContent = movesCount;
+                    showStatus('Нова гра розпочата', 'success');
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Помилка скидання:', error);
+                showStatus('Помилка з\'єднання', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Показати можливі ходи
+        async function showLegalMoves() {
+            try {
+                const response = await fetch('/api/legal_moves');
+                const data = await response.json();
+                
+                if (data.moves) {
+                    const movesList = document.getElementById('moves-list');
+                    const legalMoves = document.getElementById('legal-moves');
+                    
+                    movesList.innerHTML = '';
+                    data.moves.forEach(move => {
+                        const moveTag = document.createElement('span');
+                        moveTag.className = 'move-tag';
+                        moveTag.textContent = move.san;
+                        moveTag.addEventListener('click', () => {
+                            makeMove(move.san);
+                            legalMoves.style.display = 'none';
+                        });
+                        movesList.appendChild(moveTag);
+                    });
+                    
+                    legalMoves.style.display = legalMoves.style.display === 'none' ? 'block' : 'none';
+                }
+            } catch (error) {
+                console.error('Помилка завантаження ходів:', error);
+            }
+        }
+
+        // Автогра
+        async function autoPlayStep() {
+            if (!autoPlay) return;
+            if (autoTimeoutId) {
+                clearTimeout(autoTimeoutId);
+                autoTimeoutId = null;
+            }
+            await makeBotMove();
+            if (autoPlay) {
+                autoTimeoutId = setTimeout(autoPlayStep, MOVE_DELAY_MS);
+            }
+        }
+
+        function toggleAutoPlay() {
+            autoPlay = !autoPlay;
+            const btn = document.getElementById('btn-auto');
+            btn.textContent = autoPlay ? '⏸️ Пауза автогри' : '▶️ Автогра';
+            document.getElementById('btn-bot-move').disabled = autoPlay;
+            document.getElementById('btn-legal-moves').disabled = autoPlay;
+            document.getElementById('btn-make-move').disabled = autoPlay;
+            document.getElementById('move-input').disabled = autoPlay;
+            if (autoPlay) {
+                autoPlayStep();
+            } else {
+                if (autoTimeoutId) {
+                    clearTimeout(autoTimeoutId);
+                    autoTimeoutId = null;
+                }
+                showStatus('Автогру зупинено', 'info');
+            }
+        }
+
+        // Генерація теплової карти
+        async function generateHeatmap() {
+            const bot = document.getElementById('heatmap-bot').value;
+            const phase = document.getElementById('heatmap-phase').value;
+            const piece = document.getElementById('heatmap-piece').value;
+            
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/heatmaps/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bot_name: bot,
+                        game_phase: phase,
+                        piece_type: piece,
+                        games_limit: 100
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus(`Теплова карта згенерована!`, 'success');
+                    loadHeatmaps();
+                } else {
+                    showStatus(`Помилка: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Помилка з'єднання: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Завантаження теплових карт
+        async function loadHeatmaps() {
+            try {
+                const response = await fetch('/api/heatmaps');
+                const data = await response.json();
+                
+                const grid = document.getElementById('heatmap-display');
+                
+                if (data.heatmaps && data.heatmaps.length > 0) {
+                    grid.innerHTML = data.heatmaps.map(heatmap => `
+                        <div class="heatmap-card">
+                            <h4>${heatmap.name}</h4>
+                            <p><strong>Файл:</strong> ${heatmap.filename}</p>
+                            <p><strong>Розмір:</strong> ${(heatmap.size / 1024).toFixed(1)} KB</p>
+                            <img src="/api/heatmaps/${heatmap.filename}" alt="${heatmap.name}" 
+                                 onerror="this.style.display='none'">
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<p>Теплові карти не знайдено. Згенеруйте їх використовуючи форму вище.</p>';
+                }
+            } catch (error) {
+                document.getElementById('heatmap-display').innerHTML = 
+                    `<p style="color: red;">Помилка завантаження: ${error.message}</p>`;
+            }
+        }
+
+        // Перемикання теплової карти на дошці
+        async function toggleHeatmap() {
+            heatmapVisible = !heatmapVisible;
+            const btn = document.getElementById('btn-toggle-heatmap');
+            btn.textContent = heatmapVisible ? 'Приховати теплову карту' : 'Показати теплову карту';
+            
+            if (heatmapVisible) {
+                await loadHeatmapData();
+                showStatus('Теплова карта накладена на дошку', 'info');
+            } else {
+                removeHeatmapOverlay();
+                showStatus('Теплова карта прихована', 'info');
+            }
+        }
+
+        // Завантаження даних теплової карти
+        async function loadHeatmapData() {
+            try {
+                const bot = document.getElementById('heatmap-bot').value;
+                const phase = document.getElementById('heatmap-phase').value;
+                const piece = document.getElementById('heatmap-piece').value;
+                
+                const response = await fetch(`/api/heatmaps/data?bot=${bot}&phase=${phase}&piece=${piece}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentHeatmap = data.heatmap_data;
+                    applyHeatmapOverlay();
+                } else {
+                    showStatus(`Помилка завантаження теплової карти: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Помилка з'єднання: ${error.message}`, 'error');
+            }
+        }
+
+        // Накладання теплової карти на дошку
+        function applyHeatmapOverlay() {
+            if (!currentHeatmap) return;
+            
+            const cells = document.querySelectorAll('.cell');
+            const maxValue = Math.max(...currentHeatmap.flat());
+            const minValue = Math.min(...currentHeatmap.flat());
+            
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const value = currentHeatmap[row][col];
+                
+                // Нормалізуємо значення від 0 до 1
+                const normalizedValue = (value - minValue) / (maxValue - minValue);
+                
+                // Створюємо колір від синього (низькі значення) до червоного (високі значення)
+                const red = Math.floor(normalizedValue * 255);
+                const blue = Math.floor((1 - normalizedValue) * 255);
+                const color = `rgba(${red}, 0, ${blue}, 0.3)`;
+                
+                cell.style.backgroundColor = color;
+                cell.classList.add('heatmap-overlay');
+            });
+        }
+
+        // Видалення накладання теплової карти
+        function removeHeatmapOverlay() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.classList.remove('heatmap-overlay');
+                // Відновлюємо оригінальний колір
+                const isWhite = (parseInt(cell.dataset.row) + parseInt(cell.dataset.col)) % 2 === 0;
+                cell.style.backgroundColor = isWhite ? '#f0d9b5' : '#b58863';
+            });
+        }
+
+        // Завантаження даних ігор
+        async function loadGameData() {
+            try {
+                const [gamesResponse, modulesResponse] = await Promise.all([
+                    fetch('/api/games').catch(() => ({ ok: false })),
+                    fetch('/api/modules').catch(() => ({ ok: false }))
+                ]);
+                
+                if (gamesResponse.ok) {
+                    const games = await gamesResponse.json();
+                    updateGameList(games);
+                }
+                
+                if (modulesResponse.ok) {
+                    const modules = await modulesResponse.json();
+                    updateModuleUsage(modules);
+                }
+            } catch (error) {
+                console.error('Помилка завантаження даних:', error);
+            }
+        }
+
+        // Оновлення списку ігор
+        function updateGameList(games) {
+            const gameList = document.getElementById('game-list');
+            gameList.innerHTML = '';
+
+            games.forEach(game => {
+                const gameItem = document.createElement('div');
+                gameItem.className = 'heatmap-card';
+                gameItem.innerHTML = `
+                    <h4>Гра #${game.id}</h4>
+                    <p><strong>Результат:</strong> ${game.result}</p>
+                    <p><strong>Боти:</strong> ${game.modules.white} vs ${game.modules.black}</p>
+                    <p><strong>Ходів:</strong> ${game.moves}</p>
+                    <p><strong>Тривалість:</strong> ${Math.round(game.duration / 1000)}с</p>
+                `;
+                gameList.appendChild(gameItem);
+            });
+        }
+
+        // Оновлення використання модулів
+        function updateModuleUsage(modulesData) {
+            const moduleUsage = document.getElementById('module-usage');
+            moduleUsage.innerHTML = '';
+
+            const total = Object.values(modulesData).reduce((sum, count) => sum + count, 0);
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+
+            Object.entries(modulesData).forEach(([module, count], index) => {
+                const percentage = (count / total) * 100;
+                const color = colors[index % colors.length];
+
+                const moduleBar = document.createElement('div');
+                moduleBar.className = 'heatmap-card';
+                moduleBar.innerHTML = `
+                    <h4>${module}</h4>
+                    <p><strong>Використань:</strong> ${count}</p>
+                    <div style="background: #e2e8f0; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 10px;">
+                        <div style="width: ${percentage}%; background: ${color}; height: 100%; transition: width 0.5s ease;"></div>
+                    </div>
+                `;
+                moduleUsage.appendChild(moduleBar);
+            });
+        }
+
+        // Налаштування обробників подій
+        function setupEventListeners() {
+            document.getElementById('btn-reset').addEventListener('click', resetBoard);
+            document.getElementById('btn-bot-move').addEventListener('click', makeBotMove);
+            document.getElementById('btn-legal-moves').addEventListener('click', showLegalMoves);
+            document.getElementById('btn-auto').addEventListener('click', toggleAutoPlay);
+            document.getElementById('btn-make-move').addEventListener('click', () => {
+                const moveInput = document.getElementById('move-input');
+                const move = moveInput.value.trim();
+                if (move) {
+                    makeMove(move);
+                    moveInput.value = '';
+                }
+            });
+            document.getElementById('btn-generate-heatmap').addEventListener('click', generateHeatmap);
+            document.getElementById('btn-toggle-heatmap').addEventListener('click', toggleHeatmap);
+            
+            // Enter в поле введення ходу
+            document.getElementById('move-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('btn-make-move').click();
+                }
+            });
+        }
+
+        // Показати статус
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('game-status');
+            status.textContent = message;
+            status.style.color = type === 'error' ? '#e53e3e' : type === 'success' ? '#38a169' : '#4a5568';
+        }
+
+        // Показати завантаження
+        function showLoading() {
+            const status = document.getElementById('game-status');
+            status.innerHTML = '<div class="spinner"></div>Завантаження...';
+        }
+
+        // Приховати завантаження
+        function hideLoading() {
+            // Статус буде оновлений в updateStatus
+        }
+    </script>
+</body>
+</html>
