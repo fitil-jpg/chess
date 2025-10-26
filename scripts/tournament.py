@@ -48,6 +48,8 @@ if ROOT not in sys.path:
 import chess
 
 from chess_ai.bot_agent import make_agent, get_agent_names
+from chess_ai.pattern_detector import PatternDetector as _PatternDetector, ChessPattern as _DetectedPattern
+from evaluation import evaluate
 
 # --- Runtime diagnostics for last game/move ---
 # LAST_MOVE_STATUS is a short-lived status set by move selection helpers
@@ -68,6 +70,73 @@ LAST_MOVE_STATUS: Optional[Dict[str, object]] = None
 #   }
 LAST_GAME_META: Optional[Dict[str, object]] = None
 
+
+class TournamentProgress:
+    """Tracks and prints tournament-level progress and elapsed time."""
+
+    def __init__(self, total_games_estimate: int) -> None:
+        self.started_at_monotonic = time.monotonic()
+        self.total_games_estimate = int(total_games_estimate)
+        self.games_played = 0
+
+    def _fmt_elapsed(self) -> str:
+        secs = int(time.monotonic() - self.started_at_monotonic)
+        h = secs // 3600
+        m = (secs % 3600) // 60
+        s = secs % 60
+        if h > 0:
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+
+    def print_status(self, upcoming_white: str, upcoming_black: str) -> None:
+        nxt = self.games_played + 1
+        total = self.total_games_estimate
+        approx = f"{nxt}/{total}" if total > 0 else f"{nxt}"
+        print(f"[Турнір {approx}] Час минув: {self._fmt_elapsed()} | Наступна гра: {upcoming_white} (білі) — {upcoming_black} (чорні)")
+
+    def increment(self) -> None:
+        self.games_played += 1
+
+
+class TournamentPatternsWriter:
+    """Writes detected patterns from tournament games into a dedicated directory."""
+
+    def __init__(self, outdir: Path, subdir_name: str = "patterns") -> None:
+        self.base = outdir / subdir_name
+        self.base.mkdir(parents=True, exist_ok=True)
+        self.jsonl_path = self.base / "patterns.jsonl"
+
+    def log_patterns(
+        self,
+        *,
+        a: str,
+        b: str,
+        white: str,
+        black: str,
+        game_index: int,
+        ply_index: int,
+        patterns: List[_DetectedPattern],
+    ) -> None:
+        if not patterns:
+            return
+        ts = datetime.now(timezone.utc).isoformat()
+        with open(self.jsonl_path, "a", encoding="utf-8") as fh:
+            for p in patterns:
+                try:
+                    payload: Dict[str, object] = {
+                        "timestamp": ts,
+                        "pair": {"a": a, "b": b},
+                        "white": white,
+                        "black": black,
+                        "game_index": int(game_index),
+                        "ply_index": int(ply_index),
+                        "pattern": p.to_dict(),
+                    }
+                    fh.write(json.dumps(payload, ensure_ascii=False))
+                    fh.write("\n")
+                except Exception:
+                    # Never let logging fail
+                    continue
 
 @dataclass
 class PlayerStats:
@@ -558,6 +627,13 @@ def play_single_game(
     clock_increment: float = 0.0,
     clock_initial_white: Optional[float] = None,
     clock_initial_black: Optional[float] = None,
+    # Optional tournament diagnostics
+    detector: Optional[_PatternDetector] = None,
+    patterns_writer: Optional["TournamentPatternsWriter"] = None,
+    pair_a: Optional[str] = None,
+    pair_b: Optional[str] = None,
+    game_index: int = 0,
+    progress: Optional["TournamentProgress"] = None,
 ) -> str:
     """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
     Technical loss is applied if an agent returns None or makes illegal move.
@@ -582,6 +658,13 @@ def play_single_game(
                 mover_is_white = board.turn == chess.WHITE
                 agent = white_agent if mover_is_white else black_agent
                 budget = time_left_w if mover_is_white else time_left_b
+
+                # Evaluation before move (for pattern detection)
+                eval_before_total = None
+                try:
+                    eval_before_total, _ = evaluate(board)
+                except Exception:
+                    eval_before_total = None
 
                 move, elapsed, finished = _choose_move_with_budget(agent, board, budget)
                 # Deduct actual elapsed from mover's clock
@@ -655,10 +738,45 @@ def play_single_game(
                     else:
                         time_left_b += clock_increment
 
+                # Pattern detection and logging
+                if detector is not None and patterns_writer is not None and pair_a and pair_b:
+                    try:
+                        eval_after_total, _ = evaluate(board)
+                    except Exception:
+                        eval_after_total = None
+                    try:
+                        pat_before = {"total": eval_before_total} if eval_before_total is not None else {"total": 0}
+                        pat_after = {"total": eval_after_total} if eval_after_total is not None else {"total": 0}
+                        pats = detector.detect_patterns(
+                            board,
+                            move,
+                            evaluation_before=pat_before,
+                            evaluation_after=pat_after,
+                            bot_analysis=None,
+                        )
+                        if pats:
+                            patterns_writer.log_patterns(
+                                a=pair_a,
+                                b=pair_b,
+                                white=white_agent_name,
+                                black=black_agent_name,
+                                game_index=game_index,
+                                ply_index=len(board.move_stack),
+                                patterns=pats,
+                            )
+                    except Exception:
+                        pass
+
         else:
             # Legacy per-move timeout mode
             while not board.is_game_over() and len(board.move_stack) < max_plies:
                 agent = white_agent if board.turn == chess.WHITE else black_agent
+                # Eval before for pattern detection
+                eval_before_total = None
+                try:
+                    eval_before_total, _ = evaluate(board)
+                except Exception:
+                    eval_before_total = None
                 move = _choose_move_with_timeout(agent, board, time_per_move)
                 if move is None:
                     # Immediate loss for side to move
@@ -709,6 +827,34 @@ def play_single_game(
                         "move_uci": mv_uci,
                     }
                     return "0-1" if mover_is_white else "1-0"
+                # Pattern detection and logging
+                if detector is not None and patterns_writer is not None and pair_a and pair_b:
+                    try:
+                        eval_after_total, _ = evaluate(board)
+                    except Exception:
+                        eval_after_total = None
+                    try:
+                        pat_before = {"total": eval_before_total} if eval_before_total is not None else {"total": 0}
+                        pat_after = {"total": eval_after_total} if eval_after_total is not None else {"total": 0}
+                        pats = detector.detect_patterns(
+                            board,
+                            move,
+                            evaluation_before=pat_before,
+                            evaluation_after=pat_after,
+                            bot_analysis=None,
+                        )
+                        if pats:
+                            patterns_writer.log_patterns(
+                                a=pair_a,
+                                b=pair_b,
+                                white=white_agent_name,
+                                black=black_agent_name,
+                                game_index=game_index,
+                                ply_index=len(board.move_stack),
+                                patterns=pats,
+                            )
+                    except Exception:
+                        pass
     except Exception:
         # Any unexpected exception from agent => their loss
         mover_is_white = (board.turn == chess.WHITE)
@@ -751,6 +897,12 @@ def play_series(
     pts_b = 0.0
     needed = (series_games // 2) + 1 if series_games % 2 == 1 else None
 
+    # Prepare live helpers
+    detector = _PatternDetector()
+    patterns_writer = TournamentPatternsWriter(writer.outdir) if writer is not None else None
+    # Total games counter for round-robin status (approximate within this pair)
+    progress = TournamentProgress(total_games_estimate=series_games)
+
     for i in range(series_games):
         white, black = (a, b) if i % 2 == 0 else (b, a)
         print_game_header(i + 1, white, black)
@@ -761,9 +913,16 @@ def play_series(
             time_per_move=time_per_move,
             clock_initial=clock_initial,
             clock_increment=clock_increment,
+            detector=detector,
+            patterns_writer=patterns_writer,
+            pair_a=a,
+            pair_b=b,
+            game_index=i + 1,
+            progress=progress,
         )
         print_game_result(res)
         results.append(res)
+        progress.increment()
 
         # Per-game log and live bracket update
         if writer is not None:
@@ -809,6 +968,12 @@ def play_series(
                 time_per_move=None,  # force clock mode
                 clock_initial=60.0,
                 clock_increment=0.0,
+                detector=detector,
+                patterns_writer=patterns_writer,
+                pair_a=a,
+                pair_b=b,
+                game_index=tiebreak_idx + 1,
+                progress=progress,
             )
             print_game_result(res)
             results.append(res)
@@ -844,6 +1009,12 @@ def play_series(
                 clock_increment=0.0,
                 clock_initial_white=60.0,
                 clock_initial_black=45.0,
+                detector=detector,
+                patterns_writer=patterns_writer,
+                pair_a=a,
+                pair_b=b,
+                game_index=tiebreak_idx + 1,
+                progress=progress,
             )
             print_game_result(res)
             results.append(res)

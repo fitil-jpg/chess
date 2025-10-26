@@ -6,6 +6,7 @@ Identifies critical positions during gameplay for pattern learning.
 from __future__ import annotations
 import chess
 from typing import List, Dict, Any, Optional, Tuple
+from core.evaluator import Evaluator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class PatternType:
     SKEWER = "skewer"
     DISCOVERED_ATTACK = "discovered_attack"
     HANGING_PIECE = "hanging_piece"
+    EXCHANGE = "exchange"
     CRITICAL_DECISION = "critical_decision"
     ENDGAME_TECHNIQUE = "endgame_technique"
     SACRIFICE = "sacrifice"
@@ -48,7 +50,7 @@ class ChessPattern:
         self.influencing_pieces = influencing_pieces
         self.evaluation = evaluation
         self.metadata = metadata or {}
-        
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert pattern to dictionary for JSON serialization"""
         return {
@@ -62,7 +64,7 @@ class ChessPattern:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> ChessPattern:
+    def from_dict(cls, data: Dict[str, Any]) -> 'ChessPattern':
         """Create pattern from dictionary"""
         return cls(
             fen=data["fen"],
@@ -73,6 +75,7 @@ class ChessPattern:
             evaluation=data["evaluation"],
             metadata=data.get("metadata", {})
         )
+    
 
 
 class PatternDetector:
@@ -157,6 +160,16 @@ class PatternDetector:
             pattern_types.append(PatternType.OPENING_TRICK)
             descriptions.append("Unusual opening move")
             
+        # 6.5 Exchange sequence (SEE)
+        try:
+            see_value = Evaluator.static_exchange_eval(board_before, move)
+            if board_before.is_capture(move) or abs(see_value) > 0:
+                pattern_types.append(PatternType.EXCHANGE)
+                sign = "+" if see_value > 0 else "" if see_value == 0 else "-"
+                descriptions.append(f"Exchange sequence (SEE={sign}{see_value})")
+        except Exception:
+            pass
+
         # 7. Endgame technique
         if self._is_endgame(board) and abs(evaluation_after.get("total", 0)) > 200:
             pattern_types.append(PatternType.ENDGAME_TECHNIQUE)
@@ -179,6 +192,25 @@ class PatternDetector:
         if pattern_types:
             # Get influencing pieces (pieces that affect the moved piece's square)
             influencing_pieces = self._get_influencing_pieces(board, move.to_square)
+            # Add mover and target roles explicitly
+            mover_piece = board_before.piece_at(move.from_square)
+            if mover_piece:
+                influencing_pieces.append({
+                    "square": chess.square_name(move.from_square),
+                    "piece": self._piece_name(mover_piece.piece_type),
+                    "color": "white" if mover_piece.color == chess.WHITE else "black",
+                    "relationship": "mover",
+                    "role": "mover"
+                })
+            captured_piece = board_before.piece_at(move.to_square)
+            if captured_piece:
+                influencing_pieces.append({
+                    "square": chess.square_name(move.to_square),
+                    "piece": self._piece_name(captured_piece.piece_type),
+                    "color": "white" if captured_piece.color == chess.WHITE else "black",
+                    "relationship": "target",
+                    "role": "target"
+                })
             
             # Compute focus squares (actors + attackers/defenders)
             focus_squares = self._build_focus_squares(board_before, move, influencing_pieces, exchange_info)
@@ -367,19 +399,12 @@ class PatternDetector:
             for attacker_sq in attackers:
                 piece = board.piece_at(attacker_sq)
                 if piece:
-                    piece_names = {
-                        chess.KING: "King",
-                        chess.QUEEN: "Queen",
-                        chess.ROOK: "Rook",
-                        chess.BISHOP: "Bishop",
-                        chess.KNIGHT: "Knight",
-                        chess.PAWN: "Pawn"
-                    }
                     influencing.append({
                         "square": chess.square_name(attacker_sq),
-                        "piece": piece_names.get(piece.piece_type, "Unknown"),
+                        "piece": self._piece_name(piece.piece_type),
                         "color": "white" if piece.color == chess.WHITE else "black",
-                        "relationship": "attacker" if color == board.turn else "defender"
+                        "relationship": "attacker" if color == board.turn else "defender",
+                        "role": "attacker" if color == board.turn else "defender"
                     })
         
         return influencing
@@ -508,6 +533,17 @@ class PatternDetector:
                         break
 
         return sorted(squares)
+    @staticmethod
+    def _piece_name(piece_type: chess.PieceType) -> str:
+        piece_names = {
+            chess.KING: "King",
+            chess.QUEEN: "Queen",
+            chess.ROOK: "Rook",
+            chess.BISHOP: "Bishop",
+            chess.KNIGHT: "Knight",
+            chess.PAWN: "Pawn",
+        }
+        return piece_names.get(piece_type, "Unknown")
     
     def add_pattern(self, pattern: ChessPattern):
         """Add a detected pattern to the collection"""
