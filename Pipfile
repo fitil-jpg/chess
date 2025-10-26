@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+matplotlib = "*"
+python-chess = "*"
+flask = "*"
+rpy2 = "*"
+torch = "*"
+py-spy = "*"
+aiohttp = "*"
+asyncio-mqtt = "*"
+schedule = "*"
+python-dotenv = "*"
+pyside6 = "*"
+pyautogui = "*"
+pipenv-ignore-virtualenvs = "==1"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"

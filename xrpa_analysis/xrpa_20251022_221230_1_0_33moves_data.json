@@ -1,0 +1,186 @@
+{
+  "overlays": [
+    [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        [
+          "queen_hanging",
+          "orange"
+        ]
+      ],
+      [],
+      []
+    ],
+    [
+      [],
+      [],
+      [],
+      [],
+      [
+        [
+          "pin",
+          "cyan"
+        ],
+        [
+          "scenario",
+          "orange"
+        ]
+      ],
+      [],
+      [],
+      []
+    ],
+    [
+      [
+        [
+          "scenario",
+          "purple"
+        ]
+      ],
+      [],
+      [],
+      [],
+      [],
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ],
+      [],
+      []
+    ],
+    [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        [
+          "scenario",
+          "orange"
+        ]
+      ],
+      [],
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ]
+    ],
+    [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ],
+    [
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ],
+    [
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ]
+    ],
+    [
+      [],
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ],
+      [],
+      [],
+      [
+        [
+          "rook_defended",
+          "blue"
+        ]
+      ],
+      [],
+      [],
+      []
+    ]
+  ],
+  "heatmaps": {},
+  "agent_metrics": {},
+  "scenarios": [
+    {
+      "row": 2,
+      "col": 0,
+      "id": "isolated_pawn",
+      "square": "a6",
+      "side": "black",
+      "color": "purple"
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "id": "knight_fork",
+      "square": "e7",
+      "targets": [
+        "d5",
+        "f5"
+      ],
+      "side": "black",
+      "color": "orange"
+    },
+    {
+      "row": 3,
+      "col": 5,
+      "id": "knight_fork",
+      "square": "f5",
+      "targets": [
+        "e7",
+        "d6",
+        "h6"
+      ],
+      "side": "white",
+      "color": "orange"
+    }
+  ],
+  "fen": "4Qb2/4n3/p2pkp1r/3BpNpp/4P3/4B3/PPP2PPP/RN2K2R b KQ - 4 17",
+  "result": "1-0",
+  "move_count": 33,
+  "turn": "Black",
+  "white_agent": "StockfishBot",
+  "black_agent": "DynamicBot",
+  "heatmap_piece": null,
+  "heatmap_set": "default",
+  "timestamp": "20251022_221230",
+  "moves_san": "1. e4 d6 2. d4 Qd7 3. Nf3 f6 4. Be3 c6 5. d5 h6 6. Nd4 cxd5 7. Bb5 Kf7 8. Bxd7 a6 9. Bxc8 e5 10. Bxb7 Ke7 11. Bxa8 g5 12. Nf5+ Kd7 13. Qxd5 h5 14. Qb7+ Ke6 15. Qxb8 Rh6 16. Qe8+ Ne7 17. Bd5#",
+  "game_pgn": "[Event \"Viewer\"]\n[Site \"Local\"]\n[White \"StockfishBot\"]\n[Black \"DynamicBot\"]\n[Result \"1-0\"]\n\n1. e4 d6 2. d4 Qd7 3. Nf3 f6 4. Be3 c6 5. d5 h6 6. Nd4 cxd5 7. Bb5 Kf7 8. Bxd7 a6 9. Bxc8 e5 10. Bxb7 Ke7 11. Bxa8 g5 12. Nf5+ Kd7 13. Qxd5 h5 14. Qb7+ Ke6 15. Qxb8 Rh6 16. Qe8+ Ne7 17. Bd5# 1-0\n"
+}

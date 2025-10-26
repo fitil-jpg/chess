@@ -1,6 +1,4 @@
 """
-Enhanced DynamicBot with Pattern Recognition
-=============================================
 
 Улучшенный DynamicBot с интеграцией системы паттернов для борьбы со Stockfish.
 
@@ -18,264 +16,449 @@ import logging
 
 from chess_ai.bot_agent import DynamicBot
 from chess_ai.pattern_manager import PatternManager
+Enhanced Dynamic Bot
+
+Улучшенная версия DynamicBot с интеграцией системы паттернов
+для победы над Stockfish.
+"""
+
+from __future__ import annotations
+import chess
+import logging
+from typing import Dict, List, Tuple, Optional, Any
+from collections import defaultdict
+import random
+import math
+
+from .dynamic_bot import DynamicBot
+from .stockfish_bot import StockfishBot
+from chess_ai.enhanced_pattern_system import PatternManager
+from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector, PatternMatch
 from core.evaluator import Evaluator
 from utils import GameContext
 
 logger = logging.getLogger(__name__)
 
 
-class EnhancedDynamicBot:
+class EnhancedDynamicBot(DynamicBot):
     """
-    Улучшенный DynamicBot с поддержкой паттернов.
-    
-    Использует систему паттернов для:
-    1. Распознавания тактических возможностей
-    2. Избежания известных ошибок
-    3. Применения проверенных обменов
-    4. Улучшения позиционной игры
+    Улучшенная версия DynamicBot с интеграцией паттернов и
+    специальными стратегиями против Stockfish.
     """
     
-    def __init__(self, color: bool, use_patterns: bool = True):
-        self.color = color
-        self.base_bot = DynamicBot(color)
+    def __init__(
+        self,
+        color: bool,
+        *,
+        weights: Dict[str, float] = None,
+        use_patterns: bool = True,
+        anti_stockfish_mode: bool = True,
+        pattern_weight: float = 2.0,
+        **kwargs
+    ):
+        # Инициализировать базовый DynamicBot с оптимизированными весами
+        optimized_weights = self._get_optimized_weights()
+        if weights:
+            optimized_weights.update(weights)
+        
+        super().__init__(color, weights=optimized_weights, **kwargs)
+        
+        # Система паттернов
         self.use_patterns = use_patterns
+        self.pattern_manager = PatternManager() if use_patterns else None
+        self.pattern_detector = EnhancedPatternDetector(self.pattern_manager) if use_patterns else None
+        self.pattern_weight = pattern_weight
         
-        # Pattern system
-        self.pattern_manager = None
-        if use_patterns:
-            try:
-                self.pattern_manager = PatternManager()
-                logger.info(f"Enhanced DynamicBot initialized with pattern system for {'white' if color else 'black'}")
-            except Exception as e:
-                logger.warning(f"Failed to initialize pattern system: {e}")
-                self.use_patterns = False
+        # Анти-Stockfish режим
+        self.anti_stockfish_mode = anti_stockfish_mode
+        self.opponent_type = "unknown"
+        self.move_history = []
+        self.position_history = []
         
-        # Pattern statistics
-        self.patterns_used = 0
-        self.patterns_available = 0
-        self.last_pattern_type = None
+        # Адаптивные стратегии
+        self.adaptive_weights = optimized_weights.copy()
+        self.performance_history = defaultdict(list)
+        self.learning_rate = 0.1
+        
+        # Книга дебютов против Stockfish
+        self.anti_stockfish_book = self._create_anti_stockfish_book()
+        
+        # Эндшпильные таблицы
+        self.endgame_knowledge = self._load_endgame_knowledge()
+        
+        logger.info(f"Enhanced DynamicBot initialized for {'white' if color else 'black'}")
     
     def choose_move(
         self,
         board: chess.Board,
-        context: GameContext | None = None,
-        evaluator: Evaluator | None = None,
-        debug: bool = False,
-    ) -> Tuple[Optional[chess.Move], str]:
-        """
-        Choose a move using pattern-enhanced decision making.
+        context: GameContext = None,
+        evaluator: Evaluator = None,
+        debug: bool = False
+    ) -> Tuple[Optional[chess.Move], float]:
+        """Выбрать ход с использованием улучшенной логики"""
         
-        Order of strategies:
-        1. Check for known winning patterns
-        2. Check for tactical patterns (forks, pins, exchanges)
-        3. Fall back to base DynamicBot logic
-        """
+        # Обновить историю
+        self._update_history(board)
         
-        if board.turn != self.color:
-            return self.base_bot.choose_move(board, context, evaluator, debug)
+        # Определить тип противника
+        self._analyze_opponent(board)
         
-        # Try pattern matching first
-        if self.use_patterns and self.pattern_manager:
-            pattern_move, pattern_reason = self._try_pattern_move(board, context, evaluator)
-            if pattern_move:
-                self.patterns_used += 1
-                reason = f"PATTERN[{self.last_pattern_type}] | {pattern_reason}"
-                return (pattern_move, reason) if debug else (pattern_move, "")
+        # 1. Проверить дебютную книгу против Stockfish
+        if self.anti_stockfish_mode and self.opponent_type == "stockfish":
+            book_move = self._get_anti_stockfish_book_move(board)
+            if book_move:
+                return book_move, 0.9
         
-        # Fall back to base DynamicBot
-        return self.base_bot.choose_move(board, context, evaluator, debug)
+        # 2. Использовать паттерны
+        pattern_move, pattern_confidence = self._get_pattern_move(board)
+        
+        # 3. Получить ходы от базового DynamicBot
+        base_move, base_confidence = super().choose_move(board, context, evaluator, debug)
+        
+        # 4. Специальные анти-Stockfish стратегии
+        anti_sf_move, anti_sf_confidence = self._get_anti_stockfish_move(board)
+        
+        # 5. Эндшпильная экспертиза
+        endgame_move, endgame_confidence = self._get_endgame_move(board)
+        
+        # Объединить все предложения
+        candidates = []
+        
+        if pattern_move:
+            candidates.append((pattern_move, pattern_confidence * self.pattern_weight, "pattern"))
+        
+        if base_move:
+            candidates.append((base_move, base_confidence, "dynamic"))
+        
+        if anti_sf_move:
+            candidates.append((anti_sf_move, anti_sf_confidence * 1.5, "anti_stockfish"))
+        
+        if endgame_move:
+            candidates.append((endgame_move, endgame_confidence * 1.3, "endgame"))
+        
+        # Выбрать лучший ход
+        if candidates:
+            # Сортировать по уверенности
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            
+            # Добавить случайность для непредсказуемости против Stockfish
+            if self.anti_stockfish_mode and len(candidates) > 1:
+                top_candidates = [c for c in candidates if c[1] >= candidates[0][1] * 0.8]
+                if len(top_candidates) > 1:
+                    chosen = random.choice(top_candidates)
+                else:
+                    chosen = candidates[0]
+            else:
+                chosen = candidates[0]
+            
+            move, confidence, source = chosen
+            
+            if debug:
+                logger.info(f"Enhanced move selection: {move} (confidence: {confidence:.3f}, source: {source})")
+                for i, (m, c, s) in enumerate(candidates[:3]):
+                    logger.info(f"  {i+1}. {m} ({c:.3f}, {s})")
+            
+            return move, confidence
+        
+        # Fallback к базовому DynamicBot
+        return super().choose_move(board, context, evaluator, debug)
     
-    def _try_pattern_move(
-        self,
-        board: chess.Board,
-        context: GameContext | None,
-        evaluator: Evaluator | None
-    ) -> Tuple[Optional[chess.Move], str]:
-        """
-        Try to find a move based on known patterns.
+    def _get_optimized_weights(self) -> Dict[str, float]:
+        """Получить оптимизированные веса для ботов"""
+        return {
+            "AggressiveBot": 1.2,      # Повышенная агрессия против Stockfish
+            "EndgameBot": 1.5,         # Сильный эндшпиль
+            "FortifyBot": 0.8,         # Меньше защиты, больше атаки
+            "CriticalBot": 1.3,        # Важно находить критические моменты
+            "NeuralBot": 1.1,          # Нейросеть как дополнение
+            "RandomBot": 0.3,          # Минимальная случайность
+        }
+    
+    def _get_pattern_move(self, board: chess.Board) -> Tuple[Optional[chess.Move], float]:
+        """Получить ход на основе паттернов"""
+        if not self.use_patterns or not self.pattern_detector:
+            return None, 0.0
         
-        Priority:
-        1. Exchange patterns (forced winning exchanges)
-        2. Tactical patterns (forks, pins)
-        3. Positional patterns
-        """
-        
-        # Get current position FEN
-        fen = board.fen()
-        
-        # Check for exact position matches
-        matching_patterns = self.pattern_manager.get_patterns_for_position(fen, max_results=5)
-        
-        if matching_patterns:
-            self.patterns_available = len(matching_patterns)
+        try:
+            matches = self.pattern_detector.detect_patterns_in_position(
+                board, max_patterns=5, include_exchanges=True
+            )
             
-            # Prioritize patterns with exchanges
-            for pattern in matching_patterns:
-                if pattern.exchange_sequence and pattern.exchange_sequence.forced:
-                    # Check if this pattern's move is legal
-                    try:
-                        move = chess.Move.from_uci(pattern.triggering_move)
-                        if move in board.legal_moves:
-                            # Check if exchange is favorable
-                            if self._is_favorable_exchange(pattern.exchange_sequence):
-                                self.last_pattern_type = pattern.pattern_type
-                                reason = f"Forced exchange: {pattern.exchange_sequence.material_balance:+d}"
-                                return move, reason
-                    except:
-                        continue
+            if not matches:
+                return None, 0.0
             
-            # Try tactical patterns (forks, pins, skewers)
-            tactical_types = {"fork", "pin", "skewer", "discovered_attack"}
-            for pattern in matching_patterns:
-                if pattern.pattern_type in tactical_types:
-                    try:
-                        move = chess.Move.from_uci(pattern.triggering_move)
-                        if move in board.legal_moves:
-                            if self._is_safe_move(board, move):
-                                self.last_pattern_type = pattern.pattern_type
-                                reason = f"{pattern.pattern_type.capitalize()}"
-                                return move, reason
-                    except:
-                        continue
-        
-        # Try similar position patterns (based on piece placement)
-        similar_patterns = self._find_similar_patterns(board)
-        if similar_patterns:
-            for pattern in similar_patterns[:3]:  # Try top 3
+            # Выбрать лучший паттерн
+            best_match = max(matches, key=lambda m: m.confidence)
+            
+            if best_match.suggested_move and best_match.confidence > 0.5:
                 try:
-                    move = chess.Move.from_uci(pattern.triggering_move)
+                    move = chess.Move.from_uci(best_match.suggested_move)
                     if move in board.legal_moves:
-                        if self._is_safe_move(board, move):
-                            self.last_pattern_type = pattern.pattern_type
-                            reason = f"Similar pattern: {pattern.pattern_type}"
-                            return move, reason
+                        return move, best_match.confidence
+                except:
+                    pass
+            
+            return None, 0.0
+            
+        except Exception as e:
+            logger.error(f"Error in pattern move selection: {e}")
+            return None, 0.0
+    
+    def _get_anti_stockfish_move(self, board: chess.Board) -> Tuple[Optional[chess.Move], float]:
+        """Получить ход, специально направленный против Stockfish"""
+        if not self.anti_stockfish_mode or self.opponent_type != "stockfish":
+            return None, 0.0
+        
+        # Стратегии против Stockfish:
+        
+        # 1. Избегать симметричных позиций
+        asymmetry_move = self._find_asymmetric_move(board)
+        if asymmetry_move:
+            return asymmetry_move, 0.7
+        
+        # 2. Создавать сложные тактические позиции
+        tactical_move = self._find_tactical_complexity_move(board)
+        if tactical_move:
+            return tactical_move, 0.6
+        
+        # 3. Жертвы и гамбиты для усложнения
+        sacrifice_move = self._find_sacrifice_move(board)
+        if sacrifice_move:
+            return sacrifice_move, 0.5
+        
+        return None, 0.0
+    
+    def _get_endgame_move(self, board: chess.Board) -> Tuple[Optional[chess.Move], float]:
+        """Получить эндшпильный ход"""
+        if not self._is_endgame(board):
+            return None, 0.0
+        
+        # Использовать эндшпильные знания
+        for pattern, moves in self.endgame_knowledge.items():
+            if self._matches_endgame_pattern(board, pattern):
+                for move_uci in moves:
+                    try:
+                        move = chess.Move.from_uci(move_uci)
+                        if move in board.legal_moves:
+                            return move, 0.8
+                    except:
+                        continue
+        
+        return None, 0.0
+    
+    def _get_anti_stockfish_book_move(self, board: chess.Board) -> Optional[chess.Move]:
+        """Получить ход из дебютной книги против Stockfish"""
+        fen_key = board.fen().split()[0]  # Только расстановка фигур
+        
+        if fen_key in self.anti_stockfish_book:
+            moves = self.anti_stockfish_book[fen_key]
+            for move_uci in moves:
+                try:
+                    move = chess.Move.from_uci(move_uci)
+                    if move in board.legal_moves:
+                        return move
                 except:
                     continue
         
-        return None, ""
+        return None
     
-    def _is_favorable_exchange(self, exchange_sequence) -> bool:
-        """Check if an exchange sequence is favorable."""
-        # Favorable if we gain material
-        if self.color == chess.WHITE:
-            return exchange_sequence.material_balance > 0
+    def _create_anti_stockfish_book(self) -> Dict[str, List[str]]:
+        """Создать дебютную книгу против Stockfish"""
+        return {
+            # Начальная позиция - избегать главных линий
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR": ["b3", "f3", "h3", "a3"],
+            
+            # Против e4 - играть необычные защиты
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR": ["a6", "h6", "f6", "b6"],
+            
+            # Против d4 - избегать стандартных ответов
+            "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR": ["e6", "g6", "b6", "f5"],
+            
+            # Сицилианская защита - необычные варианты
+            "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR": ["f4", "Bc4", "d3"],
+        }
+    
+    def _load_endgame_knowledge(self) -> Dict[str, List[str]]:
+        """Загрузить эндшпильные знания"""
+        return {
+            # Король + пешка против короля
+            "KP_vs_K": ["Kf5", "Ke5", "Kd5", "Kc5"],
+            
+            # Ладейный эндшпиль
+            "R_vs_R": ["Ra1", "Rb1", "Rc1", "Rd1"],
+            
+            # Ферзь против пешек
+            "Q_vs_P": ["Qh5+", "Qg5+", "Qf5+", "Qe5+"],
+        }
+    
+    def _update_history(self, board: chess.Board):
+        """Обновить историю ходов и позиций"""
+        current_fen = board.fen()
+        
+        if len(self.position_history) == 0 or self.position_history[-1] != current_fen:
+            self.position_history.append(current_fen)
+            
+            if len(board.move_stack) > len(self.move_history):
+                self.move_history.extend(board.move_stack[len(self.move_history):])
+        
+        # Ограничить размер истории
+        if len(self.position_history) > 100:
+            self.position_history = self.position_history[-50:]
+        if len(self.move_history) > 100:
+            self.move_history = self.move_history[-50:]
+    
+    def _analyze_opponent(self, board: chess.Board):
+        """Анализировать тип противника"""
+        if len(self.move_history) < 4:
+            return
+        
+        # Простая эвристика для определения Stockfish
+        # Stockfish часто играет очень точно и предпочитает центр
+        recent_moves = self.move_history[-4:]
+        
+        stockfish_indicators = 0
+        for move in recent_moves:
+            # Ходы в центр
+            if move.to_square in [chess.E4, chess.D4, chess.E5, chess.D5]:
+                stockfish_indicators += 1
+            
+            # Развитие фигур
+            piece = board.piece_at(move.to_square)
+            if piece and piece.piece_type in [chess.KNIGHT, chess.BISHOP]:
+                stockfish_indicators += 1
+        
+        if stockfish_indicators >= 3:
+            self.opponent_type = "stockfish"
         else:
-            return exchange_sequence.material_balance < 0
+            self.opponent_type = "human"
     
-    def _is_safe_move(self, board: chess.Board, move: chess.Move) -> bool:
-        """
-        Check if a move is safe (doesn't hang pieces).
-        
-        Args:
-            board: Current board position
-            move: Move to check
+    def _find_asymmetric_move(self, board: chess.Board) -> Optional[chess.Move]:
+        """Найти ход, создающий асимметрию"""
+        for move in board.legal_moves:
+            # Предпочитать ходы на фланги
+            if chess.square_file(move.to_square) in [0, 1, 6, 7]:  # a, b, g, h файлы
+                return move
             
-        Returns:
-            True if move is safe
-        """
-        # Make the move on a copy
-        test_board = board.copy()
-        test_board.push(move)
+            # Предпочитать необычные ходы пешками
+            piece = board.piece_at(move.from_square)
+            if piece and piece.piece_type == chess.PAWN:
+                if chess.square_file(move.to_square) in [0, 2, 5, 7]:  # a, c, f, h файлы
+                    return move
         
-        # Check if the moved piece is defended
-        attackers = len(test_board.attackers(not self.color, move.to_square))
-        defenders = len(test_board.attackers(self.color, move.to_square))
-        
-        # If attacked and not defended, check if it's worth it
-        if attackers > 0 and defenders == 0:
-            # Only acceptable if we're capturing something more valuable
-            captured_piece = board.piece_at(move.to_square)
-            if captured_piece:
-                moving_piece = board.piece_at(move.from_square)
-                if moving_piece:
-                    # Simple piece values
-                    piece_values = {
-                        chess.PAWN: 100,
-                        chess.KNIGHT: 320,
-                        chess.BISHOP: 330,
-                        chess.ROOK: 500,
-                        chess.QUEEN: 900
-                    }
-                    
-                    moving_value = piece_values.get(moving_piece.piece_type, 0)
-                    captured_value = piece_values.get(captured_piece.piece_type, 0)
-                    
-                    # Only safe if we're trading up
-                    return captured_value >= moving_value
-            
-            return False
-        
-        return True
+        return None
     
-    def _find_similar_patterns(self, board: chess.Board) -> list:
-        """
-        Find patterns with similar piece configurations.
+    def _find_tactical_complexity_move(self, board: chess.Board) -> Optional[chess.Move]:
+        """Найти ход, создающий тактическую сложность"""
+        complex_moves = []
         
-        This is a simplified similarity check based on:
-        1. Same number of pieces
-        2. Similar game phase
-        3. Same pattern types
-        """
-        similar = []
+        for move in board.legal_moves:
+            complexity_score = 0
+            
+            # Жертвы повышают сложность
+            if board.is_capture(move):
+                captured = board.piece_at(move.to_square)
+                moving = board.piece_at(move.from_square)
+                if captured and moving:
+                    # Жертва более ценной фигуры
+                    piece_values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, 
+                                  chess.ROOK: 5, chess.QUEEN: 9}
+                    if piece_values.get(moving.piece_type, 0) > piece_values.get(captured.piece_type, 0):
+                        complexity_score += 2
+            
+            # Шахи повышают сложность
+            test_board = board.copy()
+            test_board.push(move)
+            if test_board.is_check():
+                complexity_score += 1
+            
+            # Атаки на короля
+            enemy_king = test_board.king(not board.turn)
+            if enemy_king and test_board.is_attacked_by(board.turn, enemy_king):
+                complexity_score += 1
+            
+            if complexity_score > 0:
+                complex_moves.append((move, complexity_score))
         
-        # Get current game phase
-        piece_count = len(board.piece_map())
-        current_phase = "opening" if board.fullmove_number <= 10 else (
-            "endgame" if piece_count <= 12 else "middlegame"
-        )
+        if complex_moves:
+            # Выбрать самый сложный ход
+            complex_moves.sort(key=lambda x: x[1], reverse=True)
+            return complex_moves[0][0]
         
-        # Search for patterns in same game phase
-        pattern_ids = self.pattern_manager.list_patterns(
-            game_phase=current_phase,
-            enabled_only=True
-        )
+        return None
+    
+    def _find_sacrifice_move(self, board: chess.Board) -> Optional[chess.Move]:
+        """Найти жертву для усложнения позиции"""
+        piece_values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, 
+                       chess.ROOK: 5, chess.QUEEN: 9}
         
-        for pattern_id in pattern_ids[:10]:  # Limit search
-            pattern = self.pattern_manager.get_pattern(pattern_id)
-            if pattern:
-                similar.append(pattern)
+        for move in board.legal_moves:
+            if not board.is_capture(move):
+                continue
+            
+            captured = board.piece_at(move.to_square)
+            moving = board.piece_at(move.from_square)
+            
+            if not captured or not moving:
+                continue
+            
+            # Жертва фигуры за пешку или меньшую фигуру
+            moving_value = piece_values.get(moving.piece_type, 0)
+            captured_value = piece_values.get(captured.piece_type, 0)
+            
+            if moving_value > captured_value and moving_value >= 3:  # Жертва минимум легкой фигуры
+                # Проверить, дает ли жертва компенсацию
+                test_board = board.copy()
+                test_board.push(move)
+                
+                # Простая проверка: создает ли атаку на короля
+                enemy_king = test_board.king(not board.turn)
+                if enemy_king and test_board.is_attacked_by(board.turn, enemy_king):
+                    return move
         
-        return similar
+        return None
+    
+    def _is_endgame(self, board: chess.Board) -> bool:
+        """Проверить, является ли позиция эндшпилем"""
+        # Подсчитать материал
+        piece_count = 0
+        for piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
+            piece_count += len(board.pieces(piece_type, chess.WHITE))
+            piece_count += len(board.pieces(piece_type, chess.BLACK))
+        
+        return piece_count <= 6  # Эндшпиль при <= 6 фигур (без пешек и королей)
+    
+    def _matches_endgame_pattern(self, board: chess.Board, pattern: str) -> bool:
+        """Проверить, соответствует ли позиция эндшпильному паттерну"""
+        # Упрощенная проверка паттернов
+        if pattern == "KP_vs_K":
+            # Король + пешка против короля
+            white_pieces = sum(len(board.pieces(pt, chess.WHITE)) for pt in chess.PIECE_TYPES)
+            black_pieces = sum(len(board.pieces(pt, chess.BLACK)) for pt in chess.PIECE_TYPES)
+            return (white_pieces == 2 and black_pieces == 1) or (white_pieces == 1 and black_pieces == 2)
+        
+        elif pattern == "R_vs_R":
+            # Ладья против ладьи
+            return (len(board.pieces(chess.ROOK, chess.WHITE)) == 1 and 
+                   len(board.pieces(chess.ROOK, chess.BLACK)) == 1 and
+                   sum(len(board.pieces(pt, chess.WHITE)) for pt in chess.PIECE_TYPES) <= 3 and
+                   sum(len(board.pieces(pt, chess.BLACK)) for pt in chess.PIECE_TYPES) <= 3)
+        
+        elif pattern == "Q_vs_P":
+            # Ферзь против пешек
+            return (len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK)) == 1)
+        
+        return False
     
     def get_last_reason(self) -> str:
-        """Get the reason for the last move."""
-        if hasattr(self.base_bot, 'get_last_reason'):
-            return self.base_bot.get_last_reason()
-        return "PATTERN_ENHANCED"
+        """Получить причину последнего хода"""
+        return "Enhanced Dynamic Bot with Pattern Recognition"
     
     def get_last_features(self) -> Dict[str, Any]:
-        """Get features from the last move."""
-        features = {}
-        
-        if hasattr(self.base_bot, 'get_last_features'):
-            features = self.base_bot.get_last_features() or {}
-        
-        # Add pattern statistics
-        features.update({
-            "patterns_used": self.patterns_used,
-            "patterns_available": self.patterns_available,
-            "last_pattern_type": self.last_pattern_type,
-            "pattern_system_active": self.use_patterns
-        })
-        
-        return features
-    
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get statistics about pattern usage."""
-        stats = {
-            "patterns_used": self.patterns_used,
-            "patterns_available": self.patterns_available,
-            "last_pattern_type": self.last_pattern_type,
-            "pattern_system_active": self.use_patterns
+        """Получить характеристики последнего хода"""
+        return {
+            "use_patterns": self.use_patterns,
+            "anti_stockfish_mode": self.anti_stockfish_mode,
+            "opponent_type": self.opponent_type,
+            "pattern_weight": self.pattern_weight,
+            "move_count": len(self.move_history)
         }
-        
-        if self.pattern_manager:
-            stats["pattern_manager_stats"] = self.pattern_manager.get_statistics()
-        
-        return stats
-
-
-# Factory function for compatibility
-def create_enhanced_dynamic_bot(color: bool) -> EnhancedDynamicBot:
-    """Create an enhanced DynamicBot with pattern support."""
-    return EnhancedDynamicBot(color, use_patterns=True)
