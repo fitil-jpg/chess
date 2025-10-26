@@ -1,0 +1,259 @@
+{
+  "version": "2.0",
+  "created": "2025-01-27T10:30:00.000Z",
+  "updated": "2025-01-27T10:30:00.000Z",
+  "count": 3,
+  "patterns": [
+    {
+      "pattern_id": "fork_e4_nf6_001",
+      "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 2 3",
+      "move": "Nf6",
+      "pattern_types": ["fork", "tactical_moment"],
+      "description": "Knight fork: attacks Queen and Rook",
+      "influencing_pieces": [
+        {
+          "square": "f6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker",
+          "value": 3,
+          "mobility": 8,
+          "threats": ["d5", "e4", "g4", "h5"],
+          "defends": ["e5", "g5"]
+        },
+        {
+          "square": "d1",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "target",
+          "value": 9,
+          "mobility": 21,
+          "threats": ["d5", "d6", "d7", "d8"],
+          "defends": ["e2", "f3", "g4", "h5"]
+        },
+        {
+          "square": "a1",
+          "piece": "Rook",
+          "color": "white",
+          "relationship": "target",
+          "value": 5,
+          "mobility": 14,
+          "threats": ["a2", "a3", "a4", "a5", "a6", "a7", "a8"],
+          "defends": ["a2", "a3", "a4", "a5", "a6", "a7", "a8"]
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 0,
+          "material": 0,
+          "positional": 0,
+          "tactical": 0,
+          "king_safety": 0
+        },
+        "after": {
+          "total": 300,
+          "material": 0,
+          "positional": 100,
+          "tactical": 200,
+          "king_safety": 0
+        },
+        "change": 300,
+        "confidence": 0.95
+      },
+      "metadata": {
+        "pattern_id": "fork_e4_nf6_001",
+        "is_custom": false,
+        "added_at": "2025-01-27T10:30:00.000Z",
+        "fullmove_number": 3,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "is_checkmate": false,
+        "is_stalemate": false,
+        "participating_pieces_count": 3,
+        "pattern_strength": 8.5,
+        "difficulty_level": "intermediate",
+        "tags": ["fork", "tactical", "knight", "opening"],
+        "source": "detected",
+        "game_context": {
+          "opening": "Sicilian Defense",
+          "phase": "opening",
+          "time_control": "blitz",
+          "rating_range": "1200-1800"
+        }
+      },
+      "exchange_sequence": {
+        "moves": ["Nf6", "Qxd8+", "Kxd8"],
+        "total_ply": 3,
+        "material_balance": 0,
+        "positional_advantage": "black",
+        "tactical_complexity": 6
+      }
+    },
+    {
+      "pattern_id": "pin_bg5_001",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+      "move": "Bg5",
+      "pattern_types": ["pin", "tactical_moment"],
+      "description": "Bishop pins Knight to Queen",
+      "influencing_pieces": [
+        {
+          "square": "g5",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker",
+          "value": 3,
+          "mobility": 13,
+          "threats": ["f6", "h4"],
+          "defends": ["f4", "h6"]
+        },
+        {
+          "square": "f6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "pinned",
+          "value": 3,
+          "mobility": 0,
+          "threats": [],
+          "defends": []
+        },
+        {
+          "square": "d8",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "target",
+          "value": 9,
+          "mobility": 21,
+          "threats": ["d5", "d6", "d7"],
+          "defends": ["e7", "f8", "g8"]
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 0,
+          "material": 0,
+          "positional": 0,
+          "tactical": 0,
+          "king_safety": 0
+        },
+        "after": {
+          "total": 150,
+          "material": 0,
+          "positional": 50,
+          "tactical": 100,
+          "king_safety": 0
+        },
+        "change": 150,
+        "confidence": 0.85
+      },
+      "metadata": {
+        "pattern_id": "pin_bg5_001",
+        "is_custom": false,
+        "added_at": "2025-01-27T10:35:00.000Z",
+        "fullmove_number": 4,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": false,
+        "is_checkmate": false,
+        "is_stalemate": false,
+        "participating_pieces_count": 3,
+        "pattern_strength": 7.2,
+        "difficulty_level": "intermediate",
+        "tags": ["pin", "tactical", "bishop", "middlegame"],
+        "source": "detected",
+        "game_context": {
+          "opening": "Italian Game",
+          "phase": "opening",
+          "time_control": "blitz",
+          "rating_range": "1000-1600"
+        }
+      }
+    },
+    {
+      "pattern_id": "exchange_e4_d5_001",
+      "fen": "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "move": "exd5",
+      "pattern_types": ["exchange", "tactical_moment"],
+      "description": "Pawn exchange in center",
+      "influencing_pieces": [
+        {
+          "square": "e4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "exchanger",
+          "value": 1,
+          "mobility": 0,
+          "threats": [],
+          "defends": []
+        },
+        {
+          "square": "d5",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "exchanged",
+          "value": 1,
+          "mobility": 0,
+          "threats": [],
+          "defends": []
+        },
+        {
+          "square": "d5",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "mover",
+          "value": 1,
+          "mobility": 2,
+          "threats": ["c6", "e6"],
+          "defends": ["c4", "e4"]
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 0,
+          "material": 0,
+          "positional": 0,
+          "tactical": 0,
+          "king_safety": 0
+        },
+        "after": {
+          "total": 0,
+          "material": 0,
+          "positional": 0,
+          "tactical": 0,
+          "king_safety": 0
+        },
+        "change": 0,
+        "confidence": 0.9
+      },
+      "metadata": {
+        "pattern_id": "exchange_e4_d5_001",
+        "is_custom": false,
+        "added_at": "2025-01-27T10:40:00.000Z",
+        "fullmove_number": 2,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "is_checkmate": false,
+        "is_stalemate": false,
+        "participating_pieces_count": 3,
+        "pattern_strength": 3.0,
+        "difficulty_level": "beginner",
+        "tags": ["exchange", "pawn", "opening", "center"],
+        "source": "detected",
+        "game_context": {
+          "opening": "Scandinavian Defense",
+          "phase": "opening",
+          "time_control": "blitz",
+          "rating_range": "800-1400"
+        }
+      },
+      "exchange_sequence": {
+        "moves": ["exd5", "Qxd5"],
+        "total_ply": 2,
+        "material_balance": 0,
+        "positional_advantage": "equal",
+        "tactical_complexity": 2
+      }
+    }
+  ]
+}

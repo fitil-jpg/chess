@@ -41,6 +41,7 @@ from chess_ai.pattern_detector import PatternDetector, ChessPattern, PatternType
 from chess_ai.pattern_storage import PatternCatalog
 from ui.mini_board import MiniBoard
 from chess_ai.bot_agent import make_agent
+from chess_ai.enhanced_dynamic_bot import EnhancedDynamicBot
 from chess_ai.threat_map import ThreatMap
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
@@ -56,6 +57,7 @@ from chess_ai.elo_sync_manager import ELOSyncManager
 from chess_ai.bsp_engine import create_chess_bsp_engine
 from chess_ai.wfc_engine import create_chess_wfc_engine
 from core.pattern_loader import PatternResponder
+from ui.pattern_display import PatternDisplayWidget
 from chess_ai.pattern_detector import PatternDetector, PatternType
 from chess_ai.pattern_storage import PatternCatalog
 from core.evaluator import Evaluator
@@ -224,7 +226,11 @@ class ChessViewer(QMainWindow):
         # Агенти
         try:
             self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
-            self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
+            # Use EnhancedDynamicBot for black (against Stockfish)
+            if BLACK_AGENT == "DynamicBot":
+                self.black_agent = EnhancedDynamicBot(chess.BLACK)
+            else:
+                self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
         except Exception as exc:
             ErrorHandler.handle_agent_error(exc, f"{WHITE_AGENT}/{BLACK_AGENT}")
             self._show_critical_error(
@@ -1188,6 +1194,40 @@ class ChessViewer(QMainWindow):
         
         logger.info("Game reset to starting position")
         
+    def reset_game(self):
+        """Reset game to starting position"""
+        # Stop auto play if running
+        if self.auto_running:
+            self.pause_auto()
+        
+        # Reset board to starting position
+        self.board = chess.Board()
+        self.fen_history = [self.board.fen()]
+        
+        # Clear patterns
+        if hasattr(self, 'pattern_display'):
+            self.pattern_display._clear_patterns()
+        
+        # Clear usage data
+        self.usage_w.clear()
+        self.usage_b.clear()
+        self.timeline_w.clear()
+        self.timeline_b.clear()
+        
+        # Clear moves list
+        self.moves_list.clear()
+        
+        # Reset UI
+        self._init_pieces()
+        self._refresh_board()
+        self._refresh_mini_board_visuals()
+        self._update_status()
+        
+        # Update title
+        self._update_title_with_elo()
+        
+        logger.info("Game reset to starting position")
+        
     def start_auto_play(self):
         """Начать автоматическое воспроизведение 10 игр подряд"""
         self.auto_play_mode = True
@@ -1493,6 +1533,26 @@ class ChessViewer(QMainWindow):
                         # Do not save every move to disk to reduce IO; user can export later
             except Exception as exc_det:
                 logger.debug(f"Pattern detection skipped: {exc_det}")
+
+            # Detect patterns for this move
+            try:
+                # Get evaluation before and after the move
+                evaluation_before = {"total": 0}  # Placeholder - would need actual evaluation
+                evaluation_after = {"total": 0}   # Placeholder - would need actual evaluation
+                
+                # Get bot analysis if available
+                bot_analysis = {}
+                if hasattr(agent, 'get_last_reason'):
+                    bot_analysis['reason'] = agent.get_last_reason()
+                if hasattr(agent, 'get_last_features'):
+                    bot_analysis['features'] = agent.get_last_features()
+                
+                # Detect patterns
+                self.pattern_display.detect_patterns(
+                    self.board, move, evaluation_before, evaluation_after, bot_analysis
+                )
+            except Exception as e:
+                logger.warning(f"Pattern detection failed: {e}")
 
             # Оновлюємо дошку
             self._init_pieces()
