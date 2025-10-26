@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "created": "2025-10-24T21:51:46.015944",
+  "count": 1,
+  "patterns": [
+    {
+      "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      "move": "e4",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Test pattern",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 0
+        },
+        "after": {
+          "total": 20
+        },
+        "change": 20
+      },
+      "metadata": {
+        "test": true,
+        "added_at": "2025-10-24T21:51:46.015923"
+      }
+    }
+  ]
+}
