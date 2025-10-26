@@ -211,7 +211,7 @@ Edit `chess_ai/wfc_engine.py` and add patterns in `add_opening_patterns()`:
 custom_pattern = ChessPattern(
     pattern_type=PatternType.OPENING,
     squares=(chess.C2, chess.C4),
-    pieces=(chess.Piece(chess.PAWN, chess.WHITE), 
+    pieces=(chess.Piece(chess.PAWN, chess.WHITE),
             chess.Piece(chess.PAWN, chess.WHITE)),
     constraints=(("center_control", True),),
     frequency=0.8
