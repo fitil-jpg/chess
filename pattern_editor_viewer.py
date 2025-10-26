@@ -25,6 +25,7 @@ from PySide6.QtGui import QPainter, QColor, QFont
 from chess_ai.bot_agent import make_agent
 from chess_ai.pattern_detector import PatternDetector, ChessPattern, PatternType
 from chess_ai.pattern_storage import PatternCatalog
+from pathlib import Path
 from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
 from evaluation import evaluate
@@ -155,6 +156,7 @@ class PatternEditorViewer(QMainWindow):
         
         # Pattern management
         self.pattern_catalog = PatternCatalog()
+        self.tournament_patterns_path: Optional[Path] = None
         self.pattern_catalog.load_patterns()
         self.current_patterns: List[ChessPattern] = list(self.pattern_catalog.patterns)
         self.current_pattern_index = -1
@@ -392,6 +394,17 @@ class PatternEditorViewer(QMainWindow):
         
         layout.addWidget(filter_group)
         
+        # Source selection
+        source_group = QGroupBox("Source")
+        source_layout = QHBoxLayout(source_group)
+        self.source_combo = QComboBox()
+        self.source_combo.addItems(["Catalog", "Tournament (latest)"])
+        self.source_combo.currentIndexChanged.connect(self._on_source_changed)
+        source_layout.addWidget(QLabel("Load from:"))
+        source_layout.addWidget(self.source_combo)
+        source_layout.addStretch()
+        layout.addWidget(source_group)
+
         # Pattern list
         patterns_group = QGroupBox("Pattern Library")
         patterns_layout = QVBoxLayout(patterns_group)
@@ -717,6 +730,57 @@ class PatternEditorViewer(QMainWindow):
         stats_text += f"Endgame Patterns: {stats.get('endgame_patterns', 0)}\n"
         
         self.stats_text.setPlainText(stats_text)
+
+    def _on_source_changed(self, idx: int):
+        """Switch between main catalog and latest tournament patterns."""
+        label = self.source_combo.currentText()
+        if label.startswith("Tournament"):
+            self._load_latest_tournament_patterns()
+        else:
+            self.pattern_catalog = PatternCatalog()
+            self.pattern_catalog.load_patterns()
+            self.current_patterns = list(self.pattern_catalog.patterns)
+            self._update_pattern_list()
+            self._update_statistics()
+
+    def _load_latest_tournament_patterns(self):
+        """Load patterns from output/tournaments/<latest>/patterns/patterns.jsonl if present."""
+        try:
+            root = Path("output/tournaments")
+            if not root.exists():
+                return
+            # Choose latest by directory name (timestamped)
+            dirs = sorted([p for p in root.iterdir() if p.is_dir()], key=lambda p: p.name)
+            if not dirs:
+                return
+            latest = dirs[-1]
+            patterns_jsonl = latest / "patterns" / "patterns.jsonl"
+            if not patterns_jsonl.exists():
+                return
+            # Build a transient catalog from JSONL
+            records = []
+            with patterns_jsonl.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        import json
+                        rec = json.loads(line)
+                        pat = rec.get("pattern")
+                        if isinstance(pat, dict):
+                            records.append(pat)
+                    except Exception:
+                        continue
+            # Convert
+            from chess_ai.pattern_detector import ChessPattern as DetectedPattern  # local import
+            self.pattern_catalog = PatternCatalog()  # temporary holder
+            self.pattern_catalog.patterns = [DetectedPattern.from_dict(p) for p in records]
+            self.current_patterns = list(self.pattern_catalog.patterns)
+            self._update_pattern_list()
+            self._update_statistics()
+        except Exception as e:
+            logger.error(f"Failed to load tournament patterns: {e}")
         
     def _show_error(self, title: str, message: str):
         """Show error message"""
