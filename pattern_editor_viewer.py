@@ -140,6 +140,35 @@ except ImportError:
     def make_agent(name, color):
         return None
 
+# Import enhanced pattern system with fallbacks
+try:
+    from enhanced_pattern_system import (
+        EnhancedPatternDetector, EnhancedPatternStorage, EnhancedChessPattern,
+        PatternRole, ExchangeType, ParticipatingPiece, ExchangeSequence
+    )
+    ENHANCED_PATTERNS_AVAILABLE = True
+except ImportError:
+    ENHANCED_PATTERNS_AVAILABLE = False
+    # Create dummy classes
+    class EnhancedPatternDetector:
+        def __init__(self):
+            pass
+        def analyze_position_enhanced(self, *args):
+            return None
+    
+    class EnhancedPatternStorage:
+        def __init__(self, *args):
+            self.patterns_index = {}
+        def get_all_pattern_ids(self):
+            return []
+        def load_pattern(self, pattern_id):
+            return None
+        def save_pattern(self, pattern):
+            pass
+    
+    class EnhancedChessPattern:
+        pass
+
 try:
     from chess_ai.threat_map import ThreatMap
 except ImportError:
@@ -714,7 +743,11 @@ class GameWorker(QThread):
         self.black_agent = black_agent
         self.num_games = num_games
         self._stop_requested = False
-        self.pattern_detector = PatternDetector()
+        
+        if ENHANCED_PATTERNS_AVAILABLE:
+            self.pattern_detector = EnhancedPatternDetector()
+        else:
+            self.pattern_detector = PatternDetector()
         
     def run(self):
         """Run games and detect patterns"""
@@ -756,12 +789,20 @@ class GameWorker(QThread):
                 bot_evaluations = self._get_multi_bot_evaluations(board, move)
                 
                 # Detect pattern
-                pattern = self.pattern_detector.analyze_position(
-                    board, move, 
-                    current_agent.__class__.__name__,
-                    bot_evaluations.get(current_agent.__class__.__name__, {}),
-                    bot_evaluations
-                )
+                if ENHANCED_PATTERNS_AVAILABLE:
+                    pattern = self.pattern_detector.analyze_position_enhanced(
+                        board, move, 
+                        current_agent.__class__.__name__,
+                        bot_evaluations.get(current_agent.__class__.__name__, {}),
+                        bot_evaluations
+                    )
+                else:
+                    pattern = self.pattern_detector.analyze_position(
+                        board, move, 
+                        current_agent.__class__.__name__,
+                        bot_evaluations.get(current_agent.__class__.__name__, {}),
+                        bot_evaluations
+                    )
                 
                 if pattern:
                     self.patternDetected.emit(pattern)
@@ -792,6 +833,84 @@ class GameWorker(QThread):
     def stop(self):
         """Stop the worker"""
         self._stop_requested = True
+
+class ManualPatternDialog(QDialog):
+    """Dialog for creating manual patterns"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Create Manual Pattern")
+        self.setModal(True)
+        self.resize(600, 500)
+        
+        layout = QVBoxLayout(self)
+        
+        # Pattern name
+        layout.addWidget(QLabel("Pattern Name:"))
+        self.name_edit = QLineEdit()
+        layout.addWidget(self.name_edit)
+        
+        # Pattern description
+        layout.addWidget(QLabel("Description:"))
+        self.description_edit = QTextEdit()
+        self.description_edit.setMaximumHeight(100)
+        layout.addWidget(self.description_edit)
+        
+        # FEN position
+        layout.addWidget(QLabel("FEN Position:"))
+        self.fen_edit = QLineEdit()
+        self.fen_edit.setPlaceholderText("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        layout.addWidget(self.fen_edit)
+        
+        # Key move
+        layout.addWidget(QLabel("Key Move (UCI):"))
+        self.move_edit = QLineEdit()
+        self.move_edit.setPlaceholderText("e2e4")
+        layout.addWidget(self.move_edit)
+        
+        # Categories
+        layout.addWidget(QLabel("Categories:"))
+        categories_widget = QWidget()
+        categories_layout = QVBoxLayout(categories_widget)
+        
+        self.category_checkboxes = {}
+        categories = ["tactical", "opening", "middlegame", "endgame", "fork", "pin", 
+                     "sacrifice", "exchange_pattern", "positional", "defensive"]
+        
+        for category in categories:
+            checkbox = QCheckBox(category.title())
+            self.category_checkboxes[category] = checkbox
+            categories_layout.addWidget(checkbox)
+        
+        layout.addWidget(categories_widget)
+        
+        # Tags
+        layout.addWidget(QLabel("Tags (comma-separated):"))
+        self.tags_edit = QLineEdit()
+        layout.addWidget(self.tags_edit)
+        
+        # Buttons
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+    
+    def get_pattern_data(self) -> Dict[str, Any]:
+        """Get pattern data from dialog"""
+        categories = [category for category, checkbox in self.category_checkboxes.items()
+                     if checkbox.isChecked()]
+        
+        tags_text = self.tags_edit.text().strip()
+        tags = [tag.strip() for tag in tags_text.split(",") if tag.strip()]
+        
+        return {
+            "name": self.name_edit.text(),
+            "description": self.description_edit.toPlainText(),
+            "fen": self.fen_edit.text(),
+            "move": self.move_edit.text(),
+            "categories": categories,
+            "tags": tags
+        }
 
 class PatternEditDialog(QDialog):
     """Dialog for editing pattern details"""
@@ -935,9 +1054,21 @@ class PatternEditorViewer(QMainWindow):
         self.resize(1400, 900)
         
         # Initialize components
-        self.pattern_storage = PatternStorage()
+        if ENHANCED_PATTERNS_AVAILABLE:
+            self.pattern_storage = EnhancedPatternStorage()
+            self.pattern_detector = EnhancedPatternDetector()
+        else:
+            self.pattern_storage = PatternStorage()
+            self.pattern_detector = PatternDetector()
+        
         self.current_pattern = None
         self.game_worker = None
+        self.pattern_selection_filters = {
+            'min_confidence': 0.5,
+            'categories': [],
+            'complexity': 'all',
+            'include_exchanges': True
+        }
         
         # Initialize agents
         self._init_agents()
@@ -1049,6 +1180,70 @@ class PatternEditorViewer(QMainWindow):
         """Create right panel with pattern management"""
         panel = QWidget()
         layout = QVBoxLayout(panel)
+        
+        # Pattern selection controls
+        selection_group = QGroupBox("Pattern Selection Controls")
+        selection_layout = QVBoxLayout(selection_group)
+        
+        # Pattern filters
+        filters_layout = QHBoxLayout()
+        
+        # Confidence filter
+        filters_layout.addWidget(QLabel("Min Confidence:"))
+        self.confidence_slider = QSlider(Qt.Horizontal)
+        self.confidence_slider.setRange(0, 100)
+        self.confidence_slider.setValue(50)
+        self.confidence_slider.valueChanged.connect(self._on_confidence_changed)
+        filters_layout.addWidget(self.confidence_slider)
+        
+        self.confidence_label = QLabel("0.5")
+        filters_layout.addWidget(self.confidence_label)
+        
+        selection_layout.addLayout(filters_layout)
+        
+        # Category filters
+        category_layout = QHBoxLayout()
+        category_layout.addWidget(QLabel("Categories:"))
+        
+        self.tactical_check = QCheckBox("Tactical")
+        self.exchange_check = QCheckBox("Exchanges")
+        self.positional_check = QCheckBox("Positional")
+        
+        self.tactical_check.stateChanged.connect(self._on_filter_changed)
+        self.exchange_check.stateChanged.connect(self._on_filter_changed)
+        self.positional_check.stateChanged.connect(self._on_filter_changed)
+        
+        category_layout.addWidget(self.tactical_check)
+        category_layout.addWidget(self.exchange_check)
+        category_layout.addWidget(self.positional_check)
+        
+        selection_layout.addLayout(category_layout)
+        
+        # Complexity filter
+        complexity_layout = QHBoxLayout()
+        complexity_layout.addWidget(QLabel("Complexity:"))
+        self.complexity_combo = QComboBox()
+        self.complexity_combo.addItems(["All", "Simple", "Intermediate", "Complex"])
+        self.complexity_combo.currentTextChanged.connect(self._on_filter_changed)
+        complexity_layout.addWidget(self.complexity_combo)
+        complexity_layout.addStretch()
+        
+        selection_layout.addLayout(complexity_layout)
+        
+        # Manual pattern creation
+        manual_layout = QHBoxLayout()
+        self.btn_create_pattern = QPushButton("➕ Create Manual Pattern")
+        self.btn_import_pattern = QPushButton("📁 Import Pattern")
+        
+        self.btn_create_pattern.clicked.connect(self._create_manual_pattern)
+        self.btn_import_pattern.clicked.connect(self._import_pattern)
+        
+        manual_layout.addWidget(self.btn_create_pattern)
+        manual_layout.addWidget(self.btn_import_pattern)
+        
+        selection_layout.addLayout(manual_layout)
+        
+        layout.addWidget(selection_group)
         
         # Pattern list group
         list_group = QGroupBox("Detected Patterns")
@@ -1364,7 +1559,134 @@ class PatternEditorViewer(QMainWindow):
     
     def _show_error(self, title: str, message: str):
         """Show error message"""
-        QMessageBox.critical(self, title, message)
+        if PYSIDE_AVAILABLE:
+            QMessageBox.critical(self, title, message)
+        else:
+            print(f"Error - {title}: {message}")
+    
+    def _on_confidence_changed(self, value):
+        """Handle confidence slider change"""
+        confidence = value / 100.0
+        self.confidence_label.setText(f"{confidence:.2f}")
+        self.pattern_selection_filters['min_confidence'] = confidence
+        self._apply_pattern_filters()
+    
+    def _on_filter_changed(self):
+        """Handle filter changes"""
+        categories = []
+        if self.tactical_check.isChecked():
+            categories.append("tactical")
+        if self.exchange_check.isChecked():
+            categories.append("exchange_pattern")
+        if self.positional_check.isChecked():
+            categories.append("positional")
+        
+        self.pattern_selection_filters['categories'] = categories
+        self.pattern_selection_filters['complexity'] = self.complexity_combo.currentText().lower()
+        
+        self._apply_pattern_filters()
+    
+    def _apply_pattern_filters(self):
+        """Apply current filters to pattern list"""
+        # Hide/show patterns based on current filters
+        for i in range(self.pattern_list.count()):
+            item = self.pattern_list.item(i)
+            if hasattr(item, 'data') and item.data(Qt.UserRole):
+                pattern_id = item.data(Qt.UserRole)
+                should_show = self._pattern_matches_filters(pattern_id)
+                item.setHidden(not should_show)
+    
+    def _pattern_matches_filters(self, pattern_id: str) -> bool:
+        """Check if pattern matches current filters"""
+        if ENHANCED_PATTERNS_AVAILABLE:
+            pattern = self.pattern_storage.load_pattern(pattern_id)
+            if not pattern:
+                return False
+            
+            # Check confidence
+            if pattern.detection_confidence < self.pattern_selection_filters['min_confidence']:
+                return False
+            
+            # Check categories
+            filter_categories = self.pattern_selection_filters['categories']
+            if filter_categories:
+                pattern_categories = [pattern.primary_category] + pattern.secondary_categories
+                if not any(cat in pattern_categories for cat in filter_categories):
+                    return False
+            
+            # Check complexity
+            complexity_filter = self.pattern_selection_filters['complexity']
+            if complexity_filter != 'all' and pattern.complexity != complexity_filter:
+                return False
+            
+            return True
+        else:
+            # Fallback for basic patterns
+            return True
+    
+    def _create_manual_pattern(self):
+        """Create a manual pattern"""
+        if not PYSIDE_AVAILABLE:
+            print("Manual pattern creation requires GUI")
+            return
+        
+        dialog = ManualPatternDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            pattern_data = dialog.get_pattern_data()
+            
+            if ENHANCED_PATTERNS_AVAILABLE:
+                # Create enhanced pattern
+                pattern = self._create_enhanced_pattern_from_data(pattern_data)
+                self.pattern_storage.save_pattern(pattern)
+            else:
+                # Create basic pattern
+                pattern = self._create_basic_pattern_from_data(pattern_data)
+                self.pattern_storage.save_pattern(pattern)
+            
+            self._refresh_pattern_list()
+            self.status_label.setText("Manual pattern created")
+    
+    def _import_pattern(self):
+        """Import pattern from file"""
+        if not PYSIDE_AVAILABLE:
+            print("Pattern import requires GUI")
+            return
+        
+        from PySide6.QtWidgets import QFileDialog
+        
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Import Pattern", "", "JSON Files (*.json)"
+        )
+        
+        if filename:
+            try:
+                with open(filename, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                if ENHANCED_PATTERNS_AVAILABLE:
+                    pattern = EnhancedChessPattern.from_dict(data)
+                    self.pattern_storage.save_pattern(pattern)
+                else:
+                    pattern = ChessPattern.from_dict(data)
+                    self.pattern_storage.save_pattern(pattern)
+                
+                self._refresh_pattern_list()
+                self.status_label.setText(f"Pattern imported from {filename}")
+                
+            except Exception as e:
+                self._show_error("Import Error", f"Failed to import pattern: {e}")
+    
+    def _create_enhanced_pattern_from_data(self, data: Dict[str, Any]):
+        """Create enhanced pattern from manual data"""
+        # This would be implemented based on the manual pattern dialog
+        # For now, return a placeholder
+        pass
+    
+    def _create_basic_pattern_from_data(self, data: Dict[str, Any]):
+        """Create basic pattern from manual data"""
+        # This would be implemented based on the manual pattern dialog
+        # For now, return a placeholder
+        pass
 
 def main():
     """Main function"""
