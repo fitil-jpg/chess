@@ -8,6 +8,7 @@ integrating with WFC and BSP engines for comprehensive pattern analysis.
 import chess
 import json
 from typing import List, Dict, Optional, Tuple, Any
+from pathlib import Path
 from dataclasses import dataclass
 from pathlib import Path
 import logging
@@ -17,13 +18,26 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PatternTemplate:
-    """Template for a chess pattern."""
+    """Template for a chess pattern.
+
+    Fields:
+    - situation: piece placement FEN (board_fen) or full FEN string
+    - action: UCI move or symbolic action (e.g. "fork_check")
+    - pattern_type: one of opening|tactical|endgame|positional
+    - name: optional human-friendly name (used for filtering)
+    - enabled: optional flag to enable/disable this pattern (default True)
+    - tags: optional list of string tags for grouping
+    - confidence/frequency/description: metadata
+    """
     situation: str  # FEN board position
     action: str     # UCI move or action
     pattern_type: str  # "opening", "tactical", "endgame", "positional"
     confidence: float = 1.0
     frequency: float = 1.0
     description: str = ""
+    name: str = ""
+    enabled: bool = True
+    tags: List[str] = None  # type: ignore
 
 
 class PatternResponder:
@@ -37,18 +51,67 @@ class PatternResponder:
     
     def __init__(self, patterns_file: Optional[str] = None):
         self.patterns: List[PatternTemplate] = []
+        # Allow passing either a file or a directory aggregator via configs/patterns.json
         self.patterns_file = patterns_file or "patterns.json"
         self._load_patterns()
         
     def _load_patterns(self):
-        """Load patterns from file or create default patterns."""
+        """Load patterns from file(s) or create defaults.
+
+        Supports two modes:
+        1) Simple file with {"patterns": [...]} (backward compatible)
+        2) Aggregator with optional fields:
+           - includes: ["patterns/openings.json", ...]
+           - enabled_types: ["opening","tactical",...]
+           - enabled_names: ["My Pattern", ...]
+           - disabled_names: ["Deprecated Pattern", ...]
+        Each included file can be either {"patterns": [...]} or a raw list.
+        Patterns with enabled=false are skipped.
+        """
         try:
-            if Path(self.patterns_file).exists():
-                with open(self.patterns_file, 'r') as f:
+            p = Path(self.patterns_file)
+            if p.exists() and p.is_file():
+                with p.open('r', encoding='utf-8') as f:
                     data = json.load(f)
-                    for pattern_data in data.get('patterns', []):
-                        pattern = PatternTemplate(**pattern_data)
-                        self.patterns.append(pattern)
+
+                includes = []
+                enabled_types = None
+                enabled_names = None
+                disabled_names = None
+
+                if isinstance(data, dict):
+                    # Local inline patterns first
+                    raw_patterns = data.get('patterns', [])
+                    self._ingest_patterns(raw_patterns)
+                    # Optional aggregator controls
+                    includes = data.get('includes', []) or []
+                    enabled_types = data.get('enabled_types')
+                    enabled_names = data.get('enabled_names')
+                    disabled_names = data.get('disabled_names')
+                else:
+                    # Direct list
+                    self._ingest_patterns(data)
+
+                # Expand includes
+                for inc in includes:
+                    inc_path = (p.parent / inc).resolve()
+                    if inc_path.is_dir():
+                        for child in sorted(inc_path.glob('*.json')):
+                            self._ingest_from_file(child)
+                    elif inc_path.is_file():
+                        self._ingest_from_file(inc_path)
+
+                # Apply filters
+                if enabled_types:
+                    types_set = set(enabled_types)
+                    self.patterns = [pt for pt in self.patterns if pt.pattern_type in types_set]
+                if enabled_names:
+                    name_set = set(enabled_names)
+                    self.patterns = [pt for pt in self.patterns if (pt.name or pt.description) in name_set]
+                if disabled_names:
+                    dis_set = set(disabled_names)
+                    self.patterns = [pt for pt in self.patterns if (pt.name or pt.description) not in dis_set]
+
                 logger.info(f"Loaded {len(self.patterns)} patterns from {self.patterns_file}")
             else:
                 self._create_default_patterns()
@@ -56,6 +119,32 @@ class PatternResponder:
         except Exception as e:
             logger.warning(f"Failed to load patterns: {e}")
             self._create_default_patterns()
+
+    def _ingest_from_file(self, inc_path: Path) -> None:
+        try:
+            with inc_path.open('r', encoding='utf-8') as fh:
+                data = json.load(fh)
+            raw = data.get('patterns', data)
+            self._ingest_patterns(raw)
+            logger.info(f"Included {inc_path}")
+        except Exception as exc:
+            logger.warning(f"Failed to include patterns from {inc_path}: {exc}")
+
+    def _ingest_patterns(self, raw_patterns: Any) -> None:
+        for pattern_data in (raw_patterns or []):
+            try:
+                # Skip disabled
+                if isinstance(pattern_data, dict) and pattern_data.get('enabled') is False:
+                    continue
+                # Provide defaults for optional fields
+                if isinstance(pattern_data, dict):
+                    pattern_data.setdefault('name', pattern_data.get('description', ""))
+                    pattern_data.setdefault('enabled', True)
+                    pattern_data.setdefault('tags', [])
+                pattern = PatternTemplate(**pattern_data)
+                self.patterns.append(pattern)
+            except Exception as exc:
+                logger.warning(f"Skipping invalid pattern entry {pattern_data}: {exc}")
     
     def _create_default_patterns(self):
         """Create default pattern templates."""
@@ -216,6 +305,8 @@ class PatternResponder:
     
     def _pattern_matches(self, pattern: PatternTemplate, layout: str) -> bool:
         """Check if a pattern matches the current board layout."""
+        if not pattern.enabled:
+            return False
         # Simple exact match for now - can be enhanced with fuzzy matching
         return pattern.situation == layout
     
