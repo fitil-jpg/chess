@@ -12,6 +12,24 @@ services:
       - ./logs:/logs
     command: ["python", "-u", "arena.py"]
 
+  tournament:
+    build:
+      context: .
+      dockerfile: Dockerfile.match
+    image: chess-bots:tournament
+    environment:
+      - STOCKFISH_PATH=stockfish
+    volumes:
+      - ./output:/output
+      - ./logs:/logs
+    command: [
+      "python", "-u", "scripts/tournament.py",
+      "--mode", "rr",
+      "--bo", "3",
+      "--clock", "3|0",
+      "--tiebreaks", "off"
+    ]
+
   web:
     build:
       context: .
