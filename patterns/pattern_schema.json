@@ -1,0 +1,195 @@
+{
+  "version": "2.0",
+  "description": "Enhanced pattern storage schema with detailed piece information",
+  "schema": {
+    "pattern_catalog": {
+      "version": "string",
+      "created": "datetime",
+      "updated": "datetime",
+      "count": "integer",
+      "patterns": "array"
+    },
+    "pattern": {
+      "pattern_id": "string",
+      "fen": "string",
+      "move": "string",
+      "pattern_types": "array of strings",
+      "description": "string",
+      "influencing_pieces": "array of piece objects",
+      "evaluation": "evaluation object",
+      "metadata": "metadata object",
+      "exchange_sequence": "optional array of moves",
+      "pattern_strength": "float"
+    },
+    "piece_object": {
+      "square": "string (e.g., 'e4')",
+      "piece": "string (e.g., 'Queen', 'Knight')",
+      "color": "string ('white' or 'black')",
+      "relationship": "string (e.g., 'mover', 'target', 'attacker', 'defender', 'pinned', 'hanging', 'exchanger', 'exchanged', 'sacrificed', 'beneficiary', 'center_control', 'endgame_piece', 'threatened')",
+      "value": "optional integer (piece value)",
+      "mobility": "optional integer (number of legal moves)",
+      "threats": "optional array of squares this piece threatens",
+      "defends": "optional array of squares this piece defends"
+    },
+    "evaluation_object": {
+      "before": {
+        "total": "integer",
+        "material": "integer",
+        "positional": "integer",
+        "tactical": "integer",
+        "king_safety": "integer"
+      },
+      "after": {
+        "total": "integer",
+        "material": "integer",
+        "positional": "integer",
+        "tactical": "integer",
+        "king_safety": "integer"
+      },
+      "change": "integer",
+      "confidence": "float (0.0 to 1.0)"
+    },
+    "metadata_object": {
+      "pattern_id": "string",
+      "is_custom": "boolean",
+      "added_at": "datetime",
+      "imported_at": "optional datetime",
+      "fullmove_number": "integer",
+      "turn": "string ('white' or 'black')",
+      "is_capture": "boolean",
+      "is_check": "boolean",
+      "is_checkmate": "boolean",
+      "is_stalemate": "boolean",
+      "participating_pieces_count": "integer",
+      "pattern_strength": "float",
+      "difficulty_level": "string ('beginner', 'intermediate', 'advanced', 'expert')",
+      "tags": "array of strings",
+      "source": "string (e.g., 'detected', 'manual', 'imported')",
+      "game_context": {
+        "opening": "string",
+        "phase": "string ('opening', 'middlegame', 'endgame')",
+        "time_control": "string",
+        "rating_range": "string"
+      }
+    },
+    "exchange_sequence": {
+      "moves": "array of strings (SAN notation)",
+      "total_ply": "integer",
+      "material_balance": "integer",
+      "positional_advantage": "string ('white', 'black', 'equal')",
+      "tactical_complexity": "integer (1-10)"
+    }
+  },
+  "example_pattern": {
+    "pattern_id": "fork_e4_nf6_001",
+    "fen": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 2 3",
+    "move": "Nf6",
+    "pattern_types": ["fork", "tactical_moment"],
+    "description": "Knight fork: attacks Queen and Rook",
+    "influencing_pieces": [
+      {
+        "square": "f6",
+        "piece": "Knight",
+        "color": "black",
+        "relationship": "attacker",
+        "value": 3,
+        "mobility": 8,
+        "threats": ["d5", "e4", "g4", "h5"],
+        "defends": ["e5", "g5"]
+      },
+      {
+        "square": "d1",
+        "piece": "Queen",
+        "color": "white",
+        "relationship": "target",
+        "value": 9,
+        "mobility": 21,
+        "threats": ["d5", "d6", "d7", "d8"],
+        "defends": ["e2", "f3", "g4", "h5"]
+      },
+      {
+        "square": "a1",
+        "piece": "Rook",
+        "color": "white",
+        "relationship": "target",
+        "value": 5,
+        "mobility": 14,
+        "threats": ["a2", "a3", "a4", "a5", "a6", "a7", "a8"],
+        "defends": ["a2", "a3", "a4", "a5", "a6", "a7", "a8"]
+      }
+    ],
+    "evaluation": {
+      "before": {
+        "total": 0,
+        "material": 0,
+        "positional": 0,
+        "tactical": 0,
+        "king_safety": 0
+      },
+      "after": {
+        "total": 300,
+        "material": 0,
+        "positional": 100,
+        "tactical": 200,
+        "king_safety": 0
+      },
+      "change": 300,
+      "confidence": 0.95
+    },
+    "metadata": {
+      "pattern_id": "fork_e4_nf6_001",
+      "is_custom": false,
+      "added_at": "2025-01-27T10:30:00.000Z",
+      "fullmove_number": 3,
+      "turn": "black",
+      "is_capture": false,
+      "is_check": false,
+      "is_checkmate": false,
+      "is_stalemate": false,
+      "participating_pieces_count": 3,
+      "pattern_strength": 8.5,
+      "difficulty_level": "intermediate",
+      "tags": ["fork", "tactical", "knight", "opening"],
+      "source": "detected",
+      "game_context": {
+        "opening": "Sicilian Defense",
+        "phase": "opening",
+        "time_control": "blitz",
+        "rating_range": "1200-1800"
+      }
+    },
+    "exchange_sequence": {
+      "moves": ["Nf6", "Qxd8+", "Kxd8"],
+      "total_ply": 3,
+      "material_balance": 0,
+      "positional_advantage": "black",
+      "tactical_complexity": 6
+    }
+  },
+  "pattern_types": {
+    "tactical_moment": "Significant evaluation change",
+    "fork": "Piece attacks multiple enemy pieces",
+    "pin": "Piece is pinned to king or valuable piece",
+    "hanging_piece": "Piece is undefended and under attack",
+    "critical_decision": "Position with multiple alternatives",
+    "opening_trick": "Unusual opening move",
+    "endgame_technique": "Endgame-specific pattern",
+    "sacrifice": "Piece sacrifice for positional/tactical gain",
+    "exchange": "Predicted exchange sequence (2-3 moves)"
+  },
+  "piece_relationships": {
+    "mover": "Piece that made the move",
+    "target": "Piece being attacked or targeted",
+    "attacker": "Piece doing the attacking",
+    "defender": "Piece defending a square or piece",
+    "pinned": "Piece that is pinned",
+    "hanging": "Piece that is undefended",
+    "exchanger": "Piece involved in exchange",
+    "exchanged": "Piece being exchanged",
+    "sacrificed": "Piece being sacrificed",
+    "beneficiary": "Piece benefiting from sacrifice",
+    "center_control": "Piece controlling center squares",
+    "endgame_piece": "Important piece in endgame",
+    "threatened": "Piece under threat"
+  }
+}

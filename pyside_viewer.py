@@ -38,6 +38,7 @@ from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
 from ui.mini_board import MiniBoard
 from chess_ai.bot_agent import make_agent
+from chess_ai.enhanced_dynamic_bot import EnhancedDynamicBot
 from chess_ai.threat_map import ThreatMap
 from utils.load_runs import load_runs
 from utils.module_usage import aggregate_module_usage
@@ -53,6 +54,7 @@ from chess_ai.elo_sync_manager import ELOSyncManager
 from chess_ai.bsp_engine import create_chess_bsp_engine
 from chess_ai.wfc_engine import create_chess_wfc_engine
 from core.pattern_loader import PatternResponder
+from ui.pattern_display import PatternDisplayWidget
 
 # Set Stockfish path if available
 import os
@@ -212,7 +214,11 @@ class ChessViewer(QMainWindow):
         # Агенти
         try:
             self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
-            self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
+            # Use EnhancedDynamicBot for black (against Stockfish)
+            if BLACK_AGENT == "DynamicBot":
+                self.black_agent = EnhancedDynamicBot(chess.BLACK)
+            else:
+                self.black_agent = make_agent(BLACK_AGENT, chess.BLACK)
         except Exception as exc:
             ErrorHandler.handle_agent_error(exc, f"{WHITE_AGENT}/{BLACK_AGENT}")
             self._show_critical_error(
@@ -299,6 +305,8 @@ class ChessViewer(QMainWindow):
         btn_row = QHBoxLayout()
         self.btn_auto  = QPushButton("▶ Авто")
         self.btn_pause = QPushButton("⏸ Пауза")
+        self.btn_reset = QPushButton("🔄 Reset")
+        self.btn_reset.setToolTip("Reset game to starting position")
         self.btn_auto_play = QPushButton("🎮 10 Игр")
         self.btn_auto_play.setToolTip("Автоматически сыграть 10 игр подряд")
         self.btn_copy_san = QPushButton("⧉ SAN")
@@ -307,7 +315,7 @@ class ChessViewer(QMainWindow):
         self.btn_refresh_elo = QPushButton("🔄 ELO")
         self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_reset, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
         
@@ -354,6 +362,7 @@ class ChessViewer(QMainWindow):
         # Зв’язки
         self.btn_auto.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
+        self.btn_reset.clicked.connect(self.reset_game)
         self.btn_auto_play.clicked.connect(self.start_auto_play)
         self.btn_copy_san.clicked.connect(self.copy_san)
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
@@ -541,6 +550,10 @@ class ChessViewer(QMainWindow):
         
         overall_layout.addStretch()
         self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
+        
+        # Таб 7: Pattern Detection
+        self.pattern_display = PatternDisplayWidget()
+        self.tab_widget.addTab(self.pattern_display, "🎯 Patterns")
 
         # Додаємо таби до основного лейауту (вже створені вище)
 
@@ -891,6 +904,40 @@ class ChessViewer(QMainWindow):
         self.auto_timer.stop()
         self.auto_running = False
         
+    def reset_game(self):
+        """Reset game to starting position"""
+        # Stop auto play if running
+        if self.auto_running:
+            self.pause_auto()
+        
+        # Reset board to starting position
+        self.board = chess.Board()
+        self.fen_history = [self.board.fen()]
+        
+        # Clear patterns
+        if hasattr(self, 'pattern_display'):
+            self.pattern_display._clear_patterns()
+        
+        # Clear usage data
+        self.usage_w.clear()
+        self.usage_b.clear()
+        self.timeline_w.clear()
+        self.timeline_b.clear()
+        
+        # Clear moves list
+        self.moves_list.clear()
+        
+        # Reset UI
+        self._init_pieces()
+        self._refresh_board()
+        self._refresh_mini_board_visuals()
+        self._update_status()
+        
+        # Update title
+        self._update_title_with_elo()
+        
+        logger.info("Game reset to starting position")
+        
     def start_auto_play(self):
         """Начать автоматическое воспроизведение 10 игр подряд"""
         self.auto_play_mode = True
@@ -1130,6 +1177,26 @@ class ChessViewer(QMainWindow):
             # Застосовуємо хід одразу
             self.board.push(move)
             self.fen_history.append(self.board.fen())
+
+            # Detect patterns for this move
+            try:
+                # Get evaluation before and after the move
+                evaluation_before = {"total": 0}  # Placeholder - would need actual evaluation
+                evaluation_after = {"total": 0}   # Placeholder - would need actual evaluation
+                
+                # Get bot analysis if available
+                bot_analysis = {}
+                if hasattr(agent, 'get_last_reason'):
+                    bot_analysis['reason'] = agent.get_last_reason()
+                if hasattr(agent, 'get_last_features'):
+                    bot_analysis['features'] = agent.get_last_features()
+                
+                # Detect patterns
+                self.pattern_display.detect_patterns(
+                    self.board, move, evaluation_before, evaluation_after, bot_analysis
+                )
+            except Exception as e:
+                logger.warning(f"Pattern detection failed: {e}")
 
             # Оновлюємо дошку
             self._init_pieces()
