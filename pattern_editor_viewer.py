@@ -1053,6 +1053,11 @@ class PatternEditorViewer(QMainWindow):
         self.setWindowTitle("Chess Pattern Editor/Viewer")
         self.resize(1400, 900)
         
+        # Chess board state
+        self.board = chess.Board()
+        self.piece_objects = {}
+        # Shared drawer manager for overlays/focus
+        self.drawer_manager = DrawerManager()
         # Initialize components
         if ENHANCED_PATTERNS_AVAILABLE:
             self.pattern_storage = EnhancedPatternStorage()
@@ -1319,6 +1324,16 @@ class PatternEditorViewer(QMainWindow):
         if self.game_worker and self.game_worker.isRunning():
             return
         
+    def _init_board_cells(self):
+        """Initialize chess board cells"""
+        for row in range(8):
+            for col in range(8):
+                cell = Cell(row, col, self.drawer_manager)
+                self.grid.addWidget(cell, row, col)
+                self.cell_grid[row][col] = cell
+                
+    def _start_pattern_detection(self):
+        """Start pattern detection in games"""
         # Update UI
         self.btn_start.setEnabled(False)
         self.btn_pause.setEnabled(True)
@@ -1415,6 +1430,65 @@ class PatternEditorViewer(QMainWindow):
             self.btn_delete_pattern.setEnabled(True)
     
     def _display_pattern(self, pattern: ChessPattern):
+        """Display pattern on board and show info"""
+        # Load FEN on board
+        try:
+            self.board = chess.Board(pattern.fen)
+            self._update_board()
+        except Exception as e:
+            logger.error(f"Failed to load pattern FEN: {e}")
+            
+        # Apply pattern focus overlays using DrawerManager
+        try:
+            focus = []
+            if isinstance(getattr(pattern, 'metadata', None), dict):
+                focus = pattern.metadata.get('focus_squares', [])
+            # Use shared DrawerManager to apply focus overlays
+            if hasattr(self, 'drawer_manager') and self.drawer_manager is not None:
+                self.drawer_manager.set_pattern_focus(focus)
+                self._update_board()
+        except Exception as exc:
+            logger.warning(f"Failed to apply pattern focus overlays: {exc}")
+
+        # Display pattern info
+        info_text = f"Pattern: {pattern.move}\n\n"
+        info_text += f"Types: {', '.join(pattern.pattern_types)}\n\n"
+        info_text += f"Description: {pattern.description}\n\n"
+        info_text += f"Evaluation Change: {pattern.evaluation.get('change', 0):.1f}\n\n"
+        info_text += f"Influencing Pieces:\n"
+        for piece_info in pattern.influencing_pieces:
+            info_text += f"  - {piece_info['color']} {piece_info['piece']} at {piece_info['square']} ({piece_info['relationship']})\n"
+        
+        if pattern.metadata:
+            info_text += f"\nMetadata:\n"
+            for key, value in pattern.metadata.items():
+                info_text += f"  {key}: {value}\n"
+        
+        self.pattern_info.setPlainText(info_text)
+        
+    def _update_board(self):
+        """Update board display"""
+        for row in range(8):
+            for col in range(8):
+                square = chess.square(col, 7 - row)
+                piece = self.board.piece_at(square)
+                cell = self.cell_grid[row][col]
+                cell.set_piece(piece.symbol() if piece else None)
+                cell.update()
+                
+    def _save_detected_patterns(self):
+        """Save detected patterns to library"""
+        # Get all detected patterns
+        detected_patterns = []
+        for i in range(self.detected_list.count()):
+            item = self.detected_list.item(i)
+            pattern = item.data(Qt.UserRole)
+            if pattern:
+                detected_patterns.append(pattern)
+        
+        if not detected_patterns:
+            QMessageBox.information(self, "No Patterns", "No patterns to save.")
+            return
         """Display pattern details"""
         # Update board
         board = chess.Board(pattern.position_fen)

@@ -36,6 +36,9 @@ from core.pst_trainer import update_from_board, update_from_history
 from core.piece import piece_class_factory
 from ui.cell import Cell
 from ui.drawer_manager import DrawerManager
+from evaluation import evaluate
+from chess_ai.pattern_detector import PatternDetector, ChessPattern, PatternType
+from chess_ai.pattern_storage import PatternCatalog
 from ui.mini_board import MiniBoard
 from chess_ai.bot_agent import make_agent
 from chess_ai.threat_map import ThreatMap
@@ -308,6 +311,8 @@ class ChessViewer(QMainWindow):
         btn_row = QHBoxLayout()
         self.btn_auto  = QPushButton("▶ Авто")
         self.btn_pause = QPushButton("⏸ Пауза")
+        self.btn_reset = QPushButton("⟲ Ресет")
+        self.btn_newgame = QPushButton("🆕 Новая игра")
         self.btn_auto_play = QPushButton("🎮 10 Игр")
         self.btn_auto_play.setToolTip("Автоматически сыграть 10 игр подряд")
         self.btn_copy_san = QPushButton("⧉ SAN")
@@ -316,7 +321,7 @@ class ChessViewer(QMainWindow):
         self.btn_refresh_elo = QPushButton("🔄 ELO")
         self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         
         # Добавить новые кнопки управления игрой
@@ -372,6 +377,8 @@ class ChessViewer(QMainWindow):
         # Зв’язки
         self.btn_auto.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
+        self.btn_reset.clicked.connect(self.reset_game)
+        self.btn_newgame.clicked.connect(self.start_new_game)
         self.btn_auto_play.clicked.connect(self.start_auto_play)
         self.btn_copy_san.clicked.connect(self.copy_san)
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
@@ -500,6 +507,71 @@ class ChessViewer(QMainWindow):
         
         moves_layout.addStretch()
         self.tab_widget.addTab(self.moves_tab, "♟️ Ходи")
+
+        # Таб 4: Patterns (детектор паттернов)
+        self.patterns_tab = QWidget()
+        patterns_layout = QVBoxLayout(self.patterns_tab)
+
+        # Фильтры
+        filters_row = QHBoxLayout()
+        self.cb_dynamic_only = QCheckBox("Только DynamicBot")
+        self.cb_auto_focus = QCheckBox("Автофокус")
+        self.cb_auto_focus.setChecked(True)
+        filters_row.addWidget(self.cb_dynamic_only)
+        filters_row.addWidget(self.cb_auto_focus)
+        filters_row.addStretch()
+        patterns_layout.addLayout(filters_row)
+
+        # Типы паттернов
+        types_row = QHBoxLayout()
+        self.pattern_type_checkboxes = {}
+        type_defs = [
+            ("Tactical", PatternType.TACTICAL_MOMENT.value),
+            ("Fork", PatternType.FORK.value),
+            ("Pin", PatternType.PIN.value),
+            ("Hanging", PatternType.HANGING_PIECE.value),
+            ("Opening", PatternType.OPENING_TRICK.value),
+            ("Endgame", PatternType.ENDGAME_TECHNIQUE.value),
+            ("Sacrifice", PatternType.SACRIFICE.value),
+            ("Critical", PatternType.CRITICAL_DECISION.value),
+            ("Exchange", PatternType.EXCHANGE.value),
+        ]
+        for label, key in type_defs:
+            cb = QCheckBox(label)
+            cb.setChecked(True)
+            cb.stateChanged.connect(self._on_pattern_filters_changed)
+            self.pattern_type_checkboxes[key] = cb
+            types_row.addWidget(cb)
+        types_row.addStretch()
+        patterns_layout.addLayout(types_row)
+
+        # Список паттернов
+        self.patterns_list = QListWidget()
+        self.patterns_list.itemClicked.connect(self._on_pattern_item_clicked)
+        patterns_layout.addWidget(self.patterns_list)
+
+        # Инфо по выбранному паттерну
+        self.pattern_info_label = QTextEdit()
+        self.pattern_info_label.setReadOnly(True)
+        self.pattern_info_label.setMinimumHeight(100)
+        patterns_layout.addWidget(self.pattern_info_label)
+
+        # Кнопки управления
+        pat_btns = QHBoxLayout()
+        self.btn_patterns_clear = QPushButton("Очистить")
+        self.btn_patterns_save = QPushButton("Сохранить в библиотеку")
+        self.btn_patterns_clear.clicked.connect(self._clear_detected_patterns)
+        self.btn_patterns_save.clicked.connect(self._save_detected_patterns)
+        pat_btns.addWidget(self.btn_patterns_clear)
+        pat_btns.addWidget(self.btn_patterns_save)
+        pat_btns.addStretch()
+        patterns_layout.addLayout(pat_btns)
+
+        self.tab_widget.addTab(self.patterns_tab, "📐 Patterns")
+
+        # Инициализация детектора паттернов
+        self.pattern_detector = PatternDetector()
+        self.session_patterns: list[ChessPattern] = []
 
         # Таб 5: Heatmaps
         self.heatmap_tab = QWidget()
@@ -1361,6 +1433,51 @@ class ChessViewer(QMainWindow):
             # Оновлюємо статус
             self._update_status(reason, feats)
 
+            # Паттерн-детектор: детектировать и показать паттерны для хода
+            try:
+                # Build board state before the just-applied move
+                b_before = self.board.copy()
+                if b_before.move_stack:
+                    try:
+                        b_before.pop()
+                    except Exception:
+                        pass
+                eval_before, _ = evaluate(b_before)
+            except Exception:
+                eval_before = None
+            try:
+                eval_after, _ = evaluate(self.board)
+            except Exception:
+                eval_after = None
+
+            eval_before_dict = {"total": eval_before if isinstance(eval_before, (int, float)) else 0}
+            eval_after_dict = {"total": eval_after if isinstance(eval_after, (int, float)) else 0}
+            try:
+                patterns = self.pattern_detector.detect_patterns(
+                    self.board, move, eval_before_dict, eval_after_dict,
+                    bot_analysis={"alternatives_count": 6} if "alternatives" in str(reason).lower() else {}
+                )
+            except Exception as exc:
+                patterns = []
+                logger.debug(f"Pattern detection failed: {exc}")
+
+            if patterns:
+                for p in patterns:
+                    # Фильтр по DynamicBot если включено
+                    if self.cb_dynamic_only.isChecked():
+                        if agent.__class__.__name__ != "DynamicBot":
+                            continue
+                    self.session_patterns.append(p)
+                    # Автофокус на релевантные клетки
+                    if self.cb_auto_focus.isChecked():
+                        focus = p.metadata.get("focus_squares", []) if isinstance(p.metadata, dict) else []
+                        try:
+                            self.drawer_manager.set_pattern_focus(focus)
+                            self._refresh_board()
+                        except Exception:
+                            pass
+                self._update_patterns_list_widget()
+
             # Консольний вивід
             if self.debug_verbose.isChecked():
                 print(f"[{WHITE_AGENT if mover_color==chess.WHITE else BLACK_AGENT}] {san} | reason={reason} | key={key} | feats={feats}")
@@ -1425,6 +1542,74 @@ class ChessViewer(QMainWindow):
             
         except Exception as exc:
             logger.warning(f"Failed to load heatmap for piece: {exc}")
+        
+    # ---------- Patterns tab helpers ----------
+    def _update_patterns_list_widget(self) -> None:
+        try:
+            self.patterns_list.clear()
+            # Apply type filters
+            allowed = {k for k, cb in self.pattern_type_checkboxes.items() if cb.isChecked()}
+            for p in self.session_patterns:
+                if allowed and not any(pt in allowed for pt in p.pattern_types):
+                    continue
+                item_text = f"{p.move} — {', '.join(p.pattern_types[:2])}"
+                self.patterns_list.addItem(item_text)
+                item = self.patterns_list.item(self.patterns_list.count() - 1)
+                item.setData(Qt.UserRole, p)
+        except Exception as exc:
+            logger.debug(f"_update_patterns_list_widget failed: {exc}")
+
+    def _on_pattern_filters_changed(self):
+        self._update_patterns_list_widget()
+
+    def _on_pattern_item_clicked(self, item):
+        try:
+            p: ChessPattern | None = item.data(Qt.UserRole)
+            if not p:
+                return
+            # Focus squares
+            if self.cb_auto_focus.isChecked():
+                try:
+                    focus = p.metadata.get("focus_squares", []) if isinstance(p.metadata, dict) else []
+                    self.drawer_manager.set_pattern_focus(focus)
+                except Exception:
+                    pass
+            # Show info
+            text = [
+                f"Move: {p.move}",
+                f"Types: {', '.join(p.pattern_types)}",
+                f"Desc: {p.description}",
+                f"Δeval: {p.evaluation.get('change', 0):.1f}",
+            ]
+            if isinstance(p.metadata, dict):
+                seq = p.metadata.get('exchange_sequence')
+                net = p.metadata.get('exchange_net')
+                if seq:
+                    text.append(f"Exchange: {' → '.join(seq)} (net {net})")
+            self.pattern_info_label.setPlainText("\n".join(text))
+            # Redraw
+            self._refresh_board()
+        except Exception as exc:
+            logger.debug(f"_on_pattern_item_clicked failed: {exc}")
+
+    def _clear_detected_patterns(self):
+        self.session_patterns.clear()
+        try:
+            self.drawer_manager.clear_pattern_focus()
+        except Exception:
+            pass
+        self._update_patterns_list_widget()
+        self._refresh_board()
+
+    def _save_detected_patterns(self):
+        try:
+            catalog = PatternCatalog()
+            catalog.load_patterns()
+            catalog.add_patterns(self.session_patterns)
+            catalog.save_patterns()
+            QMessageBox.information(self, "Patterns", f"Сохранено {len(self.session_patterns)} паттернов в библиотеку.")
+        except Exception as exc:
+            QMessageBox.warning(self, "Patterns", f"Не удалось сохранить паттерны: {exc}")
                 
     def _handle_auto_play_game_over(self):
         """Обработка завершения игры в режиме автоматического воспроизведения"""
@@ -1496,6 +1681,63 @@ class ChessViewer(QMainWindow):
         # Автоматически прокручиваем вниз
         scrollbar = self.console_output.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
+
+    # ---------- Новые контролы: Reset / New Game ----------
+    def reset_game(self) -> None:
+        """Полный сброс: остановить автоигру, очистить оверлеи и начать с текущей позиции заново."""
+        try:
+            self.pause_auto()
+            # Очистить фокус паттернов
+            try:
+                self.drawer_manager.clear_pattern_focus()
+            except Exception:
+                pass
+            # Пересобрать объекты фигур и перерисовать
+            self._init_pieces()
+            self._refresh_board()
+            self._update_status("-", None)
+            self.console_output.clear()
+            self._append_to_console("↺ Reset complete. You can start again.")
+            # Clear patterns session
+            try:
+                self.session_patterns.clear()
+                self._update_patterns_list_widget()
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.error(f"Reset failed: {exc}")
+
+    def start_new_game(self) -> None:
+        """Начать новую игру с начальной позиции. Остановить авто, очистить логи."""
+        try:
+            self.pause_auto()
+            self.board = chess.Board()
+            self.piece_objects = {}
+            self.usage_w.clear()
+            self.usage_b.clear()
+            self.timeline_w.clear()
+            self.timeline_b.clear()
+            self.timeline.set_data(self.timeline_w, self.timeline_b)
+            self._update_usage_charts()
+            self.moves_list.clear()
+            self.fen_history.clear()
+            try:
+                self.drawer_manager.clear_pattern_focus()
+            except Exception:
+                pass
+            self._init_pieces()
+            self._refresh_board()
+            self._update_status("-", None)
+            self.console_output.clear()
+            self._append_to_console("🆕 New game started.")
+            # Clear patterns session
+            try:
+                self.session_patterns.clear()
+                self._update_patterns_list_widget()
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.error(f"Start new game failed: {exc}")
 
     # ---------- Копі-кнопки ----------
 

@@ -131,6 +131,26 @@ class Cell(QLabel):
                 painter.setOpacity(0.4)
                 painter.drawRect(0, 0, self.width(), self.height())
                 painter.setOpacity(1.0)
+            elif overlay_type == "pattern_dim":
+                # Dim out irrelevant squares to emphasize pattern focus
+                painter.setBrush(QColor(0, 0, 0))
+                painter.setPen(Qt.NoPen)
+                painter.setOpacity(0.35)
+                painter.drawRect(0, 0, self.width(), self.height())
+                painter.setOpacity(1.0)
+            elif overlay_type == "pattern_focus":
+                # Subtle gold border to highlight involved squares
+                pen = QPen(QColor("#DAA520"))  # goldenrod
+                pen.setWidth(max(2, int(2 * self.scale)))
+                painter.setPen(pen)
+                painter.setBrush(Qt.NoBrush)
+                inset = pen.width() // 2
+                painter.drawRect(
+                    inset,
+                    inset,
+                    self.width() - inset * 2,
+                    self.height() - inset * 2,
+                )
 
         if self._border_highlight:
             pen = QPen(QColor("#ff8800"))
