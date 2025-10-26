@@ -411,7 +411,7 @@ python pyside_viewer.py
 
 The viewer now shows:
 1. **Main board**: Standard chess board with pieces
-2. **Heatmap tab**: 
+2. **Heatmap tab**:
    - Mini board with all gradient overlays
    - Real-time evaluation highlighting
    - Guardrails statistics

@@ -131,14 +131,14 @@ class ChessViewer(QMainWindow):
         super().__init__()
         self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
         self.resize(980, 620)  # більше місця праворуч
-        
+
         # Import timing configuration
         from core.timing_config import timing_manager
         self.timing_manager = timing_manager
-        
+
         # Мінімальна затримка між застосуванням ходів (мс)
         self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
-        
+
         # Create central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -176,14 +176,14 @@ class ChessViewer(QMainWindow):
         self.drawer_manager = DrawerManager()
         self.heatmap_set_combo = None
         self.heatmap_piece_combo = None
-        
+
         # Timing configuration
         self.timing_config = get_timing_config()
-        
+
         # WFC and BSP engines
         self.wfc_engine = create_chess_wfc_engine()
         self.bsp_engine = create_chess_bsp_engine()
-        
+
         # Current move object being evaluated
         self.current_move_obj: Optional[MoveObject] = None
 
@@ -205,10 +205,10 @@ class ChessViewer(QMainWindow):
 
         # ELO ratings manager
         self.elo_manager = ELOSyncManager()
-        
+
         # Register bots with initial ELO if not already registered
         self._ensure_bots_registered()
-        
+
         # Агенти
         try:
             self.white_agent = make_agent(WHITE_AGENT, chess.WHITE)
@@ -276,7 +276,7 @@ class ChessViewer(QMainWindow):
         except Exception:
             # Fallback height if metrics unavailable
             self.console_output.setFixedHeight(140)
-        
+
         # Ensure console is visible and properly sized
         self.console_output.setVisible(True)
 
@@ -310,7 +310,7 @@ class ChessViewer(QMainWindow):
         for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
         right_col.addLayout(btn_row)
-        
+
         # Timing controls
         timing_row = QHBoxLayout()
         timing_row.addWidget(QLabel("Move Time:"))
@@ -320,7 +320,7 @@ class ChessViewer(QMainWindow):
         self.move_time_spinbox.setValue(self.timing_manager.get_move_time_ms())
         self.move_time_spinbox.valueChanged.connect(self._on_move_time_changed)
         timing_row.addWidget(self.move_time_spinbox)
-        
+
         timing_row.addWidget(QLabel("Viz Delay:"))
         self.viz_delay_spinbox = QSpinBox()
         self.viz_delay_spinbox.setRange(10, 500)
@@ -328,14 +328,14 @@ class ChessViewer(QMainWindow):
         self.viz_delay_spinbox.setValue(self.timing_manager.get_visualization_delay_ms())
         self.viz_delay_spinbox.valueChanged.connect(self._on_viz_delay_changed)
         timing_row.addWidget(self.viz_delay_spinbox)
-        
+
         self.timing_profile_combo = QComboBox()
         self.timing_profile_combo.addItems(["fast", "normal", "slow", "debug"])
         self.timing_profile_combo.setCurrentText("normal")
         self.timing_profile_combo.currentTextChanged.connect(self._on_timing_profile_changed)
         timing_row.addWidget(QLabel("Profile:"))
         timing_row.addWidget(self.timing_profile_combo)
-        
+
         timing_row.addStretch()
         right_col.addLayout(timing_row)
 
@@ -386,7 +386,7 @@ class ChessViewer(QMainWindow):
         ):
             lab.setWordWrap(True)
             status_layout.addWidget(lab)
-        
+
         status_layout.addStretch()
         self.tab_widget.addTab(self.status_tab, "📊 Статуси")
 
@@ -403,7 +403,7 @@ class ChessViewer(QMainWindow):
         # Таб 2: Usage та Timeline
         self.usage_tab = QWidget()
         usage_layout = QVBoxLayout(self.usage_tab)
-        
+
         usage_layout.addWidget(QLabel("Dynamic usage (W):"))
         self.chart_usage_w = OverallUsageChart()
         usage_layout.addWidget(self.chart_usage_w)
@@ -417,40 +417,40 @@ class ChessViewer(QMainWindow):
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
         usage_layout.addWidget(self.timeline)
-        
+
         # Method Status Widget
         usage_layout.addWidget(QLabel("Method Status Pipeline:"))
         self.method_status_widget = MethodStatusWidget()
         usage_layout.addWidget(self.method_status_widget)
-        
+
         usage_layout.addStretch()
         self.tab_widget.addTab(self.usage_tab, "📈 Usage")
 
         # Таб 3: Ходи
         self.moves_tab = QWidget()
         moves_layout = QVBoxLayout(self.moves_tab)
-        
+
         moves_layout.addWidget(QLabel("Moves:"))
         self.moves_list = QListWidget()
         moves_layout.addWidget(self.moves_list)
-        
+
         moves_layout.addStretch()
         self.tab_widget.addTab(self.moves_tab, "♟️ Ходи")
 
         # Таб 4: Heatmaps
         self.heatmap_tab = QWidget()
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
-        
+
         # Enhanced heatmap widget
         from ui.enhanced_heatmap_widget import EnhancedHeatmapWidget
         self.enhanced_heatmap_widget = EnhancedHeatmapWidget()
         self.enhanced_heatmap_widget.heatmap_changed.connect(self._on_enhanced_heatmap_changed)
         heatmap_layout.addWidget(self.enhanced_heatmap_widget)
-        
+
         # Real-time visualization integrator
         from ui.real_time_evaluator import RealTimeVisualizationIntegrator
         self.real_time_integrator = RealTimeVisualizationIntegrator(self)
-        
+
         # Heatmap statistics
         self.heatmap_stats_label = QLabel()
         self.heatmap_stats_label.setWordWrap(True)
@@ -464,11 +464,11 @@ class ChessViewer(QMainWindow):
             }
         """)
         heatmap_layout.addWidget(self.heatmap_stats_label)
-        
+
         # Mini Board Widget
         self.mini_board_widget = MiniBoardWidget()
         heatmap_layout.addWidget(self.mini_board_widget)
-        
+
         # Heatmap selection panel
         # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
         heatmaps_tab = QWidget()
@@ -509,7 +509,7 @@ class ChessViewer(QMainWindow):
             btn_gen_heatmaps.setStyleSheet("QPushButton { background-color: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; }")
             btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
             heatmap_layout.addWidget(btn_gen_heatmaps)
-        
+
         # Mini preview board for the currently considered piece/heatmap
         self.mini_board = MiniBoard(scale=0.35)
         heatmap_layout.addWidget(QLabel("Mini heatmap board (active piece pattern):"))
@@ -524,11 +524,11 @@ class ChessViewer(QMainWindow):
         from ui.bot_usage_tracker import BotUsageTracker
         self.bot_usage_tracker = BotUsageTracker()
         self.tab_widget.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
-        
+
         # Таб 6: Загальна статистика
         self.overall_tab = QWidget()
         overall_layout = QVBoxLayout(self.overall_tab)
-        
+
         # Загальна діаграма використання модулів
         overall_layout.addWidget(QLabel("Overall module usage:"))
         self.overall_chart = OverallUsageChart()
@@ -538,7 +538,7 @@ class ChessViewer(QMainWindow):
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
         overall_layout.addWidget(chart_scroll)
-        
+
         overall_layout.addStretch()
         self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
 
@@ -559,7 +559,7 @@ class ChessViewer(QMainWindow):
         self.auto_timer.timeout.connect(self.auto_step)
         self.auto_running = False
         self.move_in_progress = False
-        
+
         # Настройки автоматического воспроизведения
         self.auto_play_games = 10  # Количество игр для автоматического воспроизведения
         self.current_auto_game = 0
@@ -588,20 +588,20 @@ class ChessViewer(QMainWindow):
             self.drawer_manager.collect_overlays(self.piece_objects, self.board)
         self._refresh_board()
         self._update_status("-", None)
-        
+
         # Оновлюємо статистику хітмапів
         self._update_heatmap_stats()
         self._refresh_mini_board_visuals()
-        
+
         # Update enhanced heatmap widget
         if hasattr(self, 'enhanced_heatmap_widget'):
             self.enhanced_heatmap_widget.set_board(self.board)
             if hasattr(self.drawer_manager, 'heatmaps'):
                 self.enhanced_heatmap_widget.set_heatmap_data(self.drawer_manager.heatmaps)
-        
+
         # Refresh ELO ratings display
         self._refresh_elo_ratings()
-        
+
         # Ensure proper window sizing and scrolling
         self._configure_window()
 
@@ -611,13 +611,13 @@ class ChessViewer(QMainWindow):
         """Configure window sizing and ensure proper content display"""
         # Set minimum window size to ensure all content is visible
         self.setMinimumSize(1000, 700)
-        
+
         # Ensure the central widget can expand properly
         self.central_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        
+
         # Set window properties for better display on different platforms
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
-        
+
         # Ensure proper resizing behavior
         self.resize(1200, 800)
 
@@ -682,22 +682,22 @@ class ChessViewer(QMainWindow):
             # Get ELO ratings for both bots
             white_rating = self.elo_manager.get_bot_rating(WHITE_AGENT)
             black_rating = self.elo_manager.get_bot_rating(BLACK_AGENT)
-            
+
             # Format ELO display with additional info
             white_elo_text = ""
             black_elo_text = ""
-            
+
             if white_rating:
                 games_text = f" ({white_rating.games_played} games)" if white_rating.games_played > 0 else ""
                 white_elo_text = f" (ELO: {white_rating.elo:.0f}{games_text})"
             if black_rating:
                 games_text = f" ({black_rating.games_played} games)" if black_rating.games_played > 0 else ""
                 black_elo_text = f" (ELO: {black_rating.elo:.0f}{games_text})"
-            
+
             # Update title
             title_text = f"White: {WHITE_AGENT}{white_elo_text}    |    Black: {BLACK_AGENT}{black_elo_text}"
             self.title_label.setText(title_text)
-            
+
         except Exception as exc:
             logger.warning(f"Failed to load ELO ratings: {exc}")
             # Fallback to basic title without ELO
@@ -708,7 +708,7 @@ class ChessViewer(QMainWindow):
         try:
             piece_counts = {}
             total_heatmaps = 0
-            
+
             # Підрахунок хітмапів по фігурам
             for piece_name, heatmap_data in self.drawer_manager.heatmaps.items():
                 if isinstance(heatmap_data, list) and len(heatmap_data) > 0:
@@ -721,9 +721,9 @@ class ChessViewer(QMainWindow):
                         total_heatmaps += len(heatmap_data)
                 else:
                     piece_counts[piece_name] = 0
-            
+
             return piece_counts, total_heatmaps
-            
+
         except Exception as exc:
             logger.warning(f"Failed to count heatmaps: {exc}")
             return {}, 0
@@ -732,26 +732,26 @@ class ChessViewer(QMainWindow):
         """Оновити статистику хітмапів у вкладці."""
         try:
             piece_counts, total_heatmaps = self._count_heatmaps()
-            
+
             if total_heatmaps == 0:
                 stats_text = "🔥 <b>Heatmap Statistics</b><br>No heatmaps available"
             else:
                 stats_text = f"🔥 <b>Heatmap Statistics</b><br>"
                 stats_text += f"<b>Total heatmaps:</b> {total_heatmaps}<br>"
                 stats_text += f"<b>By piece type:</b><br>"
-                
+
                 for piece_name, count in sorted(piece_counts.items()):
                     if count > 0:
                         stats_text += f"  • {piece_name}: {count}<br>"
-                
+
                 # Додаємо інформацію про активний хітмап
                 if self.drawer_manager.active_heatmap_piece:
                     stats_text += f"<br><b>Active:</b> {self.drawer_manager.active_heatmap_piece}"
                 else:
                     stats_text += f"<br><b>Active:</b> None"
-            
+
             self.heatmap_stats_label.setText(stats_text)
-            
+
         except Exception as exc:
             logger.warning(f"Failed to update heatmap stats: {exc}")
             self.heatmap_stats_label.setText("🔥 <b>Heatmap Statistics</b><br>Error loading statistics")
@@ -763,11 +763,11 @@ class ChessViewer(QMainWindow):
             if not self.elo_manager.get_bot_rating(WHITE_AGENT):
                 self.elo_manager.register_bot(WHITE_AGENT, 1500.0)
                 logger.info(f"Registered {WHITE_AGENT} with initial ELO 1500")
-            
+
             if not self.elo_manager.get_bot_rating(BLACK_AGENT):
                 self.elo_manager.register_bot(BLACK_AGENT, 1500.0)
                 logger.info(f"Registered {BLACK_AGENT} with initial ELO 1500")
-                
+
         except Exception as exc:
             logger.warning(f"Failed to register bots: {exc}")
 
@@ -852,7 +852,7 @@ class ChessViewer(QMainWindow):
                         cell.update()
                     except Exception as exc:
                         logger.warning(f"Failed to update cell at row {row}, col {col}: {exc}")
-                        
+
             # Keep the mini-board in sync
             try:
                 self._refresh_mini_board_visuals()
@@ -890,7 +890,7 @@ class ChessViewer(QMainWindow):
     def pause_auto(self):
         self.auto_timer.stop()
         self.auto_running = False
-        
+
     def start_auto_play(self):
         """Начать автоматическое воспроизведение 10 игр подряд"""
         self.auto_play_mode = True
@@ -899,25 +899,25 @@ class ChessViewer(QMainWindow):
         self.btn_auto_play.setEnabled(False)
         self.btn_auto.setEnabled(False)
         self.btn_pause.setEnabled(True)
-        
+
         # Очищаем консоль и добавляем начальное сообщение
         self.console_output.clear()
         self._append_to_console("=== Starting Auto Play Mode ===")
         self._append_to_console(f"Playing {self.auto_play_games} games: {WHITE_AGENT} vs {BLACK_AGENT}")
         self._append_to_console("")
-        
+
         # Обновляем заголовок
         self.setWindowTitle(f"Chess Viewer — Auto Play Mode (Game 1/{self.auto_play_games})")
-        
+
         # Начинаем первую игру
         self._start_next_auto_game()
-        
+
     def _start_next_auto_game(self):
         """Начать следующую игру в режиме автоматического воспроизведения"""
         if self.current_auto_game >= self.auto_play_games:
             self._finish_auto_play()
             return
-            
+
         # Сбрасываем доску для новой игры
         self.board = chess.Board()
         self.piece_objects = {}
@@ -929,56 +929,56 @@ class ChessViewer(QMainWindow):
         self._update_usage_charts()
         self.moves_list.clear()
         self.fen_history.clear()
-        
+
         # Добавляем информацию о новой игре в консоль
         self._append_to_console(f"--- Starting Game {self.current_auto_game + 1} ---")
-        
+
         # Инициализируем фигуры
         self._init_pieces()
         self._refresh_board()
         self._update_status("-", None)
-        
+
         # Обновляем заголовок
         self.setWindowTitle(f"Chess Viewer — Auto Play Mode (Game {self.current_auto_game + 1}/{self.auto_play_games})")
-        
+
         # Начинаем автоматическую игру
         self.auto_running = True
         self.auto_timer.start()
         self.auto_step()
-        
+
     def _finish_auto_play(self):
         """Завершить автоматическое воспроизведение"""
         self.auto_play_mode = False
         self.auto_running = False
         self.auto_timer.stop()
-        
+
         # Восстанавливаем кнопки
         self.btn_auto_play.setEnabled(True)
         self.btn_auto.setEnabled(True)
         self.btn_pause.setEnabled(False)
-        
+
         # Обновляем заголовок
         self.setWindowTitle("Chess Viewer — Auto Play Complete")
-        
+
         # Показываем статистику в консоли
         self._show_auto_play_summary_in_console()
-        
+
     def _show_auto_play_summary_in_console(self):
         """Показать сводку автоматических игр в консоли"""
         if not self.auto_play_results:
             return
-            
+
         # Подсчитываем статистику
         results_count = {}
         total_moves = 0
         total_duration = 0
-        
+
         for result in self.auto_play_results:
             game_result = result.get('result', '*')
             results_count[game_result] = results_count.get(game_result, 0) + 1
             total_moves += result.get('moves', 0)
             total_duration += result.get('duration_ms', 0)
-            
+
         # Добавляем сводку в консоль
         self._append_to_console("=" * 50)
         self._append_to_console("🎮 AUTO PLAY SUMMARY")
@@ -986,11 +986,11 @@ class ChessViewer(QMainWindow):
         self._append_to_console(f"Total games: {len(self.auto_play_results)}")
         self._append_to_console("")
         self._append_to_console("Results:")
-        
+
         for result, count in results_count.items():
             percentage = (count / len(self.auto_play_results)) * 100
             self._append_to_console(f"  {result}: {count} games ({percentage:.1f}%)")
-            
+
         self._append_to_console("")
         self._append_to_console("Statistics:")
         self._append_to_console(f"  Total moves: {total_moves}")
@@ -1000,34 +1000,34 @@ class ChessViewer(QMainWindow):
         self._append_to_console("=" * 50)
         self._append_to_console("Auto Play Complete!")
         self._append_to_console("")
-    
+
     def _on_move_time_changed(self, value: int) -> None:
         """Handle move time change."""
         self.timing_manager.set_move_time_ms(value)
         self.min_move_delay_ms = value
         self.auto_timer.setInterval(max(value, self.timing_manager.get_auto_play_interval_ms()))
-    
+
     def _on_viz_delay_changed(self, value: int) -> None:
         """Handle visualization delay change."""
         self.timing_manager.set_visualization_delay_ms(value)
-    
+
     def _on_timing_profile_changed(self, profile_name: str) -> None:
         """Handle timing profile change."""
         if self.timing_manager.apply_predefined_profile(profile_name):
             # Update UI controls to reflect new values
             self.move_time_spinbox.blockSignals(True)
             self.viz_delay_spinbox.blockSignals(True)
-            
+
             self.move_time_spinbox.setValue(self.timing_manager.get_move_time_ms())
             self.viz_delay_spinbox.setValue(self.timing_manager.get_visualization_delay_ms())
-            
+
             self.move_time_spinbox.blockSignals(False)
             self.viz_delay_spinbox.blockSignals(False)
-            
+
             # Update internal timing
             self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
             self.auto_timer.setInterval(self.timing_manager.get_auto_play_interval_ms())
-    
+
     def _on_enhanced_heatmap_changed(self, heatmap_name: str) -> None:
         """Handle enhanced heatmap selection change."""
         if heatmap_name != "none":
@@ -1055,16 +1055,16 @@ class ChessViewer(QMainWindow):
 
             # Create move object for tracking
             self.current_move_obj = None
-            
+
             # Отримати хід з обробкою помилок
             try:
                 move = agent.choose_move(self.board)
-                
+
                 # Create move object for visualization
                 if move:
                     bot_name = f"WFC > {agent.__class__.__name__}" if hasattr(agent, 'wfc_engine') else agent.__class__.__name__
                     self.current_move_obj = create_move_object(move, self.board, bot_name)
-                    
+
                     # Update mini board and method status widgets
                     self.mini_board_widget.set_board(self.board)
                     self.mini_board_widget.set_current_move(self.current_move_obj)
@@ -1126,7 +1126,7 @@ class ChessViewer(QMainWindow):
                     eval_board = self.board.copy()
                     agent_name = WHITE_AGENT if mover_color == chess.WHITE else BLACK_AGENT
                     self.real_time_integrator.start_real_time_evaluation(eval_board, move, agent_name)
-            
+
             # Застосовуємо хід одразу
             self.board.push(move)
             self.fen_history.append(self.board.fen())
@@ -1167,7 +1167,7 @@ class ChessViewer(QMainWindow):
 
             # Знімаємо блокування
             self.move_in_progress = False
-                
+
         except Exception as exc:
             logger.error(f"Unexpected error in auto_step: {exc}")
             if self.auto_play_mode:
@@ -1190,11 +1190,11 @@ class ChessViewer(QMainWindow):
             piece = self.board.piece_at(move.from_square)
             if piece is None:
                 return
-            
+
             # Визначаємо тип фігури
             piece_type = piece.piece_type
             piece_name = None
-            
+
             if piece_type == chess.PAWN:
                 piece_name = "pawn"
             elif piece_type == chess.KNIGHT:
@@ -1207,30 +1207,30 @@ class ChessViewer(QMainWindow):
                 piece_name = "queen"
             elif piece_type == chess.KING:
                 piece_name = "king"
-            
+
             if piece_name and piece_name in self.drawer_manager.heatmaps:
                 # Встановлюємо активний хітмап для цієї фігури
                 self.drawer_manager.active_heatmap_piece = piece_name
                 self._update_heatmap_stats()
-                
+
                 # Оновлюємо комбобокс, якщо він існує
                 if self.heatmap_piece_combo:
                     self._populate_heatmap_pieces(piece_name)
-                
+
                 logger.info(f"Loaded heatmap for {piece_name} piece")
-            
+
         except Exception as exc:
             logger.warning(f"Failed to load heatmap for piece: {exc}")
-                
+
     def _handle_auto_play_game_over(self):
         """Обработка завершения игры в режиме автоматического воспроизведения"""
         import time
-        
+
         # Сохраняем результат текущей игры
         result = self.board.result()
         moves_count = len(self.board.move_stack)
         duration_ms = int(time.time() * 1000)  # Простое время (можно улучшить)
-        
+
         game_result = {
             'game_id': self.current_auto_game,
             'result': result,
@@ -1241,9 +1241,9 @@ class ChessViewer(QMainWindow):
             'moves_san': self._moves_san_string(),
             'pgn': self._game_pgn_string()
         }
-        
+
         self.auto_play_results.append(game_result)
-        
+
         # Добавляем результат в консоль вместо показа окна
         self._append_to_console(f"=== Game {self.current_auto_game + 1} Complete ===")
         self._append_to_console(f"Result: {result}")
@@ -1252,17 +1252,17 @@ class ChessViewer(QMainWindow):
         self._append_to_console(f"White modules: {', '.join(self.usage_w.keys())}")
         self._append_to_console(f"Black modules: {', '.join(self.usage_b.keys())}")
         self._append_to_console("")
-        
+
         # Обновляем счетчик игр
         self.current_auto_game += 1
-        
+
         # Небольшая пауза перед следующей игрой
         QTimer.singleShot(2000, self._start_next_auto_game)
-        
+
     def _handle_auto_play_error(self, exc):
         """Обработка ошибки в режиме автоматического воспроизведения"""
         logger.error(f"Error in auto play game {self.current_auto_game + 1}: {exc}")
-        
+
         # Сохраняем результат с ошибкой
         game_result = {
             'game_id': self.current_auto_game,
@@ -1273,19 +1273,19 @@ class ChessViewer(QMainWindow):
             'modules_w': list(self.usage_w.keys()),
             'modules_b': list(self.usage_b.keys())
         }
-        
+
         self.auto_play_results.append(game_result)
-        
+
         # Добавляем ошибку в консоль
         self._append_to_console(f"=== Game {self.current_auto_game + 1} ERROR ===")
         self._append_to_console(f"Error: {exc}")
         self._append_to_console("")
-        
+
         self.current_auto_game += 1
-        
+
         # Продолжаем со следующей игрой
         QTimer.singleShot(1000, self._start_next_auto_game)
-    
+
     def _append_to_console(self, text):
         """Добавить текст в консольный вывод"""
         self.console_output.append(text)
@@ -1323,8 +1323,8 @@ class ChessViewer(QMainWindow):
             san_text = self._moves_san_string()
             QApplication.clipboard().setText(san_text, QClipboard.Clipboard)
             QMessageBox.information(
-                self, 
-                "✅ Copied Successfully", 
+                self,
+                "✅ Copied Successfully",
                 f"📋 <b>SAN sequence copied to clipboard</b>\n\n"
                 f"<b>Moves:</b> {san_text[:100]}{'...' if len(san_text) > 100 else ''}"
             )
@@ -1345,8 +1345,8 @@ class ChessViewer(QMainWindow):
             pgn_text = self._game_pgn_string()
             QApplication.clipboard().setText(pgn_text, QClipboard.Clipboard)
             QMessageBox.information(
-                self, 
-                "✅ Copied Successfully", 
+                self,
+                "✅ Copied Successfully",
                 f"📋 <b>PGN game copied to clipboard</b>\n\n"
                 f"<b>Game:</b> {pgn_text[:200]}{'...' if len(pgn_text) > 200 else ''}"
             )
@@ -1371,37 +1371,37 @@ class ChessViewer(QMainWindow):
             f"xrpa_analysis_{len(self.board.move_stack)}.png",
             "PNG Images (*.png);;All Files (*)"
         )
-        
+
         if not file_path:
             return
-            
+
         try:
             # Capture the board frame as pixmap
             pixmap = self.board_frame.grab()
-            
+
             # Add metadata overlay with current position info
             painter = QPainter(pixmap)
             painter.setPen(QPen(QColor(0, 0, 0), 2))
             painter.setFont(QFont("Arial", 12))
-            
+
             # Add position info
             fen = self.board.fen()
             move_count = len(self.board.move_stack)
             turn = "White" if self.board.turn == chess.WHITE else "Black"
-            
+
             info_text = f"Move: {move_count} | Turn: {turn}\nFEN: {fen[:50]}..."
             painter.drawText(10, 20, info_text)
-            
+
             # Add heatmap info if active
             if self.drawer_manager.active_heatmap_piece:
                 heatmap_text = f"Heatmap: {self.drawer_manager.active_heatmap_piece}"
                 painter.drawText(10, 50, heatmap_text)
-            
+
             painter.end()
-            
+
             # Save the image
             pixmap.save(file_path, "PNG")
-            
+
             # Also save UI data as JSON for XRPA analysis
             json_path = file_path.replace('.png', '_data.json')
             ui_data = self.drawer_manager.export_ui_data()
@@ -1413,17 +1413,17 @@ class ChessViewer(QMainWindow):
                 "heatmap_set": self.drawer_manager.active_heatmap_set,
                 "timestamp": QTimer().remainingTime()  # Simple timestamp
             })
-            
+
             import json
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(ui_data, f, indent=2, ensure_ascii=False)
-            
+
             QMessageBox.information(
-                self, 
-                "Збережено", 
+                self,
+                "Збережено",
                 f"PNG збережено: {file_path}\nJSON дані: {json_path}"
             )
-            
+
         except Exception as e:
             QMessageBox.warning(self, "Помилка", f"Не вдалося зберегти PNG: {e}")
 
@@ -1431,49 +1431,49 @@ class ChessViewer(QMainWindow):
         """Automatically save PNG for XRPA analysis when game ends."""
         import os
         from datetime import datetime
-        
+
         # Create XRPA output directory
         xrpa_dir = "xrpa_analysis"
         os.makedirs(xrpa_dir, exist_ok=True)
-        
+
         # Generate filename with timestamp and result
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"xrpa_{timestamp}_{result.replace('-', '_')}_{len(self.board.move_stack)}moves.png"
         file_path = os.path.join(xrpa_dir, filename)
-        
+
         # Capture board as pixmap
         pixmap = self.board_frame.grab()
-        
+
         # Add metadata overlay
         painter = QPainter(pixmap)
         painter.setPen(QPen(QColor(0, 0, 0), 2))
         painter.setFont(QFont("Arial", 10))
-        
+
         # Add game info
         fen = self.board.fen()
         move_count = len(self.board.move_stack)
         turn = "White" if self.board.turn == chess.WHITE else "Black"
-        
+
         info_lines = [
             f"XRPA Analysis - {timestamp}",
             f"Result: {result} | Moves: {move_count} | Turn: {turn}",
             f"White: {WHITE_AGENT} | Black: {BLACK_AGENT}",
             f"FEN: {fen[:60]}...",
         ]
-        
+
         if self.drawer_manager.active_heatmap_piece:
             info_lines.append(f"Heatmap: {self.drawer_manager.active_heatmap_piece}")
-        
+
         y_offset = 15
         for line in info_lines:
             painter.drawText(10, y_offset, line)
             y_offset += 15
-        
+
         painter.end()
-        
+
         # Save PNG
         pixmap.save(file_path, "PNG")
-        
+
         # Save JSON data
         json_path = file_path.replace('.png', '_data.json')
         ui_data = self.drawer_manager.export_ui_data()
@@ -1490,11 +1490,11 @@ class ChessViewer(QMainWindow):
             "moves_san": self._moves_san_string(),
             "game_pgn": self._game_pgn_string()
         })
-        
+
         import json
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(ui_data, f, indent=2, ensure_ascii=False)
-        
+
         print(f"XRPA analysis saved: {file_path}")
 
     # ---------- Метрики / статуси ----------
@@ -1567,14 +1567,14 @@ class ChessViewer(QMainWindow):
             else:
                 fens = [self.board.fen()]
                 logger.info("📁 Using current board position for heatmap generation")
-            
+
             logger.info("🔄 Starting heatmap generation...")
             generate_heatmaps(fens, pattern_set="default")
-            
+
             # Оновлюємо статистику після генерації
             self.drawer_manager._load_heatmaps()
             self._update_heatmap_stats()
-            
+
             QMessageBox.information(
                 self,
                 "✅ Heatmaps Generated Successfully",
@@ -1775,7 +1775,7 @@ class ChessViewer(QMainWindow):
             # Оновити usage-діаграми і графік
             self._update_usage_charts()
             self.timeline.set_data(self.timeline_w, self.timeline_b)
-            
+
         except Exception as exc:
             logger.error(f"Failed to update status: {exc}")
             # Don't show error dialog for status updates to avoid spam
@@ -1795,20 +1795,20 @@ class ChessViewer(QMainWindow):
         import json
         import os
         from datetime import datetime
-        
+
         # Create runs directory if it doesn't exist
         os.makedirs("runs", exist_ok=True)
-        
+
         # Generate timestamp for filename
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         run_path = os.path.join("runs", f"{ts}.json")
-        
+
         # Collect game data
         moves_log = []
         fens_log = []
         modules_w = []
         modules_b = []
-        
+
         # Replay the game to collect data
         temp_board = chess.Board()
         for move in self.board.move_stack:
@@ -1816,13 +1816,13 @@ class ChessViewer(QMainWindow):
             moves_log.append(san)
             temp_board.push(move)
             fens_log.append(temp_board.fen())
-            
+
             # Get reason for the move (simplified - would need agent access)
             if temp_board.turn == chess.BLACK:  # Move was made by white
                 modules_w.append("UI_Game")
             else:  # Move was made by black
                 modules_b.append("UI_Game")
-        
+
         # Save to file
         with open(run_path, "w", encoding="utf-8") as f:
             json.dump(
@@ -1839,7 +1839,7 @@ class ChessViewer(QMainWindow):
                 ensure_ascii=False,
                 indent=2,
             )
-        
+
         logger.info(f"Game saved to {run_path}")
 
     def _update_elo_counter(self, result: str) -> None:
@@ -1847,7 +1847,7 @@ class ChessViewer(QMainWindow):
         try:
             # Initialize ELO sync manager
             elo_manager = ELOSyncManager()
-            
+
             # Determine winner
             if result == "1-0":
                 winner = WHITE_AGENT
@@ -1858,14 +1858,14 @@ class ChessViewer(QMainWindow):
             else:  # Draw
                 winner = None
                 loser = None
-            
+
             # Update ratings
             if winner and loser:
                 # Update winner
                 winner_rating = elo_manager.get_bot_rating(winner)
                 if winner_rating:
                     elo_manager.update_bot_rating(
-                        winner, 
+                        winner,
                         winner_rating.elo + 20,  # Simple +20 for win
                         "local",
                         "Game win"
@@ -1874,7 +1874,7 @@ class ChessViewer(QMainWindow):
                 loser_rating = elo_manager.get_bot_rating(loser)
                 if loser_rating:
                     elo_manager.update_bot_rating(
-                        loser, 
+                        loser,
                         loser_rating.elo - 20,  # Simple -20 for loss
                         "local",
                         "Game loss"
@@ -1897,9 +1897,9 @@ class ChessViewer(QMainWindow):
                         "local",
                         "Game draw"
                     )
-            
+
             logger.info(f"ELO ratings updated for {WHITE_AGENT} vs {BLACK_AGENT}")
-            
+
         except Exception as exc:
             logger.error(f"Failed to update ELO counter: {exc}")
 
@@ -1912,7 +1912,7 @@ class ChessViewer(QMainWindow):
                 update_from_history(list(self.board.move_stack), winner, steps=[15, 21, 35])
             except Exception as exc:
                 logger.warning(f"Failed to update PST training data: {exc}")
-                
+
         heatmap_msg = ""
         if self.fen_history:
             active_set = self.drawer_manager.active_heatmap_set or "default"
@@ -1940,7 +1940,7 @@ class ChessViewer(QMainWindow):
                 heatmap_msg = (
                     f"\n\n✅ Heatmaps updated for set '{active_set}'."
                 )
-        
+
         # Auto-save PNG for XRPA analysis
         try:
             self._auto_save_xrpa_png(res)
@@ -1972,7 +1972,7 @@ if __name__ == "__main__":
         app = QApplication(sys.argv)
         app.setApplicationName("Chess Viewer")
         app.setApplicationVersion("1.0")
-        
+
         # Set application style for better error visibility
         app.setStyleSheet("""
             QMessageBox {
@@ -1993,26 +1993,26 @@ if __name__ == "__main__":
                 background-color: #0056b3;
             }
         """)
-        
+
         # Create and show the main window
         viewer = ChessViewer()
         viewer.show()
-        
+
         # Start the event loop
         sys.exit(app.exec())
-        
+
     except ImportError as exc:
         ErrorHandler.handle_import_error(exc, "application startup")
         sys.exit(1)
-        
+
     except FileNotFoundError as exc:
         ErrorHandler.handle_file_error(exc, "application startup")
         sys.exit(1)
-        
+
     except PermissionError as exc:
         ErrorHandler.handle_permission_error(exc, "application startup")
         sys.exit(1)
-        
+
     except Exception as exc:
         ErrorHandler.log_error(exc, "application startup")
         print("❌ Application Launch Failed")
