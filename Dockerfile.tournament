@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+# Установка системных зависимостей
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка рабочей директории
+WORKDIR /app
+
+# Копирование файлов проекта
+COPY . /app/
+
+# Установка Python зависимостей
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Создание директорий для турнира
+RUN mkdir -p /app/tournament_logs /app/tournament_patterns /app/tournament_stats
+
+# Установка переменных окружения для турнира
+ENV TOURNAMENT_MODE=true
+ENV GAMES_PER_MATCH=3
+ENV TIME_PER_GAME=180
+ENV LOG_LEVEL=INFO
+
+# Команда по умолчанию - запуск турнира
+CMD ["python", "tournament_runner.py"]
