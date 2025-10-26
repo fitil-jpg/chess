@@ -1,4 +1,21 @@
 """
+
+Улучшенный DynamicBot с интеграцией системы паттернов для борьбы со Stockfish.
+
+Добавленные возможности:
+1. Распознавание известных паттернов из базы
+2. Использование обменных последовательностей
+3. Избежание паттернов, которые привели к проигрышу
+4. Приоритизация паттернов, которые привели к победе
+"""
+
+from __future__ import annotations
+from typing import Optional, Tuple, Dict, Any
+import chess
+import logging
+
+from chess_ai.bot_agent import DynamicBot
+from chess_ai.pattern_manager import PatternManager
 Enhanced Dynamic Bot
 
 Улучшенная версия DynamicBot с интеграцией системы паттернов

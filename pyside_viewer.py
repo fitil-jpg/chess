@@ -307,7 +307,7 @@ class ChessViewer(QMainWindow):
         self._update_title_with_elo()
         right_col.addWidget(self.title_label)
 
-        # Кнопки
+        # Кнопки управления игрой
         btn_row = QHBoxLayout()
         self.btn_auto  = QPushButton("▶ Авто")
         self.btn_pause = QPushButton("⏸ Пауза")
@@ -726,6 +726,18 @@ class ChessViewer(QMainWindow):
             self.wfc_engine = create_chess_wfc_engine()
         except Exception:
             self.wfc_engine = None
+        
+        # Enhanced pattern detection system
+        try:
+            from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector
+            from chess_ai.pattern_manager import PatternManager
+            self.pattern_detector = EnhancedPatternDetector()
+            self.pattern_manager = PatternManager()
+            logger.info("Enhanced pattern detection system initialized")
+        except Exception as exc:
+            logger.warning(f"Failed to initialize enhanced pattern system: {exc}")
+            self.pattern_detector = None
+            self.pattern_manager = None
 
         # Pattern detection and cataloging (runtime)
         try:
@@ -1139,6 +1151,42 @@ class ChessViewer(QMainWindow):
     def pause_auto(self):
         self.auto_timer.stop()
         self.auto_running = False
+    
+    def reset_game(self):
+        """Reset the game to starting position."""
+        # Stop any running game
+        self.pause_auto()
+        
+        # Reset board
+        self.board = chess.Board()
+        self.piece_objects = {}
+        
+        # Clear usage statistics
+        self.usage_w.clear()
+        self.usage_b.clear()
+        self.timeline_w.clear()
+        self.timeline_b.clear()
+        self.fen_history.clear()
+        
+        # Clear moves list
+        self.moves_list.clear()
+        
+        # Clear pattern display
+        if hasattr(self, 'pattern_display_widget') and self.pattern_display_widget:
+            self.pattern_display_widget.clear_patterns()
+        
+        # Reset UI
+        self._init_pieces()
+        self._refresh_board()
+        self._update_status("-", None)
+        self._update_usage_charts()
+        self.timeline.set_data(self.timeline_w, self.timeline_b)
+        
+        # Clear console
+        self.console_output.clear()
+        self.console_output.setPlainText("Игра сброшена. Нажмите Старт для новой партии.")
+        
+        logger.info("Game reset to starting position")
         
     def start_auto_play(self):
         """Начать автоматическое воспроизведение 10 игр подряд"""
@@ -1379,6 +1427,48 @@ class ChessViewer(QMainWindow):
             # Застосовуємо хід одразу
             self.board.push(move)
             self.fen_history.append(self.board.fen())
+            
+            # Detect patterns after move
+            if hasattr(self, 'pattern_detector') and self.pattern_detector:
+                try:
+                    detected_pattern = self.pattern_detector.detect_pattern(
+                        self.board,
+                        move,
+                        depth=3  # Analyze 3 moves ahead for exchanges
+                    )
+                    
+                    if detected_pattern:
+                        # Save the pattern
+                        self.pattern_detector.save_pattern(detected_pattern)
+                        
+                        # Add to display if widget exists
+                        if hasattr(self, 'pattern_display_widget') and self.pattern_display_widget:
+                            bot_name = WHITE_AGENT if mover_color == chess.WHITE else BLACK_AGENT
+                            
+                            # Convert exchange data
+                            exchange_data = None
+                            if detected_pattern.exchange_sequence:
+                                exchange_data = {
+                                    "moves": detected_pattern.exchange_sequence.moves,
+                                    "material_balance": detected_pattern.exchange_sequence.material_balance,
+                                    "forced": detected_pattern.exchange_sequence.forced,
+                                    "evaluation_change": detected_pattern.exchange_sequence.evaluation_change
+                                }
+                            
+                            self.pattern_display_widget.add_pattern(
+                                pattern_id=detected_pattern.pattern_id,
+                                pattern_type=detected_pattern.pattern_type,
+                                bot_name=bot_name,
+                                move_number=self.board.fullmove_number,
+                                fen=detected_pattern.fen,
+                                move=san,
+                                participating_pieces=[p.to_dict() for p in detected_pattern.participating_pieces],
+                                exchange=exchange_data
+                            )
+                            
+                            logger.debug(f"Pattern detected: {detected_pattern.pattern_type} at move {self.board.fullmove_number}")
+                except Exception as pattern_exc:
+                    logger.warning(f"Pattern detection failed: {pattern_exc}")
 
             # Detect patterns for the move and update Patterns tab and filter set
             try:

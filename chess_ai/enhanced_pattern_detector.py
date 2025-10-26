@@ -1,6 +1,11 @@
 """
+
+This module provides advanced pattern detection including:
+1. Piece participation tracking (only pieces involved in pattern)
+2. Exchange detection and evaluation (2-3 moves ahead)
+3. Individual JSON storage for each pattern
+4. Pattern filtering and management
 Enhanced Pattern Detector
-========================
 
 Улучшенный детектор паттернов с фильтрацией неучаствующих фигур
 и анализом размена с предвидением 2-3 ходов.

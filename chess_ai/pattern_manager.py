@@ -1,4 +1,10 @@
 """
+
+Система управления паттернами:
+- Выбор паттернов для использования
+- Добавление новых паттернов
+- Удаление паттернов
+- Фильтрация и поиск
 Enhanced pattern management system with individual JSON files and filtering capabilities.
 """
 
