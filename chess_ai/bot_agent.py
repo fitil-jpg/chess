@@ -25,6 +25,11 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     HybridOrchestrator = None  # type: ignore
 
+try:
+    from .enhanced_dynamic_bot import EnhancedDynamicBot  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    EnhancedDynamicBot = None  # type: ignore
+
 __all__ = [
     "BotAgent",
     "BotAgentLegacy",
@@ -32,6 +37,7 @@ __all__ = [
     "BotAgentEndgame",
     "BotAgentDynamic",
     "DynamicBot",
+    "EnhancedDynamicBot",
     "FortifyBot",
     "AggressiveBot",
     "PieceMateBot",
@@ -1055,6 +1061,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "BotAgentEndgame":   lambda color: BotAgentEndgame(color),
     "BotAgentDynamic":   lambda color: BotAgentDynamic(color),
     "DynamicBot":        _factory(DynamicBot),
+    "EnhancedDynamicBot": _factory(EnhancedDynamicBot) if EnhancedDynamicBot else _factory(DynamicBot),
     "FortifyBot":        _factory(FortifyBot),
     "AggressiveBot":     _factory(AggressiveBot),
     "PieceMateBot":      _factory(PieceMateBot),

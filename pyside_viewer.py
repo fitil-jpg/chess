@@ -54,6 +54,12 @@ from chess_ai.bsp_engine import create_chess_bsp_engine
 from chess_ai.wfc_engine import create_chess_wfc_engine
 from core.pattern_loader import PatternResponder
 
+# Import enhanced pattern system
+from ui.pattern_display_widget import PatternDisplayWidget, GameControlsWidget
+from ui.pattern_management_widget import PatternManagementWidget
+from chess_ai.enhanced_pattern_system import PatternManager
+from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector
+
 # Set Stockfish path if available
 import os
 if not os.environ.get("STOCKFISH_PATH"):
@@ -63,7 +69,7 @@ if not os.environ.get("STOCKFISH_PATH"):
 
 # Фіксована пара ботів у в’ювері:
 WHITE_AGENT = "StockfishBot"
-BLACK_AGENT = "DynamicBot"
+BLACK_AGENT = "EnhancedDynamicBot"  # Используем улучшенный бот против Stockfish
 
 class OverallUsageChart(QWidget):
     """Simple bar chart summarising module usage across multiple runs."""
@@ -309,7 +315,16 @@ class ChessViewer(QMainWindow):
         self.debug_verbose = QCheckBox("Debug")
         for b in (self.btn_auto, self.btn_pause, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
             btn_row.addWidget(b)
+        
+        # Добавить новые кнопки управления игрой
+        self.game_controls = GameControlsWidget()
+        self.game_controls.start_game.connect(self._on_start_game)
+        self.game_controls.stop_game.connect(self._on_stop_game)
+        self.game_controls.reset_game.connect(self._on_reset_game)
+        self.game_controls.refresh_game.connect(self._on_refresh_game)
+        self.game_controls.new_game.connect(self._on_new_game)
         right_col.addLayout(btn_row)
+        right_col.addWidget(self.game_controls)
         
         # Timing controls
         timing_row = QHBoxLayout()
@@ -541,6 +556,15 @@ class ChessViewer(QMainWindow):
         
         overall_layout.addStretch()
         self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
+        
+        # Таб 7: Паттерны (новый)
+        self.pattern_display_widget = PatternDisplayWidget()
+        self.pattern_display_widget.pattern_selected.connect(self._on_pattern_selected)
+        self.tab_widget.addTab(self.pattern_display_widget, "🎯 Паттерны")
+        
+        # Таб 8: Управление паттернами (новый)
+        self.pattern_management_widget = PatternManagementWidget()
+        self.tab_widget.addTab(self.pattern_management_widget, "⚙️ Управление паттернами")
 
         # Додаємо таби до основного лейауту (вже створені вище)
 
@@ -1134,6 +1158,9 @@ class ChessViewer(QMainWindow):
             # Оновлюємо дошку
             self._init_pieces()
             self._refresh_board()
+            
+            # Обновляем паттерны для новой позиции
+            self._update_pattern_display()
             self._refresh_mini_board_visuals()
 
             # Отримуємо інформацію про хід
@@ -1964,6 +1991,71 @@ class ChessViewer(QMainWindow):
             self._append_to_console(heatmap_msg.strip())
         self._append_to_console("=" * 50)
         self._append_to_console("")
+    
+    # ====== Новые методы для управления паттернами и игрой ======
+    
+    def _on_pattern_selected(self, move_uci: str):
+        """Обработать выбор паттерна для применения"""
+        try:
+            move = chess.Move.from_uci(move_uci)
+            if move in self.board.legal_moves:
+                self.board.push(move)
+                self._redraw_board()
+                self._update_pattern_display()
+                self._append_to_console(f"Применен паттерн: {move_uci}")
+            else:
+                self._append_to_console(f"Недопустимый ход из паттерна: {move_uci}")
+        except Exception as e:
+            self._append_to_console(f"Ошибка применения паттерна: {e}")
+    
+    def _redraw_board(self):
+        """Перерисовать доску"""
+        self._init_pieces()
+        self._refresh_board()
+    
+    def _update_pattern_display(self):
+        """Обновить отображение паттернов для текущей позиции"""
+        try:
+            self.pattern_display_widget.set_board_position(self.board)
+        except Exception as e:
+            logger.error(f"Error updating pattern display: {e}")
+    
+    def _on_start_game(self):
+        """Обработать начало игры"""
+        self.game_controls.set_game_status(True, "Игра запущена")
+        self._append_to_console("🎮 Игра запущена")
+        # Можно добавить логику автоматического запуска ботов
+        if hasattr(self, 'btn_auto'):
+            self.btn_auto.click()
+    
+    def _on_stop_game(self):
+        """Обработать остановку игры"""
+        self.game_controls.set_game_status(False, "Игра остановлена")
+        self._append_to_console("⏸️ Игра остановлена")
+        # Остановить автоматическую игру
+        if hasattr(self, 'btn_pause'):
+            self.btn_pause.click()
+    
+    def _on_reset_game(self):
+        """Обработать сброс игры"""
+        self.board.reset()
+        self._redraw_board()
+        self._update_pattern_display()
+        self.pattern_display_widget.clear_all()
+        self._append_to_console("🔄 Игра сброшена")
+        self.game_controls.set_game_status(False, "Игра сброшена")
+    
+    def _on_refresh_game(self):
+        """Обработать обновление игры"""
+        self._update_pattern_display()
+        self.pattern_display_widget.refresh_patterns()
+        self._append_to_console("🔄 Игра обновлена")
+    
+    def _on_new_game(self):
+        """Обработать начало новой игры"""
+        self._on_reset_game()
+        self._append_to_console("🆕 Новая игра начата")
+        # Можно добавить диалог выбора ботов или настроек
 
 # ====== Запуск ======
 if __name__ == "__main__":
