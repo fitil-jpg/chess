@@ -1,333 +1,281 @@
 #!/usr/bin/env python3
 """
-Test script for the enhanced chess system integration.
-
-This script tests all components of the enhanced chess viewer system
-to ensure proper integration and functionality.
+Test script for the Enhanced Chess Pattern System
 """
 
 import sys
-import logging
+import os
 from pathlib import Path
+import chess
+import logging
 
-# Add workspace to path
-workspace_path = Path(__file__).parent
-sys.path.insert(0, str(workspace_path))
+# Add the workspace to Python path
+workspace_root = Path(__file__).parent
+sys.path.insert(0, str(workspace_root))
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def test_imports():
-    """Test that all required modules can be imported."""
-    logger.info("Testing imports...")
+def test_pattern_manager():
+    """Test the PatternManager functionality"""
+    logger.info("Testing PatternManager...")
     
     try:
-        import chess
-        logger.info("✓ chess module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import chess: {e}")
-        return False
-    
-    try:
-        import numpy as np
-        logger.info("✓ numpy module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import numpy: {e}")
-        return False
-    
-    try:
-        from PySide6.QtWidgets import QApplication
-        logger.info("✓ PySide6 module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import PySide6: {e}")
-        return False
-    
-    return True
-
-def test_chess_ai_modules():
-    """Test chess AI module imports."""
-    logger.info("Testing chess AI modules...")
-    
-    try:
-        from chess_ai.move_evaluation import MoveEvaluation, MoveEvaluator, create_move_evaluator
-        logger.info("✓ move_evaluation module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import move_evaluation: {e}")
-        return False
-    
-    try:
-        from chess_ai.wfc_engine import create_chess_wfc_engine
-        logger.info("✓ wfc_engine module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import wfc_engine: {e}")
-        return False
-    
-    try:
-        from chess_ai.bsp_engine import create_chess_bsp_engine
-        logger.info("✓ bsp_engine module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import bsp_engine: {e}")
-        return False
-    
-    try:
-        from chess_ai.guardrails import Guardrails
-        logger.info("✓ guardrails module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import guardrails: {e}")
-        return False
-    
-    try:
-        from chess_ai.pattern_responder import create_pattern_responder
-        logger.info("✓ pattern_responder module imported")
-    except ImportError as e:
-        logger.error(f"✗ Failed to import pattern_responder: {e}")
-        return False
-    
-    return True
-
-def test_engine_creation():
-    """Test that engines can be created successfully."""
-    logger.info("Testing engine creation...")
-    
-    try:
-        from chess_ai.wfc_engine import create_chess_wfc_engine
-        wfc_engine = create_chess_wfc_engine()
-        logger.info("✓ WFC engine created successfully")
-    except Exception as e:
-        logger.error(f"✗ Failed to create WFC engine: {e}")
-        return False
-    
-    try:
-        from chess_ai.bsp_engine import create_chess_bsp_engine
-        bsp_engine = create_chess_bsp_engine()
-        logger.info("✓ BSP engine created successfully")
-    except Exception as e:
-        logger.error(f"✗ Failed to create BSP engine: {e}")
-        return False
-    
-    try:
-        from chess_ai.guardrails import Guardrails
-        guardrails = Guardrails()
-        logger.info("✓ Guardrails created successfully")
-    except Exception as e:
-        logger.error(f"✗ Failed to create Guardrails: {e}")
-        return False
-    
-    try:
-        from chess_ai.pattern_responder import create_pattern_responder
-        pattern_responder = create_pattern_responder()
-        logger.info("✓ Pattern responder created successfully")
-    except Exception as e:
-        logger.error(f"✗ Failed to create Pattern responder: {e}")
-        return False
-    
-    return True
-
-def test_move_evaluation():
-    """Test move evaluation system."""
-    logger.info("Testing move evaluation...")
-    
-    try:
-        import chess
-        from chess_ai.move_evaluation import create_move_evaluator
+        from chess_ai.pattern_manager import PatternManager
+        from chess_ai.pattern_detector import ChessPattern
         
-        # Create test board and move
-        board = chess.Board()
-        move = chess.Move.from_uci("e2e4")
+        # Initialize manager
+        manager = PatternManager("test_patterns")
         
-        # Create evaluator
-        evaluator = create_move_evaluator()
+        # Create a test pattern
+        test_pattern = ChessPattern(
+            fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            move="e4",
+            pattern_types=["tactical_moment", "opening"],
+            description="Test pattern for system validation",
+            influencing_pieces=["e4", "d2"],
+            evaluation={"before": {"total": 0}, "after": {"total": 10}, "change": 10},
+            metadata={"test": True, "created_by": "test_script"}
+        )
         
-        # Test evaluation
-        evaluation = evaluator.evaluate_move(move, board, chess.WHITE)
+        # Add pattern
+        pattern_id = manager.add_pattern(test_pattern)
+        logger.info(f"Added pattern with ID: {pattern_id}")
         
-        logger.info(f"✓ Move evaluation completed: {evaluation.get_status_summary()}")
-        logger.info(f"  Final value: {evaluation.final_value:.2f}")
-        logger.info(f"  Final confidence: {evaluation.final_confidence:.2f}")
+        # Retrieve pattern
+        retrieved = manager.get_pattern(pattern_id)
+        assert retrieved is not None, "Failed to retrieve pattern"
+        assert retrieved.move == "e4", "Retrieved pattern has wrong move"
+        logger.info("Pattern retrieval test passed")
         
-        return True
+        # Search patterns
+        search_results = manager.search_patterns(pattern_types=["tactical_moment"])
+        assert len(search_results) >= 1, "Search did not find the test pattern"
+        logger.info(f"Search test passed: found {len(search_results)} patterns")
         
-    except Exception as e:
-        logger.error(f"✗ Move evaluation failed: {e}")
-        return False
-
-def test_pattern_matching():
-    """Test pattern matching system."""
-    logger.info("Testing pattern matching...")
-    
-    try:
-        import chess
-        from chess_ai.pattern_responder import create_pattern_responder
-        
-        # Create pattern responder
-        responder = create_pattern_responder()
-        
-        # Test with starting position
-        board = chess.Board()
-        action = responder.match(board)
-        
-        logger.info(f"✓ Pattern matching completed: {action}")
-        
-        # Test pattern statistics
-        stats = responder.get_pattern_statistics()
-        logger.info(f"  Pattern statistics: {stats}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"✗ Pattern matching failed: {e}")
-        return False
-
-def test_wfc_analysis():
-    """Test WFC analysis."""
-    logger.info("Testing WFC analysis...")
-    
-    try:
-        import chess
-        from chess_ai.wfc_engine import create_chess_wfc_engine
-        
-        # Create WFC engine
-        wfc_engine = create_chess_wfc_engine()
-        
-        # Test with starting position
-        board = chess.Board()
-        move = chess.Move.from_uci("e2e4")
-        
-        analysis = wfc_engine.analyze_move(board, move)
-        logger.info(f"✓ WFC analysis completed")
-        logger.info(f"  Compatible patterns: {len(analysis['compatible_patterns'])}")
-        logger.info(f"  Pattern confidence: {analysis['pattern_confidence']:.2f}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"✗ WFC analysis failed: {e}")
-        return False
-
-def test_bsp_analysis():
-    """Test BSP analysis."""
-    logger.info("Testing BSP analysis...")
-    
-    try:
-        import chess
-        from chess_ai.bsp_engine import create_chess_bsp_engine
-        
-        # Create BSP engine
-        bsp_engine = create_chess_bsp_engine()
-        
-        # Test with starting position
-        board = chess.Board()
-        move = chess.Move.from_uci("e2e4")
-        
-        analysis = bsp_engine.analyze_move(board, move)
-        logger.info(f"✓ BSP analysis completed")
-        logger.info(f"  Move zone: {analysis['move_zone'].zone_type if analysis['move_zone'] else 'None'}")
-        logger.info(f"  Zone importance: {analysis['zone_importance']:.2f}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"✗ BSP analysis failed: {e}")
-        return False
-
-def test_guardrails():
-    """Test guardrails system."""
-    logger.info("Testing guardrails...")
-    
-    try:
-        import chess
-        from chess_ai.guardrails import Guardrails
-        
-        # Create guardrails
-        guardrails = Guardrails()
-        
-        # Test with starting position
-        board = chess.Board()
-        move = chess.Move.from_uci("e2e4")
-        
-        # Test guardrails
-        is_legal = guardrails.is_legal_and_sane(board, move)
-        is_high_value_hang = guardrails.is_high_value_hang(board, move)
-        is_blunder = guardrails.is_blunder(board, move)
-        allow_move = guardrails.allow_move(board, move)
-        
-        logger.info(f"✓ Guardrails testing completed")
-        logger.info(f"  Is legal: {is_legal}")
-        logger.info(f"  Is high value hang: {is_high_value_hang}")
-        logger.info(f"  Is blunder: {is_blunder}")
-        logger.info(f"  Allow move: {allow_move}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"✗ Guardrails testing failed: {e}")
-        return False
-
-def test_ui_creation():
-    """Test UI creation (without showing)."""
-    logger.info("Testing UI creation...")
-    
-    try:
-        from PySide6.QtWidgets import QApplication
-        from enhanced_pyside_viewer import EnhancedChessViewer
-        
-        # Create QApplication (required for Qt widgets)
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication(sys.argv)
-        
-        # Create viewer (but don't show it)
-        viewer = EnhancedChessViewer()
-        
-        logger.info("✓ UI creation successful")
+        # Get statistics
+        stats = manager.get_pattern_statistics()
+        assert stats["total_patterns"] >= 1, "Statistics show no patterns"
+        logger.info(f"Statistics test passed: {stats['total_patterns']} total patterns")
         
         # Clean up
-        viewer.close()
+        manager.delete_pattern(pattern_id)
+        logger.info("Pattern deletion test passed")
         
+        logger.info("✅ PatternManager tests passed")
         return True
         
     except Exception as e:
-        logger.error(f"✗ UI creation failed: {e}")
+        logger.error(f"❌ PatternManager test failed: {e}")
         return False
 
+def test_pattern_filter():
+    """Test the PatternFilter functionality"""
+    logger.info("Testing PatternFilter...")
+    
+    try:
+        from chess_ai.pattern_filter import PatternFilter
+        
+        # Initialize filter
+        filter_system = PatternFilter()
+        
+        # Create a test board and move
+        board = chess.Board()
+        move = chess.Move.from_uci("e2e4")
+        
+        # Test pattern relevance analysis
+        result = filter_system.analyze_pattern_relevance(
+            board, move, ["tactical_moment"]
+        )
+        
+        assert "relevant_pieces" in result, "Result missing relevant_pieces"
+        assert "irrelevant_pieces" in result, "Result missing irrelevant_pieces"
+        assert "filtered_fen" in result, "Result missing filtered_fen"
+        assert "pattern_analysis" in result, "Result missing pattern_analysis"
+        
+        logger.info("Pattern relevance analysis test passed")
+        
+        # Test exchange pattern detection
+        exchange_info = filter_system.detect_exchange_pattern(board, move)
+        # Exchange detection might return None for this simple position
+        logger.info("Exchange pattern detection test completed")
+        
+        # Test complexity determination
+        complexity = filter_system.get_pattern_complexity(result)
+        assert complexity in ["simple", "moderate", "complex"], f"Invalid complexity: {complexity}"
+        logger.info(f"Complexity determination test passed: {complexity}")
+        
+        logger.info("✅ PatternFilter tests passed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ PatternFilter test failed: {e}")
+        return False
+
+def test_enhanced_dynamic_bot():
+    """Test the Enhanced DynamicBot functionality"""
+    logger.info("Testing Enhanced DynamicBot...")
+    
+    try:
+        from chess_ai.enhanced_dynamic_bot import make_enhanced_dynamic_bot
+        
+        # Initialize bot
+        bot = make_enhanced_dynamic_bot(chess.WHITE)
+        
+        # Test bot info
+        info = bot.get_agent_info()
+        assert "name" in info, "Bot info missing name"
+        assert "version" in info, "Bot info missing version"
+        assert "color" in info, "Bot info missing color"
+        logger.info("Bot info test passed")
+        
+        # Test move selection
+        board = chess.Board()
+        move = bot.choose_move(board)
+        
+        assert move is not None, "Bot failed to choose a move"
+        assert move in board.legal_moves, "Bot chose an illegal move"
+        logger.info(f"Move selection test passed: {board.san(move)}")
+        
+        # Test move analysis (without making the move)
+        eval_before = bot._evaluate_position(board)
+        logger.info(f"Position evaluation test passed: {eval_before}")
+        
+        logger.info("✅ Enhanced DynamicBot tests passed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Enhanced DynamicBot test failed: {e}")
+        return False
+
+def test_pattern_detector():
+    """Test the PatternDetector functionality"""
+    logger.info("Testing PatternDetector...")
+    
+    try:
+        from chess_ai.pattern_detector import PatternDetector
+        
+        # Initialize detector
+        detector = PatternDetector()
+        
+        # Create a test board and move
+        board = chess.Board()
+        move = chess.Move.from_uci("e2e4")
+        
+        # Test pattern detection
+        patterns = detector.detect_patterns(
+            board, move, {"total": 0}, {"total": 10}
+        )
+        
+        assert isinstance(patterns, list), "Pattern detection should return a list"
+        logger.info(f"Pattern detection test passed: found {len(patterns)} patterns")
+        
+        # Test individual pattern properties
+        for pattern in patterns:
+            assert hasattr(pattern, 'fen'), "Pattern missing fen"
+            assert hasattr(pattern, 'move'), "Pattern missing move"
+            assert hasattr(pattern, 'pattern_types'), "Pattern missing pattern_types"
+            assert hasattr(pattern, 'evaluation'), "Pattern missing evaluation"
+        
+        logger.info("✅ PatternDetector tests passed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ PatternDetector test failed: {e}")
+        return False
+
+def test_integration():
+    """Test integration between components"""
+    logger.info("Testing system integration...")
+    
+    try:
+        from chess_ai.pattern_manager import PatternManager
+        from chess_ai.pattern_detector import PatternDetector
+        from chess_ai.pattern_filter import PatternFilter
+        from chess_ai.enhanced_dynamic_bot import make_enhanced_dynamic_bot
+        
+        # Initialize all components
+        manager = PatternManager("test_patterns")
+        detector = PatternDetector()
+        filter_system = PatternFilter()
+        bot = make_enhanced_dynamic_bot(chess.WHITE)
+        
+        # Simulate a game move
+        board = chess.Board()
+        move = chess.Move.from_uci("e2e4")
+        
+        # Detect patterns
+        patterns = detector.detect_patterns(board, move, {"total": 0}, {"total": 10})
+        
+        # Process each pattern
+        for pattern in patterns:
+            # Save to manager
+            pattern_id = manager.add_pattern(pattern)
+            
+            # Apply filtering
+            filter_result = filter_system.analyze_pattern_relevance(
+                board, move, pattern.pattern_types
+            )
+            
+            # Check exchange patterns
+            exchange_info = filter_system.detect_exchange_pattern(board, move)
+            
+            logger.info(f"Processed pattern {pattern_id}: {pattern.move}")
+        
+        # Test bot move selection
+        bot_move = bot.choose_move(board)
+        assert bot_move is not None, "Bot integration test failed"
+        
+        logger.info("✅ Integration tests passed")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Integration test failed: {e}")
+        return False
+
+def cleanup_test_files():
+    """Clean up test files"""
+    try:
+        import shutil
+        test_dir = Path("test_patterns")
+        if test_dir.exists():
+            shutil.rmtree(test_dir)
+        logger.info("Test files cleaned up")
+    except Exception as e:
+        logger.warning(f"Failed to clean up test files: {e}")
+
 def main():
-    """Run all tests."""
-    logger.info("=" * 60)
-    logger.info("Enhanced Chess System Integration Test")
-    logger.info("=" * 60)
+    """Run all tests"""
+    logger.info("Starting Enhanced Chess Pattern System tests...")
     
     tests = [
-        ("Import Tests", test_imports),
-        ("Chess AI Module Tests", test_chess_ai_modules),
-        ("Engine Creation Tests", test_engine_creation),
-        ("Move Evaluation Tests", test_move_evaluation),
-        ("Pattern Matching Tests", test_pattern_matching),
-        ("WFC Analysis Tests", test_wfc_analysis),
-        ("BSP Analysis Tests", test_bsp_analysis),
-        ("Guardrails Tests", test_guardrails),
-        ("UI Creation Tests", test_ui_creation),
+        test_pattern_detector,
+        test_pattern_manager,
+        test_pattern_filter,
+        test_enhanced_dynamic_bot,
+        test_integration
     ]
     
     passed = 0
     total = len(tests)
     
-    for test_name, test_func in tests:
-        logger.info(f"\n--- {test_name} ---")
+    for test in tests:
         try:
-            if test_func():
-                logger.info(f"✓ {test_name} PASSED")
+            if test():
                 passed += 1
-            else:
-                logger.error(f"✗ {test_name} FAILED")
         except Exception as e:
-            logger.error(f"✗ {test_name} FAILED with exception: {e}")
+            logger.error(f"Test {test.__name__} crashed: {e}")
     
-    logger.info("\n" + "=" * 60)
+    # Cleanup
+    cleanup_test_files()
+    
+    # Results
+    logger.info(f"\n{'='*50}")
     logger.info(f"Test Results: {passed}/{total} tests passed")
     
     if passed == total:
-        logger.info("🎉 All tests passed! System is ready to use.")
+        logger.info("🎉 All tests passed! The enhanced system is working correctly.")
         return 0
     else:
         logger.error(f"❌ {total - passed} tests failed. Please check the errors above.")

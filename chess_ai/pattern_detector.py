@@ -47,7 +47,7 @@ class ChessPattern:
         self.influencing_pieces = influencing_pieces
         self.evaluation = evaluation
         self.metadata = metadata or {}
-        
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert pattern to dictionary for JSON serialization"""
         return {
@@ -61,7 +61,7 @@ class ChessPattern:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> ChessPattern:
+    def from_dict(cls, data: Dict[str, Any]) -> 'ChessPattern':
         """Create pattern from dictionary"""
         return cls(
             fen=data["fen"],
@@ -72,6 +72,7 @@ class ChessPattern:
             evaluation=data["evaluation"],
             metadata=data.get("metadata", {})
         )
+    
 
 
 class PatternDetector:
