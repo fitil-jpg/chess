@@ -1,0 +1,38 @@
+{
+  "tournament_settings": {
+    "games_per_match": 3,
+    "time_per_game_seconds": 180,
+    "log_level": "INFO",
+    "min_moves_for_pattern": 10,
+    "save_all_games": true
+  },
+  "participating_bots": [
+    "RandomBot",
+    "AggressiveBot", 
+    "FortifyBot",
+    "EndgameBot",
+    "DynamicBot",
+    "KingValueBot",
+    "PieceMateBot",
+    "ChessBot"
+  ],
+  "pattern_detection": {
+    "enabled": true,
+    "min_confidence": 0.6,
+    "categories": [
+      "tactical",
+      "opening", 
+      "middlegame",
+      "endgame",
+      "fork",
+      "pin",
+      "sacrifice",
+      "positional"
+    ]
+  },
+  "output_directories": {
+    "logs": "tournament_logs",
+    "patterns": "tournament_patterns", 
+    "stats": "tournament_stats"
+  }
+}

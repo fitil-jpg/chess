@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  chess-tournament:
+    build:
+      context: .
+      dockerfile: Dockerfile.tournament
+    container_name: chess-tournament
+    environment:
+      - TOURNAMENT_MODE=true
+      - GAMES_PER_MATCH=3
+      - TIME_PER_GAME=180
+      - LOG_LEVEL=INFO
+    volumes:
+      # Монтируем директории для сохранения результатов
+      - ./tournament_logs:/app/tournament_logs
+      - ./tournament_patterns:/app/tournament_patterns
+      - ./tournament_stats:/app/tournament_stats
+      # Монтируем исходный код для возможности изменений
+      - .:/app
+    working_dir: /app
+    command: python tournament_runner.py
+    restart: "no"
+    # Ограничиваем ресурсы для стабильности
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'

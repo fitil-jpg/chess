@@ -1,0 +1,46 @@
+[
+  {
+    "bot1": "RandomBot",
+    "bot2": "DynamicBot",
+    "bot1_wins": 0,
+    "bot2_wins": 0,
+    "draws": 3,
+    "winner": "Draw",
+    "games": [
+      {
+        "game_num": 1,
+        "white_bot": "RandomBot",
+        "black_bot": "DynamicBot",
+        "result": "1/2-1/2",
+        "moves": [],
+        "fens": [],
+        "move_count": 0,
+        "duration": 0.10645627975463867,
+        "timestamp": "2025-10-26T19:04:10.359262"
+      },
+      {
+        "game_num": 2,
+        "white_bot": "RandomBot",
+        "black_bot": "DynamicBot",
+        "result": "1/2-1/2",
+        "moves": [],
+        "fens": [],
+        "move_count": 0,
+        "duration": 0.09616827964782715,
+        "timestamp": "2025-10-26T19:04:10.455670"
+      },
+      {
+        "game_num": 3,
+        "white_bot": "RandomBot",
+        "black_bot": "DynamicBot",
+        "result": "1/2-1/2",
+        "moves": [],
+        "fens": [],
+        "move_count": 0,
+        "duration": 0.10935759544372559,
+        "timestamp": "2025-10-26T19:04:10.565209"
+      }
+    ],
+    "timestamp": "2025-10-26T19:04:10.565236"
+  }
+]
