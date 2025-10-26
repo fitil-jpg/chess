@@ -86,7 +86,14 @@ class PatternResponder:
 
     @classmethod
     def from_file(cls, path: str | Path) -> "PatternResponder":
-        """Create a responder from a JSON or YAML file."""
+        """Create a responder from a JSON or YAML file.
+
+        Supports an aggregator format with optional keys:
+        - includes: list of relative file paths or directories with *.json
+        - enabled_types: restrict loaded patterns by type
+        - disabled_names / enabled_names: name-based filtering
+        Each included file can be either a dict with "patterns" or a raw list.
+        """
         p = Path(path)
         with p.open("r", encoding="utf8") as fh:
             if p.suffix in {".yaml", ".yml"}:
@@ -95,11 +102,57 @@ class PatternResponder:
                 data = yaml.safe_load(fh)
             else:
                 data = json.load(fh)
+
+        loaded: List[Dict[str, Any]] = []
+
+        def _ingest(obj: Any) -> None:
+            items = obj.get("patterns", []) if isinstance(obj, dict) else obj
+            for it in (items or []):
+                try:
+                    if isinstance(it, dict) and it.get("enabled") is False:
+                        continue
+                    loaded.append(it)
+                except Exception:
+                    continue
+
         if isinstance(data, dict):
-            patterns = data.get("patterns", [])
+            _ingest(data)
+            includes = data.get("includes", []) or []
+            for inc in includes:
+                inc_path = (p.parent / inc).resolve()
+                if inc_path.is_dir():
+                    for child in sorted(inc_path.glob("*.json")):
+                        try:
+                            with child.open("r", encoding="utf8") as fh2:
+                                _ingest(json.load(fh2))
+                        except Exception:
+                            continue
+                elif inc_path.is_file():
+                    try:
+                        with inc_path.open("r", encoding="utf8") as fh2:
+                            _ingest(json.load(fh2))
+                    except Exception:
+                        pass
+
+            enabled_types = data.get("enabled_types")
+            enabled_names = data.get("enabled_names")
+            disabled_names = data.get("disabled_names")
+
+            def _name(item: Dict[str, Any]) -> str:
+                return item.get("name") or item.get("description") or ""
+
+            if enabled_types:
+                loaded = [it for it in loaded if it.get("pattern_type") in set(enabled_types)]
+            if enabled_names:
+                en = set(enabled_names)
+                loaded = [it for it in loaded if _name(it) in en]
+            if disabled_names:
+                dn = set(disabled_names)
+                loaded = [it for it in loaded if _name(it) not in dn]
         else:
-            patterns = data
-        return cls(patterns)
+            _ingest(data)
+
+        return cls(loaded)
 
     def match(self, board: chess.Board) -> Optional[str]:
         """Return the action for the current board state, if any."""

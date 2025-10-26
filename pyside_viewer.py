@@ -53,6 +53,9 @@ from chess_ai.elo_sync_manager import ELOSyncManager
 from chess_ai.bsp_engine import create_chess_bsp_engine
 from chess_ai.wfc_engine import create_chess_wfc_engine
 from core.pattern_loader import PatternResponder
+from chess_ai.pattern_detector import PatternDetector, PatternType
+from chess_ai.pattern_storage import PatternCatalog
+from core.evaluator import Evaluator
 
 # Set Stockfish path if available
 import os
@@ -426,7 +429,53 @@ class ChessViewer(QMainWindow):
         usage_layout.addStretch()
         self.tab_widget.addTab(self.usage_tab, "📈 Usage")
 
-        # Таб 3: Ходи
+        # Таб 3: Patterns (detected during gameplay)
+        self.patterns_tab = QWidget()
+        patterns_layout = QVBoxLayout(self.patterns_tab)
+        # Controls row
+        patterns_controls = QHBoxLayout()
+        patterns_controls.addWidget(QLabel("Filter:"))
+        self.pattern_filter_combo = QComboBox()
+        # Available pattern types ("All" + known types)
+        pattern_types = [
+            "all",
+            PatternType.TACTICAL_MOMENT,
+            PatternType.FORK,
+            PatternType.PIN,
+            PatternType.SKEWER,
+            PatternType.DISCOVERED_ATTACK,
+            PatternType.HANGING_PIECE,
+            PatternType.EXCHANGE,
+            PatternType.OPENING_TRICK,
+            PatternType.CRITICAL_DECISION,
+            PatternType.ENDGAME_TECHNIQUE,
+            PatternType.SACRIFICE,
+        ]
+        for pt in pattern_types:
+            self.pattern_filter_combo.addItem(pt)
+        self.pattern_filter_combo.setCurrentText("all")
+        self.pattern_filter_combo.currentTextChanged.connect(self._on_pattern_filter_changed)
+        patterns_controls.addWidget(self.pattern_filter_combo)
+
+        # Toggle to hide pieces not involved in current pattern
+        self.cb_participating_only = QCheckBox("Participating only")
+        self.cb_participating_only.setToolTip("Hide pieces that do not participate in the latest detected pattern")
+        self.cb_participating_only.stateChanged.connect(lambda _v: self._refresh_board())
+        patterns_controls.addWidget(self.cb_participating_only)
+
+        # Refresh patterns from configs
+        self.btn_refresh_patterns = QPushButton("⟳ Refresh Patterns")
+        self.btn_refresh_patterns.clicked.connect(self._on_refresh_patterns)
+        patterns_controls.addStretch()
+        patterns_controls.addWidget(self.btn_refresh_patterns)
+        patterns_layout.addLayout(patterns_controls)
+
+        # List of detected patterns
+        self.patterns_list = QListWidget()
+        patterns_layout.addWidget(self.patterns_list)
+        self.tab_widget.addTab(self.patterns_tab, "🧩 Patterns")
+
+        # Таб 4: Ходи
         self.moves_tab = QWidget()
         moves_layout = QVBoxLayout(self.moves_tab)
         
@@ -437,7 +486,7 @@ class ChessViewer(QMainWindow):
         moves_layout.addStretch()
         self.tab_widget.addTab(self.moves_tab, "♟️ Ходи")
 
-        # Таб 4: Heatmaps
+        # Таб 5: Heatmaps
         self.heatmap_tab = QWidget()
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
         
@@ -520,12 +569,12 @@ class ChessViewer(QMainWindow):
         heatmap_layout.addStretch()
         self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
 
-        # Таб 5: Bot Usage Statistics
+        # Таб 6: Bot Usage Statistics
         from ui.bot_usage_tracker import BotUsageTracker
         self.bot_usage_tracker = BotUsageTracker()
         self.tab_widget.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
         
-        # Таб 6: Загальна статистика
+        # Таб 7: Загальна статистика
         self.overall_tab = QWidget()
         overall_layout = QVBoxLayout(self.overall_tab)
         
@@ -582,6 +631,17 @@ class ChessViewer(QMainWindow):
         except Exception:
             self.wfc_engine = None
 
+        # Pattern detection and cataloging (runtime)
+        try:
+            self.pattern_detector = PatternDetector()
+            self.pattern_catalog = PatternCatalog()  # defaults to patterns/catalog.json
+        except Exception:
+            self.pattern_detector = None
+            self.pattern_catalog = None
+
+        # Active pattern participation filter (UI toggle)
+        self.active_pattern_squares: set[int] | None = None
+
         # Початкова ініціалізація
         self._init_pieces()
         if default_heatmap_piece:
@@ -606,6 +666,95 @@ class ChessViewer(QMainWindow):
         self._configure_window()
 
     # ---------- UI helpers ----------
+
+    def _inject_game_control_buttons(self, right_col_layout: QVBoxLayout) -> None:
+        """Add Start/Stop/Reset controls and Refresh button."""
+        try:
+            row = QHBoxLayout()
+            self.btn_start = QPushButton("Start")
+            self.btn_stop = QPushButton("Stop")
+            self.btn_reset = QPushButton("Reset")
+            self.btn_refresh = QPushButton("Refresh")
+            self.btn_start.clicked.connect(self.start_auto)
+            self.btn_stop.clicked.connect(self.pause_auto)
+            self.btn_reset.clicked.connect(self._reset_game)
+            self.btn_refresh.clicked.connect(self._refresh_everything)
+            for b in (self.btn_start, self.btn_stop, self.btn_reset, self.btn_refresh):
+                row.addWidget(b)
+            right_col_layout.addLayout(row)
+        except Exception as exc:
+            logger.warning(f"Failed to inject game control buttons: {exc}")
+
+    def _reset_game(self) -> None:
+        try:
+            self.pause_auto()
+            self.board = chess.Board()
+            self.piece_objects = {}
+            self.usage_w.clear(); self.usage_b.clear()
+            self.timeline_w.clear(); self.timeline_b.clear()
+            self.timeline.set_data(self.timeline_w, self.timeline_b)
+            self.moves_list.clear()
+            self.fen_history.clear()
+            self.patterns_list.clear()
+            self.active_pattern_squares = None
+            self._init_pieces(); self._refresh_board(); self._update_status("-", None)
+        except Exception as exc:
+            logger.warning(f"Reset failed: {exc}")
+
+    def _refresh_everything(self) -> None:
+        try:
+            self._refresh_board()
+            self._update_status("-", None)
+        except Exception as exc:
+            logger.warning(f"Refresh failed: {exc}")
+
+    # Patterns tab helpers -------------------------------------------------
+    def _on_pattern_filter_changed(self, value: str) -> None:
+        # Currently passive; list is already appended with textual info.
+        # Could implement filtering of list items later.
+        pass
+
+    def _on_refresh_patterns(self) -> None:
+        try:
+            from pathlib import Path as _P
+            pattern_path = _P("configs") / "patterns.json"
+            if pattern_path.exists():
+                self.pattern_responder = PatternResponder.from_file(pattern_path)
+        except Exception as exc:
+            logger.warning(f"Failed to refresh patterns: {exc}")
+
+    def _append_detected_patterns(self, patterns) -> None:
+        try:
+            if not patterns:
+                return
+            for p in patterns:
+                # build short line
+                types = ",".join(p.pattern_types)
+                self.patterns_list.addItem(f"{p.move} — {types} — {p.description}")
+            self.patterns_list.scrollToBottom()
+        except Exception as exc:
+            logger.debug(f"append patterns UI failed: {exc}")
+
+    def _update_active_pattern_squares(self, patterns) -> None:
+        try:
+            if not patterns:
+                self.active_pattern_squares = None
+                return
+            # Use latest pattern
+            last = patterns[-1]
+            squares: set[int] = set()
+            # Include movers/targets/attackers/defenders
+            for info in last.influencing_pieces:
+                try:
+                    sq = chess.parse_square(info.get("square"))
+                    squares.add(sq)
+                except Exception:
+                    continue
+            # Also include from/to squares if available in metadata
+            # The detector already added mover/target into influencing_pieces
+            self.active_pattern_squares = squares if squares else None
+        except Exception as exc:
+            logger.debug(f"active pattern squares update failed: {exc}")
 
     def _configure_window(self):
         """Configure window sizing and ensure proper content display"""
@@ -808,6 +957,10 @@ class ChessViewer(QMainWindow):
                 piece = self.board.piece_at(square)
                 if piece:
                     pos = (chess.square_rank(square), chess.square_file(square))
+                    # If participating-only filter is active, skip non-participating pieces
+                    if self.cb_participating_only.isChecked() and self.active_pattern_squares:
+                        if square not in self.active_pattern_squares:
+                            continue
                     self.piece_objects[square] = piece_class_factory(piece, pos)
         except Exception as exc:
             logger.error(f"Failed to initialize pieces: {exc}")
@@ -1130,6 +1283,30 @@ class ChessViewer(QMainWindow):
             # Застосовуємо хід одразу
             self.board.push(move)
             self.fen_history.append(self.board.fen())
+
+            # Detect patterns for the move and update Patterns tab and filter set
+            try:
+                if self.pattern_detector:
+                    evaluator = Evaluator(self.board)
+                    # Evaluation before/after crude values around the applied move
+                    # We approximate 'before' by popping and evaluating, then restore
+                    temp_before = self.board.copy(stack=False)
+                    if temp_before.move_stack:
+                        last = temp_before.pop()
+                    eval_before = {"total": evaluator.evaluate(temp_before, mover_color)}
+                    eval_after = {"total": evaluator.evaluate(self.board, not mover_color)}
+                    patterns = self.pattern_detector.detect_patterns(
+                        self.board, move, eval_before, eval_after, bot_analysis=None
+                    )
+                    # Update UI list and active participation squares
+                    self._append_detected_patterns(patterns)
+                    self._update_active_pattern_squares(patterns)
+                    # Save to catalog if available
+                    if self.pattern_catalog and patterns:
+                        self.pattern_catalog.add_patterns(patterns)
+                        # Do not save every move to disk to reduce IO; user can export later
+            except Exception as exc_det:
+                logger.debug(f"Pattern detection skipped: {exc_det}")
 
             # Оновлюємо дошку
             self._init_pieces()
@@ -1775,6 +1952,9 @@ class ChessViewer(QMainWindow):
             # Оновити usage-діаграми і графік
             self._update_usage_charts()
             self.timeline.set_data(self.timeline_w, self.timeline_b)
+            # When participating-only filter is ON but we have no active pattern squares, disable the filter
+            if self.cb_participating_only.isChecked() and not self.active_pattern_squares:
+                self.cb_participating_only.setChecked(False)
             
         except Exception as exc:
             logger.error(f"Failed to update status: {exc}")
