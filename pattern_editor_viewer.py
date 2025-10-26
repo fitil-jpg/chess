@@ -162,6 +162,8 @@ class PatternEditorViewer(QMainWindow):
         # Chess board state
         self.board = chess.Board()
         self.piece_objects = {}
+        # Shared drawer manager for overlays/focus
+        self.drawer_manager = DrawerManager()
         
         # Initialize agents
         self._init_agents()
@@ -445,7 +447,7 @@ class PatternEditorViewer(QMainWindow):
         """Initialize chess board cells"""
         for row in range(8):
             for col in range(8):
-                cell = Cell(row, col, DrawerManager())
+                cell = Cell(row, col, self.drawer_manager)
                 self.grid.addWidget(cell, row, col)
                 self.cell_grid[row][col] = cell
                 
@@ -545,6 +547,18 @@ class PatternEditorViewer(QMainWindow):
         except Exception as e:
             logger.error(f"Failed to load pattern FEN: {e}")
             
+        # Apply pattern focus overlays using DrawerManager
+        try:
+            focus = []
+            if isinstance(getattr(pattern, 'metadata', None), dict):
+                focus = pattern.metadata.get('focus_squares', [])
+            # Use shared DrawerManager to apply focus overlays
+            if hasattr(self, 'drawer_manager') and self.drawer_manager is not None:
+                self.drawer_manager.set_pattern_focus(focus)
+                self._update_board()
+        except Exception as exc:
+            logger.warning(f"Failed to apply pattern focus overlays: {exc}")
+
         # Display pattern info
         info_text = f"Pattern: {pattern.move}\n\n"
         info_text += f"Types: {', '.join(pattern.pattern_types)}\n\n"

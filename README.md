@@ -1,3 +1,34 @@
+## Pattern JSON schema (user-extensible)
+
+Store user patterns as standalone JSON files under `patterns/` for easy add/remove. A minimal schema aligns with `chess_ai.pattern_detector.ChessPattern.to_dict()`:
+
+```json
+{
+  "version": "1.0",
+  "patterns": [
+    {
+      "fen": "<full FEN before move>",
+      "move": "<SAN or UCI>",
+      "pattern_types": ["fork", "pin", "exchange", "tactical_moment", ...],
+      "description": "free text",
+      "influencing_pieces": [
+        {"square":"e4","piece":"Knight","color":"white","relationship":"attacker"}
+      ],
+      "evaluation": {"before": {"total": 0}, "after": {"total": 50}, "change": 50},
+      "metadata": {
+        "focus_squares": ["e4","f6","d5"],
+        "move_uci": "e4f6",
+        "exchange_sequence": ["e4f6","g7f6"],
+        "exchange_net": -100,
+        "tags": ["capture","check"],
+        "added_at": "2025-10-26T00:00:00"
+      }
+    }
+  ]
+}
+```
+
+The viewer will auto-focus on `metadata.focus_squares` and dim non-participating pieces.
 # Chess AI
 
 See [AGENTS.md](AGENTS.md) for an overview of the available bots. Development guidelines and testing instructions are in [CONTRIBUTING.md](CONTRIBUTING.md).
