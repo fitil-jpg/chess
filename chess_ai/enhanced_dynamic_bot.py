@@ -10,30 +10,17 @@
 """
 
 from __future__ import annotations
-from typing import Optional, Tuple, Dict, Any
-import chess
-import logging
 
-from chess_ai.bot_agent import DynamicBot
-from chess_ai.pattern_manager import PatternManager
-Enhanced Dynamic Bot
-
-Улучшенная версия DynamicBot с интеграцией системы паттернов
-для победы над Stockfish.
-"""
-
-from __future__ import annotations
-import chess
-import logging
 from typing import Dict, List, Tuple, Optional, Any
+import chess
+import logging
 from collections import defaultdict
 import random
 import math
 
 from .dynamic_bot import DynamicBot
-from .stockfish_bot import StockfishBot
-from chess_ai.enhanced_pattern_system import PatternManager
-from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector, PatternMatch
+from .enhanced_pattern_system import PatternManager
+from .enhanced_pattern_detector import EnhancedPatternDetector, PatternMatch
 from core.evaluator import Evaluator
 from utils import GameContext
 
