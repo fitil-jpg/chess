@@ -24,6 +24,9 @@ class DrawerManager:
         # Staging for auxiliary overlays (tactical/blue, pruned/violet)
         self._tactical_cells: set[tuple[int, int]] = set()
         self._pruned_cells: set[tuple[int, int]] = set()
+        # Pattern focus state: cells relevant to current pattern highlighting
+        self._pattern_focus_active: bool = False
+        self._pattern_focus_cells: set[tuple[int, int]] = set()
 
     # ------------------------------------------------------------------
     def _load_heatmaps(self):
@@ -178,6 +181,9 @@ class DrawerManager:
         except Exception as exc:
             logger.warning(f"BSP overlay failed: {exc}")
 
+        # Finally, apply pattern focus overlays to dim irrelevant pieces/cells
+        self._apply_pattern_focus_overlays()
+
     # ------------------------------------------------------------------
     def set_heatmap_set(self, name):
         """Select the active heatmap set and refresh overlays."""
@@ -267,6 +273,54 @@ class DrawerManager:
     def _apply_pruned_overlays(self):
         for r, c in sorted(self._pruned_cells):
             self._add_overlay(r, c, "pruned", "violet")
+
+    # ------------------------------------------------------------------
+    # Pattern focus public API
+    def set_pattern_focus(self, squares: list[str] | set[str] | None) -> None:
+        """Set pattern focus by algebraic square names (e.g. 'e4').
+
+        When active, non-focused cells receive a dim overlay to visually
+        suppress pieces that are not involved in the current pattern.
+        Pass None or an empty list to clear focus.
+        """
+        self._pattern_focus_cells.clear()
+        if not squares:
+            self._pattern_focus_active = False
+            return
+        for name in squares:
+            try:
+                sq = chess.parse_square(str(name))
+                row = 7 - chess.square_rank(sq)
+                col = chess.square_file(sq)
+                self._pattern_focus_cells.add((row, col))
+            except Exception:
+                continue
+        self._pattern_focus_active = bool(self._pattern_focus_cells)
+
+    def clear_pattern_focus(self) -> None:
+        self._pattern_focus_active = False
+        self._pattern_focus_cells.clear()
+
+    def _apply_pattern_focus_overlays(self) -> None:
+        """Apply focus/dim overlays based on current pattern focus cells."""
+        if not self._pattern_focus_active:
+            return
+        focused = set(self._pattern_focus_cells)
+        for r in range(8):
+            for c in range(8):
+                if (r, c) in focused:
+                    self._add_overlay(r, c, "pattern_focus", "gold")
+                else:
+                    self._add_overlay(r, c, "pattern_dim", "#000000")
+
+    # ------------------------------------------------------------------
+    def is_pattern_focus_active(self) -> bool:
+        return bool(self._pattern_focus_active)
+
+    def is_cell_in_focus(self, row: int, col: int) -> bool:
+        if not self._pattern_focus_active:
+            return True
+        return (int(row), int(col)) in self._pattern_focus_cells
 
     # ------------------------------------------------------------------
     def _add_overlay(self, row, col, overlay_type, color):

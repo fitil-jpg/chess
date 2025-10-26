@@ -6,6 +6,7 @@ Identifies critical positions during gameplay for pattern learning.
 from __future__ import annotations
 import chess
 from typing import List, Dict, Any, Optional, Tuple
+from core.evaluator import Evaluator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,11 +21,13 @@ class PatternType:
     SKEWER = "skewer"
     DISCOVERED_ATTACK = "discovered_attack"
     HANGING_PIECE = "hanging_piece"
+    EXCHANGE = "exchange"
     CRITICAL_DECISION = "critical_decision"
     ENDGAME_TECHNIQUE = "endgame_technique"
     SACRIFICE = "sacrifice"
     DEFENSE = "defense"
     ATTACK = "attack"
+    EXCHANGE = "exchange"
 
 
 class ChessPattern:
@@ -47,7 +50,7 @@ class ChessPattern:
         self.influencing_pieces = influencing_pieces
         self.evaluation = evaluation
         self.metadata = metadata or {}
-        
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert pattern to dictionary for JSON serialization"""
         return {
@@ -61,7 +64,7 @@ class ChessPattern:
         }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> ChessPattern:
+    def from_dict(cls, data: Dict[str, Any]) -> 'ChessPattern':
         """Create pattern from dictionary"""
         return cls(
             fen=data["fen"],
@@ -72,6 +75,7 @@ class ChessPattern:
             evaluation=data["evaluation"],
             metadata=data.get("metadata", {})
         )
+    
 
 
 class PatternDetector:
@@ -156,6 +160,16 @@ class PatternDetector:
             pattern_types.append(PatternType.OPENING_TRICK)
             descriptions.append("Unusual opening move")
             
+        # 6.5 Exchange sequence (SEE)
+        try:
+            see_value = Evaluator.static_exchange_eval(board_before, move)
+            if board_before.is_capture(move) or abs(see_value) > 0:
+                pattern_types.append(PatternType.EXCHANGE)
+                sign = "+" if see_value > 0 else "" if see_value == 0 else "-"
+                descriptions.append(f"Exchange sequence (SEE={sign}{see_value})")
+        except Exception:
+            pass
+
         # 7. Endgame technique
         if self._is_endgame(board) and abs(evaluation_after.get("total", 0)) > 200:
             pattern_types.append(PatternType.ENDGAME_TECHNIQUE)
@@ -165,12 +179,42 @@ class PatternDetector:
         if self._is_sacrifice(board_before, move, evaluation_before, evaluation_after):
             pattern_types.append(PatternType.SACRIFICE)
             descriptions.append("Piece sacrifice")
+
+        # 9. Exchange (trade) sequence on captured square, 2-3 ply lookahead
+        exchange_info = self._detect_exchange_sequence(board_before, move)
+        if exchange_info is not None:
+            seq, net = exchange_info
+            pattern_types.append(PatternType.EXCHANGE)
+            sign = "+" if net > 0 else ("-" if net < 0 else "±")
+            descriptions.append(f"Exchange sequence {len(seq)} ply, net {sign}{abs(net)}")
         
         # Only create pattern if we detected something interesting
         if pattern_types:
             # Get influencing pieces (pieces that affect the moved piece's square)
             influencing_pieces = self._get_influencing_pieces(board, move.to_square)
+            # Add mover and target roles explicitly
+            mover_piece = board_before.piece_at(move.from_square)
+            if mover_piece:
+                influencing_pieces.append({
+                    "square": chess.square_name(move.from_square),
+                    "piece": self._piece_name(mover_piece.piece_type),
+                    "color": "white" if mover_piece.color == chess.WHITE else "black",
+                    "relationship": "mover",
+                    "role": "mover"
+                })
+            captured_piece = board_before.piece_at(move.to_square)
+            if captured_piece:
+                influencing_pieces.append({
+                    "square": chess.square_name(move.to_square),
+                    "piece": self._piece_name(captured_piece.piece_type),
+                    "color": "white" if captured_piece.color == chess.WHITE else "black",
+                    "relationship": "target",
+                    "role": "target"
+                })
             
+            # Compute focus squares (actors + attackers/defenders)
+            focus_squares = self._build_focus_squares(board_before, move, influencing_pieces, exchange_info)
+
             pattern = ChessPattern(
                 fen=board_before.fen(),
                 move=move_san,
@@ -186,7 +230,11 @@ class PatternDetector:
                     "fullmove_number": board.fullmove_number,
                     "turn": "white" if board_before.turn == chess.WHITE else "black",
                     "is_capture": board_before.is_capture(move),
-                    "is_check": board.is_check()
+                    "is_check": board.is_check(),
+                    "move_uci": move.uci(),
+                    "exchange_sequence": exchange_info[0] if exchange_info is not None else [],
+                    "exchange_net": exchange_info[1] if exchange_info is not None else 0,
+                    "focus_squares": focus_squares
                 }
             )
             
@@ -351,22 +399,151 @@ class PatternDetector:
             for attacker_sq in attackers:
                 piece = board.piece_at(attacker_sq)
                 if piece:
-                    piece_names = {
-                        chess.KING: "King",
-                        chess.QUEEN: "Queen",
-                        chess.ROOK: "Rook",
-                        chess.BISHOP: "Bishop",
-                        chess.KNIGHT: "Knight",
-                        chess.PAWN: "Pawn"
-                    }
                     influencing.append({
                         "square": chess.square_name(attacker_sq),
-                        "piece": piece_names.get(piece.piece_type, "Unknown"),
+                        "piece": self._piece_name(piece.piece_type),
                         "color": "white" if piece.color == chess.WHITE else "black",
-                        "relationship": "attacker" if color == board.turn else "defender"
+                        "relationship": "attacker" if color == board.turn else "defender",
+                        "role": "attacker" if color == board.turn else "defender"
                     })
         
         return influencing
+
+    def _detect_exchange_sequence(self, board_before: chess.Board, move: chess.Move) -> Optional[Tuple[List[str], int]]:
+        """
+        Try to detect a capture-then-recapture exchange on the target square
+        with a shallow 2-3 ply lookahead using greedy recaptures on the same square.
+
+        Returns:
+            (sequence_uci_moves, net_material_for_side_to_move_before) or None
+        """
+        try:
+            if not board_before.is_capture(move):
+                # Consider also if the destination square is occupied after move (for en passant/rare cases)
+                # but primarily trigger on captures
+                return None
+
+            # Material values
+            def val(pt: int) -> int:
+                return {
+                    chess.PAWN: 100,
+                    chess.KNIGHT: 320,
+                    chess.BISHOP: 330,
+                    chess.ROOK: 500,
+                    chess.QUEEN: 900,
+                    chess.KING: 20000,
+                }.get(pt, 0)
+
+            seq: List[str] = []
+            net = 0
+
+            # Play the initial capture
+            b = board_before.copy()
+            mover_color = b.turn
+            captured_piece = b.piece_at(move.to_square)
+            if captured_piece is None and b.is_en_passant(move):
+                # Infer en passant captured pawn square
+                ep_sq = move.to_square + (-8 if mover_color == chess.WHITE else 8)
+                captured_piece = b.piece_at(ep_sq)
+            if captured_piece:
+                net += val(captured_piece.piece_type)
+            b.push(move)
+            seq.append(move.uci())
+
+            # Greedy recapture sequence on that square
+            target_sq = move.to_square
+            # After the capture, it's opponent to move
+            ply = 0
+            while ply < 2:  # limit to two recaptures -> total up to 3 ply including initial
+                recaptures = [m for m in b.legal_moves if m.to_square == target_sq]
+                if not recaptures:
+                    break
+                # Choose the least valuable attacker to recapture (common heuristic)
+                def attacker_value(m: chess.Move) -> int:
+                    p = b.piece_at(m.from_square)
+                    return val(p.piece_type) if p else 100000
+                recapture = min(recaptures, key=attacker_value)
+                # Account material swing for the current side to move
+                taken = b.piece_at(recapture.to_square)
+                if taken:
+                    swing = val(taken.piece_type)
+                else:
+                    swing = 0
+                # If side to move is opponent of original mover, this reduces net
+                if b.turn != mover_color:
+                    net -= swing
+                else:
+                    net += swing
+                b.push(recapture)
+                seq.append(recapture.uci())
+                ply += 1
+
+            # If no recapture happened, it's just a capture, still an exchange of depth 1
+            if len(seq) <= 1:
+                return None
+
+            return seq, net
+        except Exception:
+            return None
+
+    def _build_focus_squares(
+        self,
+        board_before: chess.Board,
+        move: chess.Move,
+        influencing: List[Dict[str, Any]],
+        exchange_info: Optional[Tuple[List[str], int]]
+    ) -> List[str]:
+        """Build a compact set of squares relevant to the pattern to allow UI focus."""
+        squares: set[str] = set()
+        # Origin and destination
+        try:
+            squares.add(chess.square_name(move.from_square))
+            squares.add(chess.square_name(move.to_square))
+        except Exception:
+            pass
+
+        # Attackers/defenders influencing the to-square
+        for info in influencing:
+            sq = info.get("square")
+            if isinstance(sq, str):
+                squares.add(sq)
+
+        # Recapture actors
+        if exchange_info is not None:
+            seq_uci, _ = exchange_info
+            tmp = board_before.copy()
+            for u in seq_uci:
+                try:
+                    m = chess.Move.from_uci(u)
+                except Exception:
+                    continue
+                # Add from-square for each move in the exchange
+                try:
+                    squares.add(chess.square_name(m.from_square))
+                    squares.add(chess.square_name(m.to_square))
+                except Exception:
+                    pass
+                if m in tmp.legal_moves:
+                    tmp.push(m)
+                else:
+                    # Best-effort only
+                    try:
+                        tmp.push(m)
+                    except Exception:
+                        break
+
+        return sorted(squares)
+    @staticmethod
+    def _piece_name(piece_type: chess.PieceType) -> str:
+        piece_names = {
+            chess.KING: "King",
+            chess.QUEEN: "Queen",
+            chess.ROOK: "Rook",
+            chess.BISHOP: "Bishop",
+            chess.KNIGHT: "Knight",
+            chess.PAWN: "Pawn",
+        }
+        return piece_names.get(piece_type, "Unknown")
     
     def add_pattern(self, pattern: ChessPattern):
         """Add a detected pattern to the collection"""

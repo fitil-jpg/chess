@@ -1,15 +1,22 @@
 """
-Enhanced pattern management system for chess patterns.
-Allows selection of active patterns and custom pattern creation.
+
+Система управления паттернами:
+- Выбор паттернов для использования
+- Добавление новых паттернов
+- Удаление паттернов
+- Фильтрация и поиск
+Enhanced pattern management system with individual JSON files and filtering capabilities.
 """
 
 from __future__ import annotations
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 import logging
+import chess
 
 from chess_ai.pattern_detector import ChessPattern, PatternType
 
@@ -17,316 +24,381 @@ logger = logging.getLogger(__name__)
 
 
 class PatternManager:
-    """Enhanced pattern manager with active pattern selection and custom patterns"""
+    """Enhanced pattern management with individual JSON files and filtering"""
     
     def __init__(self, patterns_dir: str = "patterns"):
         self.patterns_dir = Path(patterns_dir)
         self.patterns_dir.mkdir(exist_ok=True)
+        self.patterns: Dict[str, ChessPattern] = {}
+        self.pattern_index: Dict[str, Dict[str, List[str]]] = {
+            "by_type": {},
+            "by_piece": {},
+            "by_phase": {},
+            "by_eval_change": {}
+        }
+        self._load_all_patterns()
+    
+    def _load_all_patterns(self):
+        """Load all patterns from individual JSON files"""
+        self.patterns.clear()
+        self.pattern_index = {
+            "by_type": {},
+            "by_piece": {},
+            "by_phase": {},
+            "by_eval_change": {}
+        }
         
-        # Pattern storage
-        self.all_patterns: List[ChessPattern] = []
-        self.active_patterns: Set[str] = set()  # Pattern IDs that are active
-        self.custom_patterns: List[ChessPattern] = []
-        
-        # Pattern configuration
-        self.config_file = self.patterns_dir / "pattern_config.json"
-        self.pattern_catalog_file = self.patterns_dir / "pattern_catalog.json"
-        
-        # Load existing data
-        self._load_configuration()
-        self._load_patterns()
-        
-    def _load_configuration(self):
-        """Load pattern configuration including active patterns"""
-        if not self.config_file.exists():
-            # Create default configuration
-            self._save_configuration()
+        for json_file in self.patterns_dir.glob("*.json"):
+            if json_file.name == "catalog.json":
+                continue  # Skip old catalog format
+                
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                pattern = ChessPattern.from_dict(data)
+                pattern_id = data.get("id", str(uuid.uuid4()))
+                self.patterns[pattern_id] = pattern
+                self._update_index(pattern_id, pattern)
+                
+            except Exception as e:
+                logger.error(f"Failed to load pattern from {json_file}: {e}")
+    
+    def _update_index(self, pattern_id: str, pattern: ChessPattern):
+        """Update search indexes for a pattern"""
+        # Debug: check if by_type is a dict
+        if not isinstance(self.pattern_index["by_type"], dict):
+            logger.error(f"by_type is not a dict: {type(self.pattern_index['by_type'])}")
             return
-            
-        try:
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                
-            self.active_patterns = set(config.get("active_patterns", []))
-            logger.info(f"Loaded configuration with {len(self.active_patterns)} active patterns")
-            
-        except Exception as e:
-            logger.error(f"Failed to load pattern configuration: {e}")
-            self.active_patterns = set()
-    
-    def _save_configuration(self):
-        """Save pattern configuration"""
-        try:
-            config = {
-                "version": "1.0",
-                "created": datetime.now().isoformat(),
-                "active_patterns": list(self.active_patterns),
-                "pattern_filters": {
-                    "min_eval_change": 50,
-                    "max_patterns_per_type": 100,
-                    "enable_custom_patterns": True
-                }
-            }
-            
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
-                
-        except Exception as e:
-            logger.error(f"Failed to save pattern configuration: {e}")
-    
-    def _load_patterns(self):
-        """Load all patterns from catalog and custom patterns"""
-        # Load from catalog
-        if self.pattern_catalog_file.exists():
-            try:
-                with open(self.pattern_catalog_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    
-                self.all_patterns = [ChessPattern.from_dict(p) for p in data.get("patterns", [])]
-                logger.info(f"Loaded {len(self.all_patterns)} patterns from catalog")
-                
-            except Exception as e:
-                logger.error(f"Failed to load pattern catalog: {e}")
-                self.all_patterns = []
         
-        # Load custom patterns
-        custom_file = self.patterns_dir / "custom_patterns.json"
-        if custom_file.exists():
-            try:
-                with open(custom_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    
-                self.custom_patterns = [ChessPattern.from_dict(p) for p in data.get("patterns", [])]
-                logger.info(f"Loaded {len(self.custom_patterns)} custom patterns")
-                
-            except Exception as e:
-                logger.error(f"Failed to load custom patterns: {e}")
-                self.custom_patterns = []
-    
-    def _save_patterns(self):
-        """Save all patterns to their respective files"""
-        # Save catalog patterns
+        # Index by pattern types
+        for pattern_type in pattern.pattern_types:
+            if pattern_type not in self.pattern_index["by_type"]:
+                self.pattern_index["by_type"][pattern_type] = []
+            self.pattern_index["by_type"][pattern_type].append(pattern_id)
+        
+        # Index by piece type (from move)
         try:
-            catalog_data = {
-                "version": "1.0",
-                "created": datetime.now().isoformat(),
-                "count": len(self.all_patterns),
-                "patterns": [p.to_dict() for p in self.all_patterns]
-            }
-            
-            with open(self.pattern_catalog_file, 'w', encoding='utf-8') as f:
-                json.dump(catalog_data, f, indent=2, ensure_ascii=False)
-                
-        except Exception as e:
-            logger.error(f"Failed to save pattern catalog: {e}")
+            board = chess.Board(pattern.fen)
+            move = board.parse_san(pattern.move)
+            piece = board.piece_at(move.from_square)
+            if piece:
+                piece_name = self._piece_type_to_name(piece.piece_type)
+                if piece_name not in self.pattern_index["by_piece"]:
+                    self.pattern_index["by_piece"][piece_name] = []
+                self.pattern_index["by_piece"][piece_name].append(pattern_id)
+        except:
+            pass
         
-        # Save custom patterns
-        try:
-            custom_data = {
-                "version": "1.0",
-                "created": datetime.now().isoformat(),
-                "count": len(self.custom_patterns),
-                "patterns": [p.to_dict() for p in self.custom_patterns]
-            }
-            
-            with open(self.patterns_dir / "custom_patterns.json", 'w', encoding='utf-8') as f:
-                json.dump(custom_data, f, indent=2, ensure_ascii=False)
-                
-        except Exception as e:
-            logger.error(f"Failed to save custom patterns: {e}")
-    
-    def get_pattern_id(self, pattern: ChessPattern) -> str:
-        """Generate unique ID for pattern"""
-        # Use FEN + move + types as ID
-        pattern_key = f"{pattern.fen}_{pattern.move}_{'_'.join(sorted(pattern.pattern_types))}"
-        return str(hash(pattern_key))
-    
-    def add_pattern(self, pattern: ChessPattern, is_custom: bool = False) -> str:
-        """Add a new pattern and return its ID"""
-        pattern_id = self.get_pattern_id(pattern)
-        
-        # Add timestamp
-        pattern.metadata["added_at"] = datetime.now().isoformat()
-        pattern.metadata["pattern_id"] = pattern_id
-        pattern.metadata["is_custom"] = is_custom
-        
-        if is_custom:
-            self.custom_patterns.append(pattern)
+        # Index by game phase
+        move_number = pattern.metadata.get("fullmove_number", 0)
+        if move_number <= 10:
+            phase = "opening"
+        elif move_number <= 30:
+            phase = "midgame"
         else:
-            self.all_patterns.append(pattern)
+            phase = "endgame"
         
-        # Auto-activate new patterns
-        self.active_patterns.add(pattern_id)
+        if phase not in self.pattern_index["by_phase"]:
+            self.pattern_index["by_phase"][phase] = []
+        self.pattern_index["by_phase"][phase].append(pattern_id)
         
-        self._save_patterns()
-        self._save_configuration()
+        # Index by evaluation change
+        eval_change = abs(pattern.evaluation.get("change", 0))
+        if eval_change > 200:
+            eval_range = "high"
+        elif eval_change > 100:
+            eval_range = "medium"
+        else:
+            eval_range = "low"
         
-        logger.info(f"Added {'custom' if is_custom else 'catalog'} pattern: {pattern_id}")
-        return pattern_id
+        if eval_range not in self.pattern_index["by_eval_change"]:
+            self.pattern_index["by_eval_change"][eval_range] = []
+        self.pattern_index["by_eval_change"][eval_range].append(pattern_id)
     
-    def remove_pattern(self, pattern_id: str) -> bool:
-        """Remove pattern by ID"""
-        # Remove from all patterns
-        self.all_patterns = [p for p in self.all_patterns if p.metadata.get("pattern_id") != pattern_id]
-        
-        # Remove from custom patterns
-        self.custom_patterns = [p for p in self.custom_patterns if p.metadata.get("pattern_id") != pattern_id]
-        
-        # Remove from active patterns
-        self.active_patterns.discard(pattern_id)
-        
-        self._save_patterns()
-        self._save_configuration()
-        
-        logger.info(f"Removed pattern: {pattern_id}")
-        return True
+    def _piece_type_to_name(self, piece_type: int) -> str:
+        """Convert piece type to name"""
+        mapping = {
+            chess.PAWN: "pawn",
+            chess.KNIGHT: "knight",
+            chess.BISHOP: "bishop",
+            chess.ROOK: "rook",
+            chess.QUEEN: "queen",
+            chess.KING: "king",
+        }
+        return mapping.get(piece_type, "unknown")
     
-    def set_active_patterns(self, pattern_ids: Set[str]):
-        """Set which patterns are active"""
-        self.active_patterns = set(pattern_ids)
-        self._save_configuration()
-        logger.info(f"Set {len(self.active_patterns)} active patterns")
+    def add_pattern(self, pattern: ChessPattern) -> str:
+        """Add a new pattern and save to individual JSON file"""
+        pattern_id = str(uuid.uuid4())
+        pattern.metadata["id"] = pattern_id
+        pattern.metadata["created_at"] = datetime.now().isoformat()
+        
+        # Debug: check pattern_index structure
+        logger.debug(f"pattern_index type: {type(self.pattern_index)}")
+        logger.debug(f"by_type type: {type(self.pattern_index.get('by_type', 'NOT_FOUND'))}")
+        
+        # Save to individual file
+        pattern_file = self.patterns_dir / f"pattern_{pattern_id}.json"
+        try:
+            with open(pattern_file, 'w', encoding='utf-8') as f:
+                json.dump(pattern.to_dict(), f, indent=2, ensure_ascii=False)
+            
+            self.patterns[pattern_id] = pattern
+            self._update_index(pattern_id, pattern)
+            logger.info(f"Added pattern {pattern_id}: {pattern.move}")
+            return pattern_id
+            
+        except Exception as e:
+            logger.error(f"Failed to save pattern {pattern_id}: {e}")
+            raise
     
-    def get_active_patterns(self) -> List[ChessPattern]:
-        """Get all currently active patterns"""
-        active_patterns = []
+    def update_pattern(self, pattern_id: str, pattern: ChessPattern) -> bool:
+        """Update an existing pattern"""
+        if pattern_id not in self.patterns:
+            return False
         
-        # Add from all patterns
-        for pattern in self.all_patterns:
-            pattern_id = pattern.metadata.get("pattern_id")
-            if pattern_id and pattern_id in self.active_patterns:
-                active_patterns.append(pattern)
+        pattern.metadata["id"] = pattern_id
+        pattern.metadata["updated_at"] = datetime.now().isoformat()
         
-        # Add from custom patterns
-        for pattern in self.custom_patterns:
-            pattern_id = pattern.metadata.get("pattern_id")
-            if pattern_id and pattern_id in self.active_patterns:
-                active_patterns.append(pattern)
-        
-        return active_patterns
+        # Update file
+        pattern_file = self.patterns_dir / f"pattern_{pattern_id}.json"
+        try:
+            with open(pattern_file, 'w', encoding='utf-8') as f:
+                json.dump(pattern.to_dict(), f, indent=2, ensure_ascii=False)
+            
+            self.patterns[pattern_id] = pattern
+            self._update_index(pattern_id, pattern)
+            logger.info(f"Updated pattern {pattern_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update pattern {pattern_id}: {e}")
+            return False
     
-    def get_patterns_by_type(self, pattern_types: List[str] = None) -> List[ChessPattern]:
-        """Get patterns filtered by type"""
-        all_patterns = self.all_patterns + self.custom_patterns
+    def delete_pattern(self, pattern_id: str) -> bool:
+        """Delete a pattern and its file"""
+        if pattern_id not in self.patterns:
+            return False
         
-        if not pattern_types:
-            return all_patterns
-        
-        filtered = []
-        for pattern in all_patterns:
-            if any(pt in pattern.pattern_types for pt in pattern_types):
-                filtered.append(pattern)
-        
-        return filtered
+        # Remove file
+        pattern_file = self.patterns_dir / f"pattern_{pattern_id}.json"
+        try:
+            if pattern_file.exists():
+                pattern_file.unlink()
+            
+            # Remove from memory and indexes
+            del self.patterns[pattern_id]
+            self._remove_from_indexes(pattern_id)
+            logger.info(f"Deleted pattern {pattern_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to delete pattern {pattern_id}: {e}")
+            return False
     
-    def create_custom_pattern(
+    def _remove_from_indexes(self, pattern_id: str):
+        """Remove pattern from all indexes"""
+        for index_type in self.pattern_index.values():
+            if isinstance(index_type, dict):
+                for key, pattern_list in index_type.items():
+                    if pattern_id in pattern_list:
+                        pattern_list.remove(pattern_id)
+    
+    def get_pattern(self, pattern_id: str) -> Optional[ChessPattern]:
+        """Get a specific pattern by ID"""
+        return self.patterns.get(pattern_id)
+    
+    def search_patterns(
         self,
-        fen: str,
-        move: str,
-        pattern_types: List[str],
-        description: str,
-        influencing_pieces: List[Dict[str, Any]] = None,
-        evaluation: Dict[str, Any] = None
-    ) -> str:
-        """Create a custom pattern"""
-        if evaluation is None:
-            evaluation = {"before": {"total": 0}, "after": {"total": 0}, "change": 0}
+        pattern_types: List[str] = None,
+        piece_types: List[str] = None,
+        phases: List[str] = None,
+        eval_ranges: List[str] = None,
+        min_eval_change: float = None,
+        max_eval_change: float = None,
+        search_text: str = None
+    ) -> List[ChessPattern]:
+        """
+        Search patterns with multiple filters
         
-        if influencing_pieces is None:
-            influencing_pieces = []
+        Args:
+            pattern_types: Filter by pattern types (fork, pin, etc.)
+            piece_types: Filter by piece types (pawn, knight, etc.)
+            phases: Filter by game phases (opening, midgame, endgame)
+            eval_ranges: Filter by evaluation ranges (low, medium, high)
+            min_eval_change: Minimum evaluation change
+            max_eval_change: Maximum evaluation change
+            search_text: Search in description and move text
+        """
+        candidate_ids = set(self.patterns.keys())
         
-        pattern = ChessPattern(
-            fen=fen,
-            move=move,
-            pattern_types=pattern_types,
-            description=description,
-            influencing_pieces=influencing_pieces,
-            evaluation=evaluation,
-            metadata={"is_custom": True}
-        )
+        # Filter by pattern types
+        if pattern_types:
+            type_ids = set()
+            for pattern_type in pattern_types:
+                type_ids.update(self.pattern_index["by_type"].get(pattern_type, []))
+            candidate_ids &= type_ids
         
-        return self.add_pattern(pattern, is_custom=True)
+        # Filter by piece types
+        if piece_types:
+            piece_ids = set()
+            for piece_type in piece_types:
+                piece_ids.update(self.pattern_index["by_piece"].get(piece_type, []))
+            candidate_ids &= piece_ids
+        
+        # Filter by phases
+        if phases:
+            phase_ids = set()
+            for phase in phases:
+                phase_ids.update(self.pattern_index["by_phase"].get(phase, []))
+            candidate_ids &= phase_ids
+        
+        # Filter by evaluation ranges
+        if eval_ranges:
+            eval_ids = set()
+            for eval_range in eval_ranges:
+                eval_ids.update(self.pattern_index["by_eval_change"].get(eval_range, []))
+            candidate_ids &= eval_ids
+        
+        # Get patterns and apply additional filters
+        results = []
+        for pattern_id in candidate_ids:
+            pattern = self.patterns[pattern_id]
+            
+            # Filter by evaluation change range
+            eval_change = abs(pattern.evaluation.get("change", 0))
+            if min_eval_change is not None and eval_change < min_eval_change:
+                continue
+            if max_eval_change is not None and eval_change > max_eval_change:
+                continue
+            
+            # Filter by search text
+            if search_text:
+                search_lower = search_text.lower()
+                if (search_lower not in pattern.description.lower() and 
+                    search_lower not in pattern.move.lower()):
+                    continue
+            
+            results.append(pattern)
+        
+        return results
     
     def get_pattern_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive pattern statistics"""
-        all_patterns = self.all_patterns + self.custom_patterns
-        active_patterns = self.get_active_patterns()
+        """Get comprehensive statistics about patterns"""
+        if not self.patterns:
+            return {"total_patterns": 0}
+        
+        stats = {
+            "total_patterns": len(self.patterns),
+            "by_type": {},
+            "by_piece": {},
+            "by_phase": {},
+            "by_eval_change": {},
+            "recent_patterns": [],
+            "top_patterns": []
+        }
         
         # Count by type
-        type_counts = {}
-        active_type_counts = {}
+        for pattern_type, pattern_ids in self.pattern_index["by_type"].items():
+            stats["by_type"][pattern_type] = len(pattern_ids)
         
-        for pattern in all_patterns:
-            for pt in pattern.pattern_types:
-                type_counts[pt] = type_counts.get(pt, 0) + 1
+        # Count by piece
+        for piece_type, pattern_ids in self.pattern_index["by_piece"].items():
+            stats["by_piece"][piece_type] = len(pattern_ids)
         
-        for pattern in active_patterns:
-            for pt in pattern.pattern_types:
-                active_type_counts[pt] = active_type_counts.get(pt, 0) + 1
+        # Count by phase
+        for phase, pattern_ids in self.pattern_index["by_phase"].items():
+            stats["by_phase"][phase] = len(pattern_ids)
         
-        # Evaluation statistics
-        eval_changes = [abs(p.evaluation.get("change", 0)) for p in all_patterns]
-        avg_eval_change = sum(eval_changes) / len(eval_changes) if eval_changes else 0
+        # Count by evaluation change
+        for eval_range, pattern_ids in self.pattern_index["by_eval_change"].items():
+            stats["by_eval_change"][eval_range] = len(pattern_ids)
         
-        return {
-            "total_patterns": len(all_patterns),
-            "active_patterns": len(active_patterns),
-            "custom_patterns": len(self.custom_patterns),
-            "catalog_patterns": len(self.all_patterns),
-            "type_counts": type_counts,
-            "active_type_counts": active_type_counts,
-            "avg_eval_change": avg_eval_change,
-            "active_percentage": (len(active_patterns) / len(all_patterns) * 100) if all_patterns else 0
-        }
+        # Recent patterns (last 10)
+        recent_patterns = sorted(
+            self.patterns.values(),
+            key=lambda p: p.metadata.get("created_at", ""),
+            reverse=True
+        )[:10]
+        stats["recent_patterns"] = [
+            {
+                "id": p.metadata.get("id", "unknown"),
+                "move": p.move,
+                "types": p.pattern_types,
+                "created_at": p.metadata.get("created_at", "unknown")
+            }
+            for p in recent_patterns
+        ]
+        
+        # Top patterns by evaluation change
+        top_patterns = sorted(
+            self.patterns.values(),
+            key=lambda p: abs(p.evaluation.get("change", 0)),
+            reverse=True
+        )[:10]
+        stats["top_patterns"] = [
+            {
+                "id": p.metadata.get("id", "unknown"),
+                "move": p.move,
+                "types": p.pattern_types,
+                "eval_change": p.evaluation.get("change", 0)
+            }
+            for p in top_patterns
+        ]
+        
+        return stats
     
-    def export_patterns(self, output_file: str, pattern_ids: List[str] = None) -> bool:
-        """Export selected patterns to file"""
+    def export_patterns(self, output_path: str, pattern_ids: List[str] = None) -> bool:
+        """Export selected patterns to a single JSON file"""
+        if pattern_ids is None:
+            patterns_to_export = list(self.patterns.values())
+        else:
+            patterns_to_export = [
+                self.patterns[pid] for pid in pattern_ids 
+                if pid in self.patterns
+            ]
+        
         try:
-            if pattern_ids:
-                # Export specific patterns
-                patterns_to_export = []
-                for pattern in self.all_patterns + self.custom_patterns:
-                    pattern_id = pattern.metadata.get("pattern_id")
-                    if pattern_id in pattern_ids:
-                        patterns_to_export.append(pattern)
-            else:
-                # Export all active patterns
-                patterns_to_export = self.get_active_patterns()
-            
             export_data = {
-                "version": "1.0",
-                "exported": datetime.now().isoformat(),
+                "version": "2.0",
+                "exported_at": datetime.now().isoformat(),
                 "count": len(patterns_to_export),
                 "patterns": [p.to_dict() for p in patterns_to_export]
             }
             
-            with open(output_file, 'w', encoding='utf-8') as f:
+            with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(export_data, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"Exported {len(patterns_to_export)} patterns to {output_file}")
+            logger.info(f"Exported {len(patterns_to_export)} patterns to {output_path}")
             return True
             
         except Exception as e:
             logger.error(f"Failed to export patterns: {e}")
             return False
     
-    def import_patterns(self, import_file: str) -> int:
-        """Import patterns from file"""
+    def import_patterns(self, import_path: str) -> int:
+        """Import patterns from a JSON file"""
         try:
-            with open(import_file, 'r', encoding='utf-8') as f:
+            with open(import_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             imported_count = 0
-            for pattern_data in data.get("patterns", []):
-                pattern = ChessPattern.from_dict(pattern_data)
-                pattern.metadata["imported_at"] = datetime.now().isoformat()
-                self.all_patterns.append(pattern)
-                imported_count += 1
+            patterns = data.get("patterns", [])
             
-            self._save_patterns()
-            logger.info(f"Imported {imported_count} patterns from {import_file}")
+            for pattern_data in patterns:
+                try:
+                    pattern = ChessPattern.from_dict(pattern_data)
+                    pattern_id = self.add_pattern(pattern)
+                    if pattern_id:
+                        imported_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to import pattern: {e}")
+                    continue
+            
+            logger.info(f"Imported {imported_count} patterns from {import_path}")
             return imported_count
             
         except Exception as e:
-            logger.error(f"Failed to import patterns: {e}")
+            logger.error(f"Failed to import patterns from {import_path}: {e}")
             return 0

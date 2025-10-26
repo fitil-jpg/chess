@@ -1,0 +1,4093 @@
+{
+  "version": "1.0",
+  "created": "2025-10-25T12:37:31.307038",
+  "count": 112,
+  "patterns": [
+    {
+      "fen": "rnb1kbnr/1p1qp1pp/p1pp1p2/3P4/3NP3/4B3/PPP2PPP/RN1QKB1R b KQkq - 1 6",
+      "move": "cxd5",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 163",
+      "influencing_pieces": [
+        {
+          "square": "e4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 234
+        },
+        "after": {
+          "total": 71
+        },
+        "change": -163
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306228"
+      }
+    },
+    {
+      "fen": "rnb2bnr/1p1qk1pp/p2pPp2/8/3N4/4B3/PPP2PPP/RN1QKB1R w KQ - 1 9",
+      "move": "exd7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 947",
+      "influencing_pieces": [
+        {
+          "square": "e7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "b8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 291
+        },
+        "after": {
+          "total": 1238
+        },
+        "change": 947
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306736"
+      }
+    },
+    {
+      "fen": "r1b2bnr/1p1Pk1pp/p1np1p2/8/3N4/4B3/PPP2PPP/RN1QKB1R w KQ - 1 10",
+      "move": "dxc8=Q",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 1081; Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1167
+        },
+        "after": {
+          "total": 2248
+        },
+        "change": 1081
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306746"
+      }
+    },
+    {
+      "fen": "r1Q2bnr/1p2k1pp/p1np1p2/8/3N4/4B3/PPP2PPP/RN1QKB1R b KQ - 0 10",
+      "move": "h6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "e3",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "g8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2248
+        },
+        "after": {
+          "total": 2251
+        },
+        "change": 3
+      },
+      "metadata": {
+        "fullmove_number": 11,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306749"
+      }
+    },
+    {
+      "fen": "r3kbnr/1pQ3p1/p1np1p1p/7Q/3N4/4B3/PPP2PPP/RN2KB1R b KQ - 3 12",
+      "move": "g6",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2327
+        },
+        "after": {
+          "total": 2296
+        },
+        "change": -31
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306752"
+      }
+    },
+    {
+      "fen": "r3kbnr/1pQ5/p1np1ppp/7Q/3N4/4B3/PPP2PPP/RN2KB1R w KQ - 0 13",
+      "move": "Qxg6#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 97704",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2296
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 97704
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 0,
+        "added_at": "2025-10-25T12:37:31.306754"
+      }
+    },
+    {
+      "fen": "rnb1kb1r/pp2qppp/2ppp1n1/7P/3PP3/2NB1N2/PPP2PP1/R1BQK2R w KQkq - 1 8",
+      "move": "hxg6",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 339",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "h7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 183
+        },
+        "after": {
+          "total": 522
+        },
+        "change": 339
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306756"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1nqppR/2ppp1P1/8/3PP3/2NB1N2/PPP2PP1/R1BQK3 b Qkq - 0 9",
+      "move": "Qg5",
+      "pattern_types": [
+        "hanging_piece",
+        "sacrifice"
+      ],
+      "description": "Hanging piece: Rook hanging; Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "c1",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f3",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 590
+        },
+        "after": {
+          "total": 543
+        },
+        "change": -47
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306759"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1n1ppR/2ppp1P1/6q1/3PP3/2NB1N2/PPP2PP1/R1BQK3 w Qkq - 1 10",
+      "move": "gxf7+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 233; Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 543
+        },
+        "after": {
+          "total": 776
+        },
+        "change": 233
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306760"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1n1PpR/2ppp3/6q1/3PP3/2NB1N2/PPP2PP1/R1BQK3 b Qkq - 0 10",
+      "move": "Ke7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "g5",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "f8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 776
+        },
+        "after": {
+          "total": 698
+        },
+        "change": -78
+      },
+      "metadata": {
+        "fullmove_number": 11,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306763"
+      }
+    },
+    {
+      "fen": "r1b2b1r/pp1nkPpR/2ppp3/6q1/3PP3/2NB1N2/PPP2PP1/R1BQK3 w Q - 1 11",
+      "move": "Bxg5+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 1012; Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "f3",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 698
+        },
+        "after": {
+          "total": 1710
+        },
+        "change": 1012
+      },
+      "metadata": {
+        "fullmove_number": 11,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306765"
+      }
+    },
+    {
+      "fen": "r1b2b1r/pp1nkPpR/2ppp3/6B1/3PP3/2NB1N2/PPP2PP1/R2QK3 b Q - 0 11",
+      "move": "Nf6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "g5",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "e7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1710
+        },
+        "after": {
+          "total": 1668
+        },
+        "change": -42
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306767"
+      }
+    },
+    {
+      "fen": "r1b2b1r/pp2kPpR/2pppn2/6B1/3PP3/2NB1N2/PPP2PP1/R2QK3 w Q - 1 12",
+      "move": "Rxh8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 501",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1668
+        },
+        "after": {
+          "total": 2169
+        },
+        "change": 501
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306769"
+      }
+    },
+    {
+      "fen": "3krb1R/pp1b1Pp1/2pPpn2/6B1/3P4/2NB1N2/PPP2PP1/R2QK3 w Q - 1 15",
+      "move": "fxe8=R+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 893; Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "f6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d7",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2285
+        },
+        "after": {
+          "total": 3178
+        },
+        "change": 893
+      },
+      "metadata": {
+        "fullmove_number": 15,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306782"
+      }
+    },
+    {
+      "fen": "3kRb1R/pp1b2p1/2pPpn2/6B1/3P4/2NB1N2/PPP2PP1/R2QK3 b Q - 0 15",
+      "move": "Kxe8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 550",
+      "influencing_pieces": [
+        {
+          "square": "f6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3178
+        },
+        "after": {
+          "total": 2628
+        },
+        "change": -550
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306784"
+      }
+    },
+    {
+      "fen": "4kb1R/pp1b2p1/2pPpnB1/6B1/3P4/2N2N2/PPP2PP1/R2QK3 b Q - 1 16",
+      "move": "Kd8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2655
+        },
+        "after": {
+          "total": 2641
+        },
+        "change": -14
+      },
+      "metadata": {
+        "fullmove_number": 17,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306786"
+      }
+    },
+    {
+      "fen": "3k1b1R/pp1b2p1/2pPpnB1/6B1/3P4/2N2N2/PPP2PP1/R2QK3 w Q - 2 17",
+      "move": "Bxf6+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 359; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2641
+        },
+        "after": {
+          "total": 3000
+        },
+        "change": 359
+      },
+      "metadata": {
+        "fullmove_number": 17,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306788"
+      }
+    },
+    {
+      "fen": "3k1b1R/pp1b2p1/2pPpBB1/8/3P4/2N2N2/PPP2PP1/R2QK3 b Q - 0 17",
+      "move": "Kc8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "d7",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3000
+        },
+        "after": {
+          "total": 2973
+        },
+        "change": -27
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306790"
+      }
+    },
+    {
+      "fen": "2k2b1R/pp1b2p1/2pPpBB1/8/3P4/2N2N2/PPP2PP1/R2QK3 w Q - 1 18",
+      "move": "Rxf8+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 338",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2973
+        },
+        "after": {
+          "total": 3311
+        },
+        "change": 338
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306792"
+      }
+    },
+    {
+      "fen": "2k2R2/pp1b2p1/2pPpBB1/8/3P4/2N2N2/PPP2PP1/R2QK3 b Q - 0 18",
+      "move": "Be8",
+      "pattern_types": [
+        "hanging_piece",
+        "sacrifice"
+      ],
+      "description": "Hanging piece: Bishop hanging; Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "g6",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f8",
+          "piece": "Rook",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3311
+        },
+        "after": {
+          "total": 3303
+        },
+        "change": -8
+      },
+      "metadata": {
+        "fullmove_number": 19,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306794"
+      }
+    },
+    {
+      "fen": "2k1bR2/pp4p1/2pPpBB1/8/3P4/2N2N2/PPP2PP1/R2QK3 w Q - 1 19",
+      "move": "Rxe8+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 349; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "g6",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3303
+        },
+        "after": {
+          "total": 3652
+        },
+        "change": 349
+      },
+      "metadata": {
+        "fullmove_number": 19,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306796"
+      }
+    },
+    {
+      "fen": "4R3/pp1k2p1/2pPpBB1/8/3P4/2N2N2/PPP2PP1/R2QK3 w Q - 1 20",
+      "move": "Rd8#",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 96350; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "f6",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3650
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 96350
+      },
+      "metadata": {
+        "fullmove_number": 20,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 1,
+        "added_at": "2025-10-25T12:37:31.306798"
+      }
+    },
+    {
+      "fen": "r1b1k2r/pppqb1pp/2npPpn1/8/2B1P3/2N1B3/PPPNQPPP/2KR3R w kq - 1 12",
+      "move": "exd7+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 1000",
+      "influencing_pieces": [
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 265
+        },
+        "after": {
+          "total": 1265
+        },
+        "change": 1000
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306800"
+      }
+    },
+    {
+      "fen": "r1b2k1r/pppPb1pp/2np1pn1/8/2B1P3/2N1B3/PPPNQPPP/2KR3R w - - 1 13",
+      "move": "dxc8=Q+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 1112; Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1212
+        },
+        "after": {
+          "total": 2324
+        },
+        "change": 1112
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306802"
+      }
+    },
+    {
+      "fen": "r1Q2k1r/ppp1b1pp/2np1pn1/8/2B1P3/2N1B3/PPPNQPPP/2KR3R b - - 0 13",
+      "move": "Rxc8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 970",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2324
+        },
+        "after": {
+          "total": 1354
+        },
+        "change": -970
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306804"
+      }
+    },
+    {
+      "fen": "2r1k2r/pp2b1pp/2pp1pn1/4n3/4PP2/1BN1B3/PPPNQ1PP/1K1R3R w - - 1 17",
+      "move": "fxe5",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 390",
+      "influencing_pieces": [
+        {
+          "square": "d6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1350
+        },
+        "after": {
+          "total": 1740
+        },
+        "change": 390
+      },
+      "metadata": {
+        "fullmove_number": 17,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306806"
+      }
+    },
+    {
+      "fen": "3rkn1r/pp2b1Qp/2pp1p2/4P3/4P3/1BN1B3/PPPN2PP/1K1R3R b - - 0 19",
+      "move": "Rd7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "f8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1903
+        },
+        "after": {
+          "total": 1914
+        },
+        "change": 11
+      },
+      "metadata": {
+        "fullmove_number": 20,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306808"
+      }
+    },
+    {
+      "fen": "4kn1r/pp1rbBQp/2pp1p2/4P3/4P3/2N1B3/PPPN2PP/1K1R3R b - - 2 20",
+      "move": "Kd8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "d7",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "e7",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1945
+        },
+        "after": {
+          "total": 1912
+        },
+        "change": -33
+      },
+      "metadata": {
+        "fullmove_number": 21,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306822"
+      }
+    },
+    {
+      "fen": "3k1n1r/pp1rbBQp/2pp1P2/8/4P3/2N1B3/PPPN2PP/1K1R3R b - - 0 21",
+      "move": "Rc7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1999
+        },
+        "after": {
+          "total": 2000
+        },
+        "change": 1
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306824"
+      }
+    },
+    {
+      "fen": "3k1n1r/ppr1bBQp/2pp1P2/8/4P3/2N1B3/PPPN2PP/1K1R3R w - - 1 22",
+      "move": "Qxh8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 475",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2000
+        },
+        "after": {
+          "total": 2475
+        },
+        "change": 475
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306826"
+      }
+    },
+    {
+      "fen": "5n1Q/pprkbB1p/2pp1P2/8/4P3/2N1B3/PPPN2PP/1K1R3R w - - 1 23",
+      "move": "fxe7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 387",
+      "influencing_pieces": [
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2471
+        },
+        "after": {
+          "total": 2858
+        },
+        "change": 387
+      },
+      "metadata": {
+        "fullmove_number": 23,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306828"
+      }
+    },
+    {
+      "fen": "5n1Q/pprkPB1p/2pp4/8/4P3/2N1B3/PPPN2PP/1K1R3R b - - 0 23",
+      "move": "Kxe7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 175",
+      "influencing_pieces": [
+        {
+          "square": "c7",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2858
+        },
+        "after": {
+          "total": 2683
+        },
+        "change": -175
+      },
+      "metadata": {
+        "fullmove_number": 24,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306830"
+      }
+    },
+    {
+      "fen": "5n1Q/ppr1kB1p/2pp4/8/4P3/2N1B3/PPPN2PP/1K1R3R w - - 0 24",
+      "move": "Bg5+",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2683
+        },
+        "after": {
+          "total": 2698
+        },
+        "change": 15
+      },
+      "metadata": {
+        "fullmove_number": 24,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306837"
+      }
+    },
+    {
+      "fen": "5n1Q/ppr1kB1p/2pp4/6B1/4P3/2N5/PPPN2PP/1K1R3R b - - 1 24",
+      "move": "Kd7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "c7",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "f8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2698
+        },
+        "after": {
+          "total": 2683
+        },
+        "change": -15
+      },
+      "metadata": {
+        "fullmove_number": 25,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306839"
+      }
+    },
+    {
+      "fen": "5n1Q/pprk1B1p/2pp4/6B1/4P3/2N5/PPPN2PP/1K1R3R w - - 2 25",
+      "move": "Qxf8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 317",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2683
+        },
+        "after": {
+          "total": 3000
+        },
+        "change": 317
+      },
+      "metadata": {
+        "fullmove_number": 25,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306842"
+      }
+    },
+    {
+      "fen": "5Q2/pprk1B1p/3p4/2p3B1/4P3/2N5/PPPN2PP/1K1R3R w - - 0 26",
+      "move": "Qe8#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 97014",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2986
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 97014
+      },
+      "metadata": {
+        "fullmove_number": 26,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 2,
+        "added_at": "2025-10-25T12:37:31.306843"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp1p2/3P4/2B1P1q1/2N2N2/PPP2PPP/R1BQK2R w KQ - 3 7",
+      "move": "Ne5+",
+      "pattern_types": [
+        "fork",
+        "hanging_piece",
+        "sacrifice"
+      ],
+      "description": "Fork: Knight attacks Queen, King; Hanging piece: Knight hanging; Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "d6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 253
+        },
+        "after": {
+          "total": 320
+        },
+        "change": 67
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306845"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp1p2/3PN3/2B1P1q1/2N5/PPP2PPP/R1BQK2R b KQ - 4 7",
+      "move": "dxe5",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 435; Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "f6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 320
+        },
+        "after": {
+          "total": -115
+        },
+        "change": -435
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306847"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2p2p2/3Pp3/2B1P1q1/2N5/PPP2PPP/R1BQK2R w KQ - 0 8",
+      "move": "Qxg4+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 992",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": -115
+        },
+        "after": {
+          "total": 877
+        },
+        "change": 992
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306849"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2p2p2/3Pp3/2B1P1Q1/2N5/PPP2PPP/R1B1K2R b KQ - 0 8",
+      "move": "Kd6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "e7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 877
+        },
+        "after": {
+          "total": 848
+        },
+        "change": -29
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306851"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp2p1pp/2pk1p2/3Pp3/2B1P1Q1/2N5/PPP2PPP/R1B1K2R w KQ - 1 9",
+      "move": "Qxc8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 320",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 848
+        },
+        "after": {
+          "total": 1168
+        },
+        "change": 320
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306853"
+      }
+    },
+    {
+      "fen": "rnQ2bnr/pp2p1pp/2pk1p2/3Pp3/2B1P3/2N5/PPP2PPP/R1B1K2R b KQ - 0 9",
+      "move": "a6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "c4",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "b8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1168
+        },
+        "after": {
+          "total": 1171
+        },
+        "change": 3
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306855"
+      }
+    },
+    {
+      "fen": "rn3bnr/1Q2p1pp/p1pk1p2/3Pp3/2B1P3/2N5/PPP2PPP/R1B1K2R b KQ - 0 10",
+      "move": "h6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "c1",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "g8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1298
+        },
+        "after": {
+          "total": 1301
+        },
+        "change": 3
+      },
+      "metadata": {
+        "fullmove_number": 11,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306857"
+      }
+    },
+    {
+      "fen": "rn3bnr/1Q2p1p1/p1pk1p1p/3Pp3/2B1P3/2N1B3/PPP2PPP/R3K2R b KQ - 1 11",
+      "move": "g5",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "e3",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1339
+        },
+        "after": {
+          "total": 1345
+        },
+        "change": 6
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306858"
+      }
+    },
+    {
+      "fen": "rn3bnr/1Q2p3/p1pk1p1p/3Pp1p1/2B1P3/2N1B3/PPP2PPP/2KR3R b - - 1 12",
+      "move": "h5",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1363
+        },
+        "after": {
+          "total": 1360
+        },
+        "change": -3
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306860"
+      }
+    },
+    {
+      "fen": "rn3bnr/1Q2p3/p1pk1p2/3Pp1pp/2B1P3/2N1B3/PPP2PPP/2KR3R w - - 0 13",
+      "move": "dxc6#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 98640",
+      "influencing_pieces": [
+        {
+          "square": "b7",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d6",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "b8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1360
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 98640
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 3,
+        "added_at": "2025-10-25T12:37:31.306862"
+      }
+    },
+    {
+      "fen": "rnb1kbnr/1p1qp1pp/p1pp1p2/3P4/3NP3/4B3/PPP2PPP/RN1QKB1R b KQkq - 1 6",
+      "move": "cxd5",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 163",
+      "influencing_pieces": [
+        {
+          "square": "e4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 234
+        },
+        "after": {
+          "total": 71
+        },
+        "change": -163
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306864"
+      }
+    },
+    {
+      "fen": "r1b1kbnr/1p1nq1p1/p2pPp1p/3N4/3N4/4B3/PPP2PPP/R2QKB1R w KQkq - 0 11",
+      "move": "Nxe7",
+      "pattern_types": [
+        "tactical_moment",
+        "fork",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 878; Fork: Knight attacks Bishop, Knight; Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 339
+        },
+        "after": {
+          "total": 1217
+        },
+        "change": 878
+      },
+      "metadata": {
+        "fullmove_number": 11,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306894"
+      }
+    },
+    {
+      "fen": "r1b1kbnr/1p1nN1p1/p2pPp1p/8/3N4/4B3/PPP2PPP/R2QKB1R b KQkq - 0 11",
+      "move": "Nxe7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 395",
+      "influencing_pieces": [
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "f8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1217
+        },
+        "after": {
+          "total": 822
+        },
+        "change": -395
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306896"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/1p1nn1p1/p2pPp1p/8/3N4/4B3/PPP2PPP/R2QKB1R w KQkq - 0 12",
+      "move": "exd7+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 406",
+      "influencing_pieces": [
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 822
+        },
+        "after": {
+          "total": 1228
+        },
+        "change": 406
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306898"
+      }
+    },
+    {
+      "fen": "r1bk1b1r/1p1Pn1p1/p2p1p1p/8/3N4/4B3/PPP2PPP/R2QKB1R w KQ - 1 13",
+      "move": "dxc8=R+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 719; Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "e7",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1180
+        },
+        "after": {
+          "total": 1899
+        },
+        "change": 719
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306900"
+      }
+    },
+    {
+      "fen": "r1Rk1b1r/1p2n1p1/p2p1p1p/8/3N4/4B3/PPP2PPP/R2QKB1R b KQ - 0 13",
+      "move": "Rxc8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 579",
+      "influencing_pieces": [
+        {
+          "square": "e7",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1899
+        },
+        "after": {
+          "total": 1320
+        },
+        "change": -579
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306902"
+      }
+    },
+    {
+      "fen": "2nk1b1r/1p4p1/p1rp1p1p/8/3N4/2P1BQ2/PP3PPP/R3KB1R w KQ - 3 16",
+      "move": "Nxc6+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 544",
+      "influencing_pieces": [
+        {
+          "square": "f3",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1371
+        },
+        "after": {
+          "total": 1915
+        },
+        "change": 544
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306903"
+      }
+    },
+    {
+      "fen": "2n1kb1r/1Q6/p2p1ppp/8/1N6/2P1B3/PP3PPP/R3KB1R b KQ - 0 18",
+      "move": "h5",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "g6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2013
+        },
+        "after": {
+          "total": 2013
+        },
+        "change": 0
+      },
+      "metadata": {
+        "fullmove_number": 19,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306906"
+      }
+    },
+    {
+      "fen": "2n1kb1r/1Q6/p2p1pp1/7p/1N6/2P1B3/PP3PPP/R3KB1R w KQ - 0 19",
+      "move": "Qxc8+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 304",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2013
+        },
+        "after": {
+          "total": 2317
+        },
+        "change": 304
+      },
+      "metadata": {
+        "fullmove_number": 19,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306908"
+      }
+    },
+    {
+      "fen": "5b1r/3Q1k2/p2p1pp1/3N3p/8/2P1B3/PP3PPP/R3KB1R b KQ - 4 21",
+      "move": "Be7",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "d5",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d7",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2348
+        },
+        "after": {
+          "total": 2303
+        },
+        "change": -45
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306910"
+      }
+    },
+    {
+      "fen": "7r/3Qbk2/p2p1pp1/3N3p/8/2P1B3/PP3PPP/R3KB1R w KQ - 5 22",
+      "move": "Qxe7+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 355",
+      "influencing_pieces": [
+        {
+          "square": "d5",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "f7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2303
+        },
+        "after": {
+          "total": 2658
+        },
+        "change": 355
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306912"
+      }
+    },
+    {
+      "fen": "6kr/4Q3/p2p1pp1/3N3p/8/2P1B3/PP3PPP/R3KB1R w KQ - 1 23",
+      "move": "Nxf6#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 97339",
+      "influencing_pieces": [
+        {
+          "square": "e7",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2661
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 97339
+      },
+      "metadata": {
+        "fullmove_number": 23,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 4,
+        "added_at": "2025-10-25T12:37:31.306914"
+      }
+    },
+    {
+      "fen": "rnb1k2r/pppqb1pp/3ppp1n/8/2BPP3/2N2N2/PPP1QPPP/R1B1K2R w KQkq - 4 7",
+      "move": "Bxh6",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 304; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 205
+        },
+        "after": {
+          "total": 509
+        },
+        "change": 304
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306915"
+      }
+    },
+    {
+      "fen": "r1bkr3/pp1qb1pp/2ppPp2/8/1nB1P3/2N2N2/PPPBQPPP/R4RK1 w - - 1 12",
+      "move": "exd7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 943",
+      "influencing_pieces": [
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 613
+        },
+        "after": {
+          "total": 1556
+        },
+        "change": 943
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306917"
+      }
+    },
+    {
+      "fen": "r1bk3r/pp1Pb1pp/2pp1p2/8/1nB1P3/2N2N2/PPPBQPPP/R4RK1 w - - 1 13",
+      "move": "dxc8=Q+",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 1125; Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1558
+        },
+        "after": {
+          "total": 2683
+        },
+        "change": 1125
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306919"
+      }
+    },
+    {
+      "fen": "r1Qk3r/pp2b1pp/2pp1p2/8/1nB1P3/2N2N2/PPPBQPPP/R4RK1 b - - 0 13",
+      "move": "Kxc8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 980",
+      "influencing_pieces": [
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2683
+        },
+        "after": {
+          "total": 1703
+        },
+        "change": -980
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306921"
+      }
+    },
+    {
+      "fen": "r2k3r/pp2b1pp/2pp1p2/8/1nB1P3/P1N2N2/1PPBQPPP/3R1RK1 b - - 0 15",
+      "move": "a6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "c4",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "b4",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "a8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1720
+        },
+        "after": {
+          "total": 1723
+        },
+        "change": 3
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306923"
+      }
+    },
+    {
+      "fen": "r2k3r/1p2b1pp/p1pp1p2/8/1nB1P3/P1N2N2/1PPBQPPP/3R1RK1 w - - 0 16",
+      "move": "axb4",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 325",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1723
+        },
+        "after": {
+          "total": 2048
+        },
+        "change": 325
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306925"
+      }
+    },
+    {
+      "fen": "r2k3r/1p2b1pp/p2p1p2/2P5/2B1P3/2N2N2/1PPBQPPP/3R1RK1 b - - 0 17",
+      "move": "f5",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "e4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2153
+        },
+        "after": {
+          "total": 2134
+        },
+        "change": -19
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306926"
+      }
+    },
+    {
+      "fen": "r2k4/1p2b1pp/p2p1r2/2P2P2/2B5/2N2N2/1PPBQPPP/3RR1K1 w - - 3 20",
+      "move": "Qxe7+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 413",
+      "influencing_pieces": [
+        {
+          "square": "e1",
+          "piece": "Rook",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2239
+        },
+        "after": {
+          "total": 2652
+        },
+        "change": 413
+      },
+      "metadata": {
+        "fullmove_number": 20,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306930"
+      }
+    },
+    {
+      "fen": "r1k1Q3/1p4pp/p2p1r2/2P2P2/2B5/2N2N2/1PPB1PPP/3RR1K1 b - - 2 21",
+      "move": "Kc7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2646
+        },
+        "after": {
+          "total": 2613
+        },
+        "change": -33
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306935"
+      }
+    },
+    {
+      "fen": "r3Q3/1pk3pp/p2p1r2/2P2P2/2B5/2N2N2/1PPB1PPP/3RR1K1 w - - 3 22",
+      "move": "Re7#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 97387",
+      "influencing_pieces": [
+        {
+          "square": "e8",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2613
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 97387
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 5,
+        "added_at": "2025-10-25T12:37:31.306937"
+      }
+    },
+    {
+      "fen": "r1b1kbnr/pp1np1pp/2pp1p2/8/2BPP1q1/2N2N1P/PPP2PP1/R1BQ1RK1 b kq - 0 7",
+      "move": "h6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "c1",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "g8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 221
+        },
+        "after": {
+          "total": 223
+        },
+        "change": 2
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306939"
+      }
+    },
+    {
+      "fen": "r1b1kbnr/pp1np1p1/2pp1p1p/8/2BPP1q1/2N2N1P/PPP2PP1/R1BQ1RK1 w kq - 0 8",
+      "move": "hxg4",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 928",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 223
+        },
+        "after": {
+          "total": 1151
+        },
+        "change": 928
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306941"
+      }
+    },
+    {
+      "fen": "r1b1kbnr/pp2p1p1/1npp1p1p/8/2BPP1P1/2N2N2/PPP2PP1/R1BQ1RK1 w kq - 1 9",
+      "move": "Bxg8",
+      "pattern_types": [
+        "tactical_moment",
+        "pin",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 252; Pin: Bishop pinned to King; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1139
+        },
+        "after": {
+          "total": 1391
+        },
+        "change": 252
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306943"
+      }
+    },
+    {
+      "fen": "2rk1b1r/pp1bpBp1/1npp1p1p/8/3PP1PN/2N5/PPP2PP1/R1BQ1RK1 w - - 5 12",
+      "move": "Ng6",
+      "pattern_types": [
+        "fork"
+      ],
+      "description": "Fork: Knight attacks Bishop, Rook",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1345
+        },
+        "after": {
+          "total": 1390
+        },
+        "change": 45
+      },
+      "metadata": {
+        "fullmove_number": 12,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306945"
+      }
+    },
+    {
+      "fen": "2rk1b1r/pp1bpBp1/1npp1pNp/8/3PP1P1/2N5/PPP2PP1/R1BQ1RK1 b - - 6 12",
+      "move": "Rc7",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1390
+        },
+        "after": {
+          "total": 1396
+        },
+        "change": 6
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306946"
+      }
+    },
+    {
+      "fen": "3k1b1r/pprbp1p1/1npp1pNp/8/3PP1P1/1BN5/PPP2PP1/R1BQ1RK1 b - - 8 13",
+      "move": "Bc8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "b6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "c7",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1399
+        },
+        "after": {
+          "total": 1411
+        },
+        "change": 12
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306948"
+      }
+    },
+    {
+      "fen": "2bk1b1r/ppr1p1p1/1npp1pNp/8/3PP1P1/1BN5/PPP2PP1/R1BQ1RK1 w - - 9 14",
+      "move": "Nxh8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 437",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1411
+        },
+        "after": {
+          "total": 1848
+        },
+        "change": 437
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306950"
+      }
+    },
+    {
+      "fen": "2bk1b2/pp1rp1p1/1npp1pNp/8/3PP1P1/1BN5/PPP2PP1/R1BQ1RK1 b - - 2 15",
+      "move": "e6",
+      "pattern_types": [
+        "hanging_piece",
+        "sacrifice"
+      ],
+      "description": "Hanging piece: Bishop hanging; Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "b3",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1925
+        },
+        "after": {
+          "total": 1893
+        },
+        "change": -32
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306952"
+      }
+    },
+    {
+      "fen": "2bk1b2/pp1r2p1/1nppppNp/8/3PP1P1/1BN5/PPP2PP1/R1BQ1RK1 w - - 0 16",
+      "move": "Nxf8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 276",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1893
+        },
+        "after": {
+          "total": 2169
+        },
+        "change": 276
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306954"
+      }
+    },
+    {
+      "fen": "2bk1N2/pp1r4/1np1pp1p/3p2p1/3PP1P1/1BN1B3/PPP2PP1/R2Q1RK1 w - - 0 18",
+      "move": "Nxe6+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 191",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 2177
+        },
+        "after": {
+          "total": 2368
+        },
+        "change": 191
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306958"
+      }
+    },
+    {
+      "fen": "2bk4/pp1r4/1np2p1p/2Np2p1/3PP1P1/1BN1B1Q1/PPP2PP1/R4RK1 w - - 7 22",
+      "move": "Nxd7",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 498; Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "b6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2361
+        },
+        "after": {
+          "total": 2859
+        },
+        "change": 498
+      },
+      "metadata": {
+        "fullmove_number": 22,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306960"
+      }
+    },
+    {
+      "fen": "2b5/pp1Nk3/1np2p1p/3p2p1/3PP1P1/1BN1B1Q1/PPP2PP1/R4RK1 w - - 1 23",
+      "move": "Nxb6",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 326; Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "a7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2851
+        },
+        "after": {
+          "total": 3177
+        },
+        "change": 326
+      },
+      "metadata": {
+        "fullmove_number": 23,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306962"
+      }
+    },
+    {
+      "fen": "8/pp2k3/1Np1bp1p/3p2p1/3PP1P1/1BN1B1Q1/PPP2PP1/R4RK1 w - - 1 24",
+      "move": "f3",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "f1",
+          "piece": "Rook",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "g2",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "g3",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3154
+        },
+        "after": {
+          "total": 3138
+        },
+        "change": -16
+      },
+      "metadata": {
+        "fullmove_number": 24,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306963"
+      }
+    },
+    {
+      "fen": "4b3/1pQ1k3/pNp2p1p/3P2p1/3P2P1/1BN1BP2/PPP2RP1/R5K1 b - - 4 27",
+      "move": "Bd7",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "b6",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "c7",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "e7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3315
+        },
+        "after": {
+          "total": 3289
+        },
+        "change": -26
+      },
+      "metadata": {
+        "fullmove_number": 28,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306965"
+      }
+    },
+    {
+      "fen": "8/1pQbk3/pNp2p1p/3P2p1/3P2P1/1BN1BP2/PPP2RP1/R5K1 w - - 5 28",
+      "move": "Qxd7+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 343",
+      "influencing_pieces": [
+        {
+          "square": "b6",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "e7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3289
+        },
+        "after": {
+          "total": 3632
+        },
+        "change": 343
+      },
+      "metadata": {
+        "fullmove_number": 28,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306967"
+      }
+    },
+    {
+      "fen": "5k2/1p1Q4/pNP2p1p/6p1/3P2P1/1BN1BP2/PPP2RP1/R5K1 b - - 0 29",
+      "move": "f5",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "g4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d7",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3729
+        },
+        "after": {
+          "total": 3718
+        },
+        "change": -11
+      },
+      "metadata": {
+        "fullmove_number": 30,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306973"
+      }
+    },
+    {
+      "fen": "5k2/1p1Q4/pNP4p/5pp1/3P2P1/1BN1BP2/PPP2RP1/R5K1 w - - 0 30",
+      "move": "Qf7#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 96282",
+      "influencing_pieces": [
+        {
+          "square": "b3",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "f8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3718
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 96282
+      },
+      "metadata": {
+        "fullmove_number": 30,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 6,
+        "added_at": "2025-10-25T12:37:31.306975"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp1p2/8/2BPP1q1/2N2N2/PPP2PPP/R1BQ1RK1 w - - 4 7",
+      "move": "Ne5+",
+      "pattern_types": [
+        "fork",
+        "sacrifice"
+      ],
+      "description": "Fork: Knight attacks Queen, King; Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "d4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "f6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 265
+        },
+        "after": {
+          "total": 337
+        },
+        "change": 72
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306976"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp1p2/4N3/2BPP1q1/2N5/PPP2PPP/R1BQ1RK1 b - - 5 7",
+      "move": "fxe5",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 446; Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "d4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 337
+        },
+        "after": {
+          "total": -109
+        },
+        "change": -446
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306980"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp4/4p3/2BPP1q1/2N5/PPP2PPP/R1BQ1RK1 w - - 0 8",
+      "move": "Qxg4+",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 994",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": -109
+        },
+        "after": {
+          "total": 885
+        },
+        "change": 994
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306982"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1kp1pp/2pp4/4p3/2BPP1Q1/2N5/PPP2PPP/R1B2RK1 b - - 0 8",
+      "move": "e6",
+      "pattern_types": [
+        "sacrifice"
+      ],
+      "description": "Piece sacrifice",
+      "influencing_pieces": [
+        {
+          "square": "c4",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "g4",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 885
+        },
+        "after": {
+          "total": 823
+        },
+        "change": -62
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306984"
+      }
+    },
+    {
+      "fen": "rnb2bnr/pp1k2pp/2ppp3/4p3/2BPP1Q1/2N5/PPP2PPP/R1B2RK1 w - - 0 9",
+      "move": "Bxe6+",
+      "pattern_types": [
+        "fork"
+      ],
+      "description": "Fork: Bishop attacks King, Knight",
+      "influencing_pieces": [
+        {
+          "square": "g4",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 823
+        },
+        "after": {
+          "total": 958
+        },
+        "change": 135
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306986"
+      }
+    },
+    {
+      "fen": "rnbk1bnr/pp4pp/2ppB3/4p3/3PP1Q1/2N5/PPP2PPP/R1B2RK1 w - - 1 10",
+      "move": "Bxc8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 300",
+      "influencing_pieces": [
+        {
+          "square": "g4",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 926
+        },
+        "after": {
+          "total": 1226
+        },
+        "change": 300
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306988"
+      }
+    },
+    {
+      "fen": "rnB2bnr/4k1p1/p1pR3p/1p2P3/4P1Q1/2N5/PPP2PPP/R1B3K1 w - - 0 14",
+      "move": "Qe6#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 98498",
+      "influencing_pieces": [
+        {
+          "square": "d6",
+          "piece": "Rook",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "c8",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "e7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1502
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 98498
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 7,
+        "added_at": "2025-10-25T12:37:31.306989"
+      }
+    },
+    {
+      "fen": "rnb2b1r/1p1qkppp/p1ppp1n1/7P/3PP3/2NB1N2/PPP2PP1/R1BQ1RK1 w - - 0 9",
+      "move": "hxg6",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 334",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "h7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 198
+        },
+        "after": {
+          "total": 532
+        },
+        "change": 334
+      },
+      "metadata": {
+        "fullmove_number": 9,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.306991"
+      }
+    },
+    {
+      "fen": "rnb2b1r/1p1qk1pp/p1p1ppP1/3p3Q/3PPB1N/2NB4/PPP2PP1/R4RK1 w - - 4 13",
+      "move": "gxh7",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 152",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "h8",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 546
+        },
+        "after": {
+          "total": 698
+        },
+        "change": 152
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.306994"
+      }
+    },
+    {
+      "fen": "rnbk1b1r/1p1q2pP/p1p1pp2/3p3Q/3PPB1N/2NB4/PPP2PP1/R4RK1 w - - 1 14",
+      "move": "Ng6",
+      "pattern_types": [
+        "fork"
+      ],
+      "description": "Fork: Knight attacks Bishop, Rook",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 683
+        },
+        "after": {
+          "total": 730
+        },
+        "change": 47
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.306996"
+      }
+    },
+    {
+      "fen": "rnbk1b1r/1p1q2pP/p1p1ppN1/3p3Q/3PPB2/2NB4/PPP2PP1/R4RK1 b - - 2 14",
+      "move": "Bd6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [
+        {
+          "square": "f4",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d7",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 730
+        },
+        "after": {
+          "total": 693
+        },
+        "change": -37
+      },
+      "metadata": {
+        "fullmove_number": 15,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.306998"
+      }
+    },
+    {
+      "fen": "rnbk3r/1p1q2pP/p1pbppN1/3p3Q/3PPB2/2NB4/PPP2PP1/R4RK1 w - - 3 15",
+      "move": "Nxh8",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 449; Hanging piece: Bishop hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 693
+        },
+        "after": {
+          "total": 1142
+        },
+        "change": 449
+      },
+      "metadata": {
+        "fullmove_number": 15,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307000"
+      }
+    },
+    {
+      "fen": "rnbk3N/1p1q2pP/p1pbpp2/3p3Q/3PPB2/2NB4/PPP2PP1/R4RK1 b - - 0 15",
+      "move": "Qe8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1142
+        },
+        "after": {
+          "total": 1131
+        },
+        "change": -11
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307002"
+      }
+    },
+    {
+      "fen": "rnbkq2N/1p4pP/p1pbpp2/3p3Q/3PPB2/2NB4/PPP2PP1/R4RK1 w - - 1 16",
+      "move": "Nf7+",
+      "pattern_types": [
+        "fork",
+        "hanging_piece"
+      ],
+      "description": "Fork: Knight attacks Bishop, King; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "e8",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1131
+        },
+        "after": {
+          "total": 1250
+        },
+        "change": 119
+      },
+      "metadata": {
+        "fullmove_number": 16,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307004"
+      }
+    },
+    {
+      "fen": "rnb1q3/1p1k1NpP/p1pbpp2/3p3Q/3PPB2/2NB4/PPP2PP1/R4RK1 w - - 3 17",
+      "move": "Bxd6",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 373",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1205
+        },
+        "after": {
+          "total": 1578
+        },
+        "change": 373
+      },
+      "metadata": {
+        "fullmove_number": 17,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307005"
+      }
+    },
+    {
+      "fen": "rnb1q3/1p1k1NpP/p1pBpp2/3p3Q/3PP3/2NB4/PPP2PP1/R4RK1 b - - 0 17",
+      "move": "Qh8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Queen hanging",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1578
+        },
+        "after": {
+          "total": 1585
+        },
+        "change": 7
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307007"
+      }
+    },
+    {
+      "fen": "rnb4q/1p1k1NpP/p1pBpp2/3p3Q/3PP3/2NB4/PPP2PP1/R4RK1 w - - 1 18",
+      "move": "Nxh8",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece"
+      ],
+      "description": "Tactical moment with evaluation change: 838; Hanging piece: Bishop hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1585
+        },
+        "after": {
+          "total": 2423
+        },
+        "change": 838
+      },
+      "metadata": {
+        "fullmove_number": 18,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307009"
+      }
+    },
+    {
+      "fen": "rnb5/1p1k1NpP/2pBpp2/p2p3Q/3PP3/2NB4/PPP2PP1/R4RK1 b - - 1 19",
+      "move": "Ra6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "d3",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "attacker"
+        },
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "defender"
+        },
+        {
+          "square": "b8",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2486
+        },
+        "after": {
+          "total": 2490
+        },
+        "change": 4
+      },
+      "metadata": {
+        "fullmove_number": 20,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307011"
+      }
+    },
+    {
+      "fen": "1nb5/1p1k1NpP/r1pBpp2/p2p3Q/3PP3/2NB4/PPP2PP1/R4RK1 w - - 2 20",
+      "move": "h8=Q",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 744",
+      "influencing_pieces": [
+        {
+          "square": "h5",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "f7",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 2490
+        },
+        "after": {
+          "total": 3234
+        },
+        "change": 744
+      },
+      "metadata": {
+        "fullmove_number": 20,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307013"
+      }
+    },
+    {
+      "fen": "1nb4Q/1p1k1Np1/r1pBpp2/p2p3Q/3PP3/2NB4/PPP2PP1/R4RK1 b - - 0 20",
+      "move": "b6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [
+        {
+          "square": "a6",
+          "piece": "Rook",
+          "color": "black",
+          "relationship": "defender"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3234
+        },
+        "after": {
+          "total": 3250
+        },
+        "change": 16
+      },
+      "metadata": {
+        "fullmove_number": 21,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307015"
+      }
+    },
+    {
+      "fen": "1nb4Q/3k1Np1/rppBpp2/p2p3Q/3PP3/2NB4/PPP2PP1/R4RK1 w - - 0 21",
+      "move": "Qd8#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 96750",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "d7",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 3250
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 96750
+      },
+      "metadata": {
+        "fullmove_number": 21,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "game_id": 8,
+        "added_at": "2025-10-25T12:37:31.307019"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1q1ppp/n1ppp1n1/7P/3PP3/2N1BN2/PPP2PP1/R2QKB1R w KQkq - 1 8",
+      "move": "hxg6",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 342",
+      "influencing_pieces": [
+        {
+          "square": "f7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        },
+        {
+          "square": "h7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 177
+        },
+        "after": {
+          "total": 519
+        },
+        "change": 342
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307021"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1q1ppR/2ppp1P1/8/1n1PP3/2N1BN2/PPP2PP1/R2QKB2 b Qkq - 0 9",
+      "move": "fxg6",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Rook hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 596
+        },
+        "after": {
+          "total": 497
+        },
+        "change": -99
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307023"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/pp1q2pR/2ppp1p1/8/1n1PP3/2N1BN2/PPP2PP1/R2QKB2 w Qkq - 0 10",
+      "move": "Rxh8",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 506",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 497
+        },
+        "after": {
+          "total": 1003
+        },
+        "change": 506
+      },
+      "metadata": {
+        "fullmove_number": 10,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307025"
+      }
+    },
+    {
+      "fen": "1rb1kb1R/pp1q2p1/4p1p1/2p5/1n2P3/P1N1BN2/1PP2PP1/R2QKB2 w Q - 0 13",
+      "move": "Bxc5",
+      "pattern_types": [
+        "fork",
+        "hanging_piece"
+      ],
+      "description": "Fork: Bishop attacks Knight, Bishop; Hanging piece: Bishop hanging",
+      "influencing_pieces": [
+        {
+          "square": "f8",
+          "piece": "Bishop",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 969
+        },
+        "after": {
+          "total": 1077
+        },
+        "change": 108
+      },
+      "metadata": {
+        "fullmove_number": 13,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307028"
+      }
+    },
+    {
+      "fen": "1rb1kb1R/pp1q2p1/4p1p1/2B5/1n2P3/P1N2N2/1PP2PP1/R2QKB2 b Q - 0 13",
+      "move": "Ra8",
+      "pattern_types": [
+        "hanging_piece"
+      ],
+      "description": "Hanging piece: Knight hanging",
+      "influencing_pieces": [],
+      "evaluation": {
+        "before": {
+          "total": 1077
+        },
+        "after": {
+          "total": 1076
+        },
+        "change": -1
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "black",
+        "is_capture": false,
+        "is_check": false,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307029"
+      }
+    },
+    {
+      "fen": "r1b1kb1R/pp1q2p1/4p1p1/2B5/1n2P3/P1N2N2/1PP2PP1/R2QKB2 w Q - 1 14",
+      "move": "Rxf8#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 98924",
+      "influencing_pieces": [
+        {
+          "square": "c5",
+          "piece": "Bishop",
+          "color": "white",
+          "relationship": "defender"
+        },
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1076
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 98924
+      },
+      "metadata": {
+        "fullmove_number": 14,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": true,
+        "game_id": 9,
+        "added_at": "2025-10-25T12:37:31.307031"
+      }
+    }
+  ]
+}
