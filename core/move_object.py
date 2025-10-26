@@ -634,26 +634,4 @@ def create_move_object(move: Move, board: Board, bot_name: str = "") -> MoveObje
 move_evaluation_manager = MoveEvaluationManager()
 
 # Compatibility aliases for pyside_viewer.py
-MoveObject = MoveEvaluation
-
-def create_move_object(move: Move, board: Board, bot_name: str) -> MoveEvaluation:
-    """Create a MoveEvaluation object for compatibility with pyside_viewer.py"""
-    move_eval = MoveEvaluation()
-    move_eval.move = move
-    move_eval.board_fen = board.fen()
-    move_eval.move_number = len(board.move_stack) + 1
-    move_eval.color = board.turn
-    move_eval.san_notation = board.san(move)
-    move_eval.phase = MovePhase.INITIALIZATION
-    move_eval.status = MoveStatus.PENDING
-    
-    # Add initial evaluation step with bot name
-    initial_step = EvaluationStep(
-        bot_name=bot_name,
-        score=0.0,
-        reason="Move created",
-        confidence=1.0
-    )
-    move_eval.add_evaluation_step(initial_step)
-    
-    return move_eval
+MoveEvaluation = MoveObject
