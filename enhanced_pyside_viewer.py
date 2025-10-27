@@ -78,6 +78,8 @@ class PatternDetectionWorker(QThread):
             )
             
             for pattern in patterns:
+                if self.isInterruptionRequested():
+                    return
                 # Emit the pattern
                 self.patternDetected.emit(pattern)
                 
@@ -93,6 +95,8 @@ class PatternDetectionWorker(QThread):
                 if exchange_info:
                     filter_result["exchange_info"] = exchange_info
                 
+                if self.isInterruptionRequested():
+                    return
                 self.patternFiltered.emit({
                     "pattern": pattern,
                     "filter_result": filter_result
@@ -246,6 +250,8 @@ class EnhancedChessViewer(QMainWindow):
         self.pattern_manager = PatternManager()
         self.pattern_filter = PatternFilter()
         self.drawer_manager = DrawerManager()
+        # Track background workers to ensure clean shutdown
+        self._workers: list[PatternDetectionWorker] = []
         
         # Game state
         self.auto_running = False
@@ -582,8 +588,18 @@ class EnhancedChessViewer(QMainWindow):
         worker = PatternDetectionWorker(
             self.board, move, eval_before, eval_after
         )
+        # Parent the thread to the viewer so Qt manages lifetime
+        worker.setParent(self)
         worker.patternDetected.connect(self.on_pattern_detected)
         worker.patternFiltered.connect(self.on_pattern_filtered)
+        # Track and clean up on finish
+        self._workers.append(worker)
+        def _on_finished():
+            try:
+                self._workers.remove(worker)
+            except ValueError:
+                pass
+        worker.finished.connect(_on_finished)
         worker.start()
     
     def on_pattern_detected(self, pattern: ChessPattern):
@@ -673,6 +689,26 @@ class EnhancedChessViewer(QMainWindow):
     def _show_error(self, title: str, message: str):
         """Show error message"""
         QMessageBox.critical(self, title, message)
+
+    def closeEvent(self, event):
+        """Ensure background workers are stopped before closing."""
+        try:
+            # Stop timers
+            self.pause_auto()
+            # Ask workers to stop and wait for them
+            for worker in list(self._workers):
+                try:
+                    worker.requestInterruption()
+                    worker.quit()
+                    # Wait a short time for graceful exit
+                    if not worker.wait(2000):
+                        worker.terminate()
+                        worker.wait()
+                except Exception:
+                    pass
+            self._workers.clear()
+        finally:
+            event.accept()
 
 
 def main():

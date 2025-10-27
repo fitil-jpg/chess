@@ -39,7 +39,13 @@ class PatternManager:
         self._load_all_patterns()
     
     def _load_all_patterns(self):
-        """Load all patterns from individual JSON files"""
+        """Load all patterns from JSON files with robust format handling.
+
+        Supported formats:
+        - Single-pattern files with required keys (fen, move, pattern_types, evaluation)
+        - Catalog files with top-level { "patterns": [ ... ] }
+        Files that clearly are not pattern data (e.g. schemas) are skipped.
+        """
         self.patterns.clear()
         self.pattern_index = {
             "by_type": {},
@@ -48,19 +54,63 @@ class PatternManager:
             "by_eval_change": {}
         }
         
+        def _is_pattern_dict(obj: Dict[str, Any]) -> bool:
+            required = {"fen", "move", "pattern_types", "evaluation"}
+            return isinstance(obj, dict) and required.issubset(set(obj.keys()))
+
+        def _extract_pattern_id(obj: Dict[str, Any]) -> str:
+            # Prefer explicit ids if present
+            return (
+                obj.get("id")
+                or obj.get("pattern_id")
+                or obj.get("metadata", {}).get("id")
+                or obj.get("metadata", {}).get("pattern_id")
+                or str(uuid.uuid4())
+            )
+
         for json_file in self.patterns_dir.glob("*.json"):
-            if json_file.name == "catalog.json":
-                continue  # Skip old catalog format
-                
+            name = json_file.name
+            # Skip known non-pattern files
+            if name in {"catalog.json", "pattern_schema.json"}:
+                continue
+
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                
-                pattern = ChessPattern.from_dict(data)
-                pattern_id = data.get("id", str(uuid.uuid4()))
-                self.patterns[pattern_id] = pattern
-                self._update_index(pattern_id, pattern)
-                
+
+                # Handle catalogs with a list of patterns
+                if isinstance(data, dict) and isinstance(data.get("patterns"), list):
+                    for idx, item in enumerate(data["patterns"]):
+                        if not _is_pattern_dict(item):
+                            logger.debug(
+                                f"Skipping non-pattern entry #{idx} in {name}"
+                            )
+                            continue
+                        try:
+                            pattern = ChessPattern.from_dict(item)
+                            pattern_id = _extract_pattern_id(item)
+                            # Ensure metadata carries the id
+                            pattern.metadata.setdefault("id", pattern_id)
+                            self.patterns[pattern_id] = pattern
+                            self._update_index(pattern_id, pattern)
+                        except Exception as inner_exc:
+                            logger.warning(
+                                f"Failed to parse pattern entry #{idx} in {name}: {inner_exc}"
+                            )
+                    continue
+
+                # Handle single-pattern file
+                if _is_pattern_dict(data):
+                    pattern = ChessPattern.from_dict(data)
+                    pattern_id = _extract_pattern_id(data)
+                    pattern.metadata.setdefault("id", pattern_id)
+                    self.patterns[pattern_id] = pattern
+                    self._update_index(pattern_id, pattern)
+                    continue
+
+                # Unknown format -> skip quietly
+                logger.info(f"Skipping non-pattern file: {name}")
+
             except Exception as e:
                 logger.error(f"Failed to load pattern from {json_file}: {e}")
     
