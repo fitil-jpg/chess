@@ -59,31 +59,8 @@ class RiskAnalyzer:
     ) -> int:
         """Tiny negamax search with alpha-beta pruning."""
 
-        if depth == 0 or board.is_game_over():
-            stand_pat = self._material(board, color)
-            # Quiescence: search further only through captures
-            legal = board.generate_legal_moves()
-            while beta > alpha:
-                try:
-                    mv = next(legal)
-                except StopIteration:
-                    break
-                if not board.is_capture(mv):
-                    continue
-                board.push(mv)
-                score = self._search(board, 0, not maximizing, color, alpha, beta)
-                board.pop()
-                if maximizing:
-                    if score > stand_pat:
-                        stand_pat = score
-                    if stand_pat > alpha:
-                        alpha = stand_pat
-                else:
-                    if score < stand_pat:
-                        stand_pat = score
-                    if stand_pat < beta:
-                        beta = stand_pat
-            return stand_pat
+        if depth <= 0 or board.is_game_over():
+            return self._material(board, color)
 
         if maximizing:
             best = -float("inf")
