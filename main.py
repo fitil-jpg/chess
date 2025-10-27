@@ -11,6 +11,9 @@ from chess_ai.threat_map import ThreatMap
 from bot_agent import DynamicBot
 from utils.metrics_sidebar import build_sidebar_metrics
 from evaluation import evaluate
+from metrics.attack_map import attack_count_per_square
+from chess_ai.threat_map import ThreatMap
+from core.evaluator import Evaluator
 from pst_loader import effective_pst_for_piece, game_phase_from_board
 from pst_tables import PST_MG, PIECE_VALUES
 
@@ -171,8 +174,8 @@ def run_match(
         try:
             legal_count = board.legal_moves.count()
             _update_metric("legal_moves", int(legal_count))
-            # Також збираємо L^2 для грубої оцінки продуктивності
-            _update_metric("legal_moves^2", int(legal_count * legal_count))
+            # Додатково: L^2 для продуктивності
+            _update_metric("branching_L2", int(legal_count * legal_count))
         except Exception:
             pass
         bot = white if board.turn == chess.WHITE else black
@@ -248,64 +251,62 @@ def run_match(
         except Exception:
             pass
 
-        # Додаткові метрики: king safety density, ThreatMap, strong/weak control
+        # Додаткові метрики: king safety / щільність загроз біля короля / ThreatMap / strong/weak control
         try:
-            # 1) Щільність загроз біля короля: сума атак ворога в радіусі 2 клітин від короля
             counts = attack_count_per_square(board)
 
-            def _sum_attackers_near_king(color: bool, radius: int = 2) -> int:
+            # King safety (оцінка безпеки короля для кожного кольору)
+            ks_w = int(Evaluator.king_safety(board, chess.WHITE))
+            ks_b = int(Evaluator.king_safety(board, chess.BLACK))
+            _update_metric("king_safety_white", ks_w)
+            _update_metric("king_safety_black", ks_b)
+
+            # Щільність загроз біля короля (сума атак в радіусі 2 клітини навколо короля)
+            def _king_threat_density(color: bool) -> int:
                 ksq = board.king(color)
                 if ksq is None:
                     return 0
-                total = 0
                 enemy = not color
+                total = 0
                 for sq in chess.SQUARES:
-                    if chess.square_distance(ksq, sq) <= radius:
+                    if chess.square_distance(sq, ksq) <= 2:
                         total += counts[enemy][sq]
                 return int(total)
 
-            _update_metric("king_threat_density_white", _sum_attackers_near_king(chess.WHITE))
-            _update_metric("king_threat_density_black", _sum_attackers_near_king(chess.BLACK))
+            _update_metric("king_threat_density_white", _king_threat_density(chess.WHITE))
+            _update_metric("king_threat_density_black", _king_threat_density(chess.BLACK))
 
-            # 2) ThreatMap: тонкі фігури та пікові атаки/захист (як рівні, не клітини)
-            t_white = ThreatMap(chess.WHITE).summary(board)
-            t_black = ThreatMap(chess.BLACK).summary(board)
+            # ThreatMap: тонкі фігури та пікові атаки/захист
+            t_w = ThreatMap(chess.WHITE).summary(board)
+            t_b = ThreatMap(chess.BLACK).summary(board)
+            _update_metric("threatmap_thin_white", len(t_w.get("thin_pieces") or []))
+            _update_metric("threatmap_thin_black", len(t_b.get("thin_pieces") or []))
 
-            thin_w = len(t_white.get("thin_pieces", []) or [])
-            thin_b = len(t_black.get("thin_pieces", []) or [])
-            _update_metric("thin_pieces_white", thin_w)
-            _update_metric("thin_pieces_black", thin_b)
+            max_att_white = int(max(counts[chess.WHITE])) if counts[chess.WHITE] else 0
+            max_att_black = int(max(counts[chess.BLACK])) if counts[chess.BLACK] else 0
+            _update_metric("threatmap_max_attacked_white", max_att_white)
+            _update_metric("threatmap_max_attacked_black", max_att_black)
+            # «max_defended» для кольору еквівалентне максимуму атак цього ж кольору
+            _update_metric("threatmap_max_defended_white", max_att_white)
+            _update_metric("threatmap_max_defended_black", max_att_black)
 
-            def _peak_value(sq: int | None, color: bool, kind: str) -> int:
-                # kind: 'att' -> attackers of enemy; 'def' -> defenders of color
-                if sq is None:
-                    return 0
-                if kind == "att":
-                    return int(counts[not color][sq])
-                return int(counts[color][sq])
-
-            max_att_sq_w = t_white.get("max_attacked")
-            max_def_sq_w = t_white.get("max_defended")
-            max_att_sq_b = t_black.get("max_attacked")
-            max_def_sq_b = t_black.get("max_defended")
-
-            _update_metric("threat_max_attacked_white", _peak_value(max_att_sq_w, chess.WHITE, "att"))
-            _update_metric("threat_max_defended_white", _peak_value(max_def_sq_w, chess.WHITE, "def"))
-            _update_metric("threat_max_attacked_black", _peak_value(max_att_sq_b, chess.BLACK, "att"))
-            _update_metric("threat_max_defended_black", _peak_value(max_def_sq_b, chess.BLACK, "def"))
-
-            # 3) Контроль клітин: сильний (>=2) і слабкий (=1) для обох сторін
-            bal = control_balance(board)
-            strong_w = sum(1 for v in bal[chess.WHITE] if v >= 2)
-            weak_w = sum(1 for v in bal[chess.WHITE] if v == 1)
-            strong_b = sum(1 for v in bal[chess.BLACK] if v >= 2)
-            weak_b = sum(1 for v in bal[chess.BLACK] if v == 1)
+            # Strong/weak control: за різницею атак на клітину
+            strong_w = weak_w = strong_b = weak_b = 0
+            for sq in chess.SQUARES:
+                diff = counts[chess.WHITE][sq] - counts[chess.BLACK][sq]
+                if diff >= 2:
+                    strong_w += 1
+                elif diff > 0:
+                    weak_w += 1
+                if diff <= -2:
+                    strong_b += 1
+                elif diff < 0:
+                    weak_b += 1
             _update_metric("strong_control_white", strong_w)
             _update_metric("weak_control_white", weak_w)
             _update_metric("strong_control_black", strong_b)
             _update_metric("weak_control_black", weak_b)
         except Exception:
-            # Ці метрики додаткові; пропускаємо помилки, щоб не зривати гру
             pass
 
         # Optional ASCII/Unicode board diagram every N plies with metrics
@@ -430,16 +431,17 @@ def run_match(
             "pieces_under_attack_white",
             "pieces_under_attack_black",
             "legal_moves",
-            "legal_moves^2",
-            # Додаткові:
+            "branching_L2",
+            "king_safety_white",
+            "king_safety_black",
             "king_threat_density_white",
             "king_threat_density_black",
-            "thin_pieces_white",
-            "thin_pieces_black",
-            "threat_max_attacked_white",
-            "threat_max_defended_white",
-            "threat_max_attacked_black",
-            "threat_max_defended_black",
+            "threatmap_thin_white",
+            "threatmap_thin_black",
+            "threatmap_max_attacked_white",
+            "threatmap_max_attacked_black",
+            "threatmap_max_defended_white",
+            "threatmap_max_defended_black",
             "strong_control_white",
             "weak_control_white",
             "strong_control_black",
