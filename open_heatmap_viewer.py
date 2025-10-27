@@ -10,7 +10,7 @@ from pathlib import Path
 def main():
     """Open the heatmap viewer in browser."""
     # Get the absolute path to the HTML file
-    html_file = Path(__file__).parent / "interactive_heatmap_web.html"
+    html_file = Path(__file__).parent / "heatmap_web_interface.html"
     
     if not html_file.exists():
         print(f"Error: {html_file} not found!")
