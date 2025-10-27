@@ -39,7 +39,7 @@ class PatternManager:
         self._load_all_patterns()
     
     def _load_all_patterns(self):
-        """Load all patterns from individual JSON files"""
+        """Load all patterns from individual JSON files, skipping non-pattern JSONs"""
         self.patterns.clear()
         self.pattern_index = {
             "by_type": {},
@@ -47,22 +47,83 @@ class PatternManager:
             "by_phase": {},
             "by_eval_change": {}
         }
-        
+
+        # Known non-pattern filenames to always skip
+        skip_names: Set[str] = {
+            "catalog.json",
+            "pattern_schema.json",
+            "test_catalog.json",
+            "enhanced_pattern_catalog.json",
+        }
+
         for json_file in self.patterns_dir.glob("*.json"):
-            if json_file.name == "catalog.json":
-                continue  # Skip old catalog format
-                
+            name = json_file.name
+            if name in skip_names:
+                logger.debug(f"Skipping non-pattern file: {name}")
+                continue
+
+            # Prefer files created by this manager
+            is_expected_name = name.startswith("pattern_")
+
             try:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                
-                pattern = ChessPattern.from_dict(data)
-                pattern_id = data.get("id", str(uuid.uuid4()))
+            except Exception as e:
+                logger.warning(f"Unable to read JSON from {json_file}: {e}")
+                continue
+
+            # Validate that this JSON looks like a single pattern
+            if not is_expected_name and not self._looks_like_pattern(data):
+                logger.info(f"Skipping JSON that does not look like a pattern: {name}")
+                continue
+
+            try:
+                normalized = self._normalize_pattern_dict(data)
+                if normalized is None:
+                    logger.info(f"Skipping invalid pattern JSON: {name}")
+                    continue
+
+                pattern = ChessPattern.from_dict(normalized)
+                pattern_id = normalized.get("metadata", {}).get("id") or data.get("id") or str(uuid.uuid4())
+                # Ensure ID is persisted in metadata for consistency
+                pattern.metadata.setdefault("id", pattern_id)
+
                 self.patterns[pattern_id] = pattern
                 self._update_index(pattern_id, pattern)
-                
+
             except Exception as e:
                 logger.error(f"Failed to load pattern from {json_file}: {e}")
+
+    def _looks_like_pattern(self, data: Any) -> bool:
+        """Heuristically determine if JSON data represents a single pattern."""
+        if not isinstance(data, dict):
+            return False
+        # If it has a top-level "patterns" list or "$schema", it's a catalog/schema, skip
+        if "patterns" in data or "$schema" in data:
+            return False
+        required_keys = {"fen", "move", "pattern_types"}
+        # Some files may have nested structure; we only accept direct representation
+        return required_keys.issubset(set(data.keys()))
+
+    def _normalize_pattern_dict(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Normalize possibly incomplete pattern dict to satisfy ChessPattern.from_dict.
+
+        Returns a dict with required keys or None if invalid.
+        """
+        if not isinstance(data, dict):
+            return None
+        if not {"fen", "move", "pattern_types"}.issubset(data.keys()):
+            return None
+
+        normalized: Dict[str, Any] = dict(data)
+        normalized.setdefault("description", "")
+        normalized.setdefault("influencing_pieces", [])
+        normalized.setdefault("evaluation", {"before": {}, "after": {}, "change": 0})
+        normalized.setdefault("metadata", {})
+        # Ensure metadata is a dict
+        if not isinstance(normalized["metadata"], dict):
+            normalized["metadata"] = {}
+        return normalized
     
     def _update_index(self, pattern_id: str, pattern: ChessPattern):
         """Update search indexes for a pattern"""

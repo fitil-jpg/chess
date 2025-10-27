@@ -78,6 +78,8 @@ class PatternDetectionWorker(QThread):
             )
             
             for pattern in patterns:
+                if self.isInterruptionRequested():
+                    return
                 # Emit the pattern
                 self.patternDetected.emit(pattern)
                 
@@ -93,6 +95,8 @@ class PatternDetectionWorker(QThread):
                 if exchange_info:
                     filter_result["exchange_info"] = exchange_info
                 
+                if self.isInterruptionRequested():
+                    return
                 self.patternFiltered.emit({
                     "pattern": pattern,
                     "filter_result": filter_result
@@ -246,6 +250,8 @@ class EnhancedChessViewer(QMainWindow):
         self.pattern_manager = PatternManager()
         self.pattern_filter = PatternFilter()
         self.drawer_manager = DrawerManager()
+        # Track background workers to ensure clean shutdown
+        self._workers: List[QThread] = []
         
         # Game state
         self.auto_running = False
@@ -463,11 +469,23 @@ class EnhancedChessViewer(QMainWindow):
         timing_group = QGroupBox("Timing")
         timing_layout = QVBoxLayout(timing_group)
         
-        timing_layout.addWidget(QLabel("Move Delay (ms):"))
-        self.move_delay_spinbox = QSpinBox()
-        self.move_delay_spinbox.setRange(100, 5000)
-        self.move_delay_spinbox.setValue(1000)
-        timing_layout.addWidget(self.move_delay_spinbox)
+        # Bot move delay
+        bot_delay_layout = QHBoxLayout()
+        bot_delay_layout.addWidget(QLabel("Bot Move Delay (ms):"))
+        self.bot_move_delay_spinbox = QSpinBox()
+        self.bot_move_delay_spinbox.setRange(100, 5000)
+        self.bot_move_delay_spinbox.setValue(700)  # 0.7 seconds
+        bot_delay_layout.addWidget(self.bot_move_delay_spinbox)
+        timing_layout.addLayout(bot_delay_layout)
+        
+        # Board refresh delay
+        refresh_delay_layout = QHBoxLayout()
+        refresh_delay_layout.addWidget(QLabel("Board Refresh Delay (ms):"))
+        self.refresh_delay_spinbox = QSpinBox()
+        self.refresh_delay_spinbox.setRange(10, 1000)
+        self.refresh_delay_spinbox.setValue(50)  # 0.05 seconds
+        refresh_delay_layout.addWidget(self.refresh_delay_spinbox)
+        timing_layout.addLayout(refresh_delay_layout)
         
         layout.addWidget(timing_group)
         
@@ -499,7 +517,7 @@ class EnhancedChessViewer(QMainWindow):
             self.auto_running = True
             self.auto_timer = QTimer()
             self.auto_timer.timeout.connect(self.auto_step)
-            self.auto_timer.start(self.move_delay_spinbox.value())
+            self.auto_timer.start(self.bot_move_delay_spinbox.value())
             self.status_label.setText("Auto play running...")
     
     def pause_auto(self):
@@ -563,6 +581,13 @@ class EnhancedChessViewer(QMainWindow):
             # Update board display
             self._update_board()
             
+            # Add refresh delay after board update
+            refresh_delay = self.refresh_delay_spinbox.value()
+            if refresh_delay > 0:
+                QTimer.singleShot(refresh_delay, self._on_refresh_complete)
+            else:
+                self._on_refresh_complete()
+            
             # Detect patterns if enabled
             if self.auto_detect_checkbox.isChecked():
                 self._detect_patterns_async(move, eval_before_dict, eval_after_dict)
@@ -577,14 +602,37 @@ class EnhancedChessViewer(QMainWindow):
         finally:
             self.move_in_progress = False
     
+    def _on_refresh_complete(self):
+        """Called after board refresh delay is complete"""
+        # This method can be used for any post-refresh actions
+        pass
+    
     def _detect_patterns_async(self, move, eval_before, eval_after):
         """Detect patterns asynchronously"""
         worker = PatternDetectionWorker(
             self.board, move, eval_before, eval_after
         )
+        # Parent the thread to the viewer so Qt manages lifetime
+        worker.setParent(self)
         worker.patternDetected.connect(self.on_pattern_detected)
         worker.patternFiltered.connect(self.on_pattern_filtered)
+        worker.finished.connect(self._on_worker_finished)
+        # Keep a strong reference so the thread isn't destroyed prematurely
+        self._workers.append(worker)
         worker.start()
+
+    def _on_worker_finished(self):
+        """Clean up finished worker threads"""
+        sender = self.sender()
+        if isinstance(sender, QThread):
+            try:
+                # Remove from tracking list if present
+                self._workers = [w for w in self._workers if w is not sender]
+            finally:
+                try:
+                    sender.deleteLater()
+                except Exception:
+                    pass
     
     def on_pattern_detected(self, pattern: ChessPattern):
         """Handle detected pattern"""
@@ -673,6 +721,33 @@ class EnhancedChessViewer(QMainWindow):
     def _show_error(self, title: str, message: str):
         """Show error message"""
         QMessageBox.critical(self, title, message)
+
+    def closeEvent(self, event):
+        """Ensure all background threads are stopped before closing"""
+        try:
+            # Stop timers/auto-play to avoid spawning new workers
+            self.auto_running = False
+            if hasattr(self, 'auto_timer'):
+                try:
+                    self.auto_timer.stop()
+                except Exception:
+                    pass
+
+            # Wait for any running worker threads to finish
+            for worker in list(self._workers):
+                try:
+                    if worker.isRunning():
+                        # Wait up to 2 seconds per worker to finish gracefully
+                        worker.wait(2000)
+                except Exception:
+                    pass
+                try:
+                    worker.deleteLater()
+                except Exception:
+                    pass
+            self._workers.clear()
+        finally:
+            event.accept()
 
 
 def main():

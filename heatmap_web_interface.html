@@ -264,7 +264,10 @@
     </div>
 
     <script>
-        const API_BASE = '/api';
+        // Robust API base: supports both file:// and http(s) contexts
+        const API_BASE = (typeof window !== 'undefined' && typeof window.API_BASE === 'string' && window.API_BASE.trim())
+            ? window.API_BASE.trim()
+            : (location.protocol.startsWith('http') ? '/api' : 'http://127.0.0.1:5000/api');
         
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
@@ -380,8 +383,9 @@
                     grid.innerHTML = '<p>Теплові карти не знайдено. Згенеруйте їх використовуючи форму вище.</p>';
                 }
             } catch (error) {
+                const hint = (API_BASE.startsWith('http') ? ` Переконайтеся, що сервер запущено та доступний за ${API_BASE.replace(/\/api$/, '')}.` : ' Відкрийте сторінку через сервер за адресою http://127.0.0.1:5000/heatmaps.');
                 document.getElementById('heatmapGrid').innerHTML = 
-                    `<p style="color: red;">Помилка завантаження: ${error.message}</p>`;
+                    `<p style="color: red;">Помилка завантаження: ${error.message}.${hint}</p>`;
             }
         }
         
