@@ -5,6 +5,9 @@ from typing import List, Sequence, Optional
 import argparse
 
 import chess
+from metrics.attack_map import attack_count_per_square
+from metrics.strong_weak_control import control_balance
+from chess_ai.threat_map import ThreatMap
 from bot_agent import DynamicBot
 from utils.metrics_sidebar import build_sidebar_metrics
 from evaluation import evaluate
