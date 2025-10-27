@@ -246,6 +246,8 @@ class EnhancedChessViewer(QMainWindow):
         self.pattern_manager = PatternManager()
         self.pattern_filter = PatternFilter()
         self.drawer_manager = DrawerManager()
+        # Track background workers to ensure clean shutdown
+        self._workers: List[QThread] = []
         
         # Game state
         self.auto_running = False
@@ -584,7 +586,23 @@ class EnhancedChessViewer(QMainWindow):
         )
         worker.patternDetected.connect(self.on_pattern_detected)
         worker.patternFiltered.connect(self.on_pattern_filtered)
+        worker.finished.connect(self._on_worker_finished)
+        # Keep a strong reference so the thread isn't destroyed prematurely
+        self._workers.append(worker)
         worker.start()
+
+    def _on_worker_finished(self):
+        """Clean up finished worker threads"""
+        sender = self.sender()
+        if isinstance(sender, QThread):
+            try:
+                # Remove from tracking list if present
+                self._workers = [w for w in self._workers if w is not sender]
+            finally:
+                try:
+                    sender.deleteLater()
+                except Exception:
+                    pass
     
     def on_pattern_detected(self, pattern: ChessPattern):
         """Handle detected pattern"""
@@ -673,6 +691,33 @@ class EnhancedChessViewer(QMainWindow):
     def _show_error(self, title: str, message: str):
         """Show error message"""
         QMessageBox.critical(self, title, message)
+
+    def closeEvent(self, event):
+        """Ensure all background threads are stopped before closing"""
+        try:
+            # Stop timers/auto-play to avoid spawning new workers
+            self.auto_running = False
+            if hasattr(self, 'auto_timer'):
+                try:
+                    self.auto_timer.stop()
+                except Exception:
+                    pass
+
+            # Wait for any running worker threads to finish
+            for worker in list(self._workers):
+                try:
+                    if worker.isRunning():
+                        # Wait up to 2 seconds per worker to finish gracefully
+                        worker.wait(2000)
+                except Exception:
+                    pass
+                try:
+                    worker.deleteLater()
+                except Exception:
+                    pass
+            self._workers.clear()
+        finally:
+            event.accept()
 
 
 def main():
