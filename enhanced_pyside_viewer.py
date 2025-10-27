@@ -469,11 +469,23 @@ class EnhancedChessViewer(QMainWindow):
         timing_group = QGroupBox("Timing")
         timing_layout = QVBoxLayout(timing_group)
         
-        timing_layout.addWidget(QLabel("Move Delay (ms):"))
-        self.move_delay_spinbox = QSpinBox()
-        self.move_delay_spinbox.setRange(100, 5000)
-        self.move_delay_spinbox.setValue(1000)
-        timing_layout.addWidget(self.move_delay_spinbox)
+        # Bot move delay
+        bot_delay_layout = QHBoxLayout()
+        bot_delay_layout.addWidget(QLabel("Bot Move Delay (ms):"))
+        self.bot_move_delay_spinbox = QSpinBox()
+        self.bot_move_delay_spinbox.setRange(100, 5000)
+        self.bot_move_delay_spinbox.setValue(700)  # 0.7 seconds
+        bot_delay_layout.addWidget(self.bot_move_delay_spinbox)
+        timing_layout.addLayout(bot_delay_layout)
+        
+        # Board refresh delay
+        refresh_delay_layout = QHBoxLayout()
+        refresh_delay_layout.addWidget(QLabel("Board Refresh Delay (ms):"))
+        self.refresh_delay_spinbox = QSpinBox()
+        self.refresh_delay_spinbox.setRange(10, 1000)
+        self.refresh_delay_spinbox.setValue(50)  # 0.05 seconds
+        refresh_delay_layout.addWidget(self.refresh_delay_spinbox)
+        timing_layout.addLayout(refresh_delay_layout)
         
         layout.addWidget(timing_group)
         
@@ -505,7 +517,7 @@ class EnhancedChessViewer(QMainWindow):
             self.auto_running = True
             self.auto_timer = QTimer()
             self.auto_timer.timeout.connect(self.auto_step)
-            self.auto_timer.start(self.move_delay_spinbox.value())
+            self.auto_timer.start(self.bot_move_delay_spinbox.value())
             self.status_label.setText("Auto play running...")
     
     def pause_auto(self):
@@ -569,6 +581,13 @@ class EnhancedChessViewer(QMainWindow):
             # Update board display
             self._update_board()
             
+            # Add refresh delay after board update
+            refresh_delay = self.refresh_delay_spinbox.value()
+            if refresh_delay > 0:
+                QTimer.singleShot(refresh_delay, self._on_refresh_complete)
+            else:
+                self._on_refresh_complete()
+            
             # Detect patterns if enabled
             if self.auto_detect_checkbox.isChecked():
                 self._detect_patterns_async(move, eval_before_dict, eval_after_dict)
@@ -582,6 +601,11 @@ class EnhancedChessViewer(QMainWindow):
             self.pause_auto()
         finally:
             self.move_in_progress = False
+    
+    def _on_refresh_complete(self):
+        """Called after board refresh delay is complete"""
+        # This method can be used for any post-refresh actions
+        pass
     
     def _detect_patterns_async(self, move, eval_before, eval_after):
         """Detect patterns asynchronously"""
