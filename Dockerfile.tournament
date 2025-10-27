@@ -13,6 +13,9 @@ WORKDIR /app
 # Копирование файлов проекта
 COPY . /app/
 
+# Избегаем необходимости установки R при сборке rpy2
+ENV RPY2_CFFI_MODE=ABI
+
 # Установка Python зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
 
