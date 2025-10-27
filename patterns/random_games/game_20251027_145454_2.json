@@ -1,0 +1,210 @@
+{
+  "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "moves": [
+    {
+      "ply": 1,
+      "side": "White",
+      "move": "b1c3",
+      "fen": "rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq - 1 1",
+      "pre_score": 0,
+      "post_score": 63,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 55,
+        "mobility": 4,
+        "attacks_white": 26,
+        "attacks_black": 22,
+        "delta_attacks": 4,
+        "total": 63
+      }
+    },
+    {
+      "ply": 2,
+      "side": "Black",
+      "move": "c7c6",
+      "fen": "rnbqkbnr/pp1ppppp/2p5/8/8/2N5/PPPPPPPP/R1BQKBNR w KQkq - 0 2",
+      "pre_score": 63,
+      "post_score": 78,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 75,
+        "mobility": 2,
+        "attacks_white": 26,
+        "attacks_black": 25,
+        "delta_attacks": 1,
+        "total": 78
+      }
+    },
+    {
+      "ply": 3,
+      "side": "White",
+      "move": "a1b1",
+      "fen": "rnbqkbnr/pp1ppppp/2p5/8/8/2N5/PPPPPPPP/1RBQKBNR b Kkq - 1 2",
+      "pre_score": 78,
+      "post_score": 77,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 75,
+        "mobility": 0,
+        "attacks_white": 27,
+        "attacks_black": 25,
+        "delta_attacks": 2,
+        "total": 77
+      }
+    },
+    {
+      "ply": 4,
+      "side": "Black",
+      "move": "d7d5",
+      "fen": "rnbqkbnr/pp2pppp/2p5/3p4/8/2N5/PPPPPPPP/1RBQKBNR w Kkq - 0 3",
+      "pre_score": 77,
+      "post_score": 16,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 35,
+        "mobility": -16,
+        "attacks_white": 27,
+        "attacks_black": 30,
+        "delta_attacks": -3,
+        "total": 16
+      }
+    },
+    {
+      "ply": 5,
+      "side": "White",
+      "move": "e2e3",
+      "fen": "rnbqkbnr/pp2pppp/2p5/3p4/8/2N1P3/PPPP1PPP/1RBQKBNR b Kkq - 0 3",
+      "pre_score": 16,
+      "post_score": 64,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 55,
+        "mobility": 6,
+        "attacks_white": 33,
+        "attacks_black": 30,
+        "delta_attacks": 3,
+        "total": 64
+      }
+    },
+    {
+      "ply": 6,
+      "side": "Black",
+      "move": "g7g5",
+      "fen": "rnbqkbnr/pp2pp1p/2p5/3p2p1/8/2N1P3/PPPP1PPP/1RBQKBNR w Kkq - 0 4",
+      "pre_score": 64,
+      "post_score": 70,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 65,
+        "mobility": 4,
+        "attacks_white": 33,
+        "attacks_black": 32,
+        "delta_attacks": 1,
+        "total": 70
+      }
+    },
+    {
+      "ply": 7,
+      "side": "White",
+      "move": "e3e4",
+      "fen": "rnbqkbnr/pp2pp1p/2p5/3p2p1/4P3/2N5/PPPP1PPP/1RBQKBNR b Kkq - 0 4",
+      "pre_score": 70,
+      "post_score": 87,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 85,
+        "mobility": 2,
+        "attacks_white": 32,
+        "attacks_black": 32,
+        "delta_attacks": 0,
+        "total": 87
+      }
+    },
+    {
+      "ply": 8,
+      "side": "Black",
+      "move": "a7a6",
+      "fen": "rnbqkbnr/1p2pp1p/p1p5/3p2p1/4P3/2N5/PPPP1PPP/1RBQKBNR w Kkq - 0 5",
+      "pre_score": 87,
+      "post_score": 89,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 85,
+        "mobility": 4,
+        "attacks_white": 32,
+        "attacks_black": 32,
+        "delta_attacks": 0,
+        "total": 89
+      }
+    }
+  ],
+  "result": "*",
+  "reason": "move limit reached",
+  "patterns_detected": [
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops N from starting position",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops p from starting position",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "center_control"
+      ],
+      "description": "Controls center square",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops p from starting position",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops P from starting position",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops p from starting position",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "center_control"
+      ],
+      "description": "Controls center square",
+      "evaluation_change": 0
+    },
+    {
+      "pattern_type": [
+        "development"
+      ],
+      "description": "Develops p from starting position",
+      "evaluation_change": 0
+    }
+  ],
+  "total_plies": 8
+}

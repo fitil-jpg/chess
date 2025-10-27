@@ -1,0 +1,17 @@
+{
+  "fen": "rnbqkbnr/pppp1ppp/4p3/8/4P3/7P/PPPP1PP1/RNBQKBNR b KQkq - 0 2",
+  "move": "h7h6",
+  "pattern_types": [
+    "development"
+  ],
+  "description": "Develops p from starting position",
+  "evaluation": {
+    "development": true
+  },
+  "metadata": {
+    "pattern_type": "development",
+    "piece": "p",
+    "game_id": "random_game_20251027_145316",
+    "added_at": "2025-10-27T14:53:16.388280"
+  }
+}
