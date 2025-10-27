@@ -78,6 +78,8 @@ class PatternDetectionWorker(QThread):
             )
             
             for pattern in patterns:
+                if self.isInterruptionRequested():
+                    return
                 # Emit the pattern
                 self.patternDetected.emit(pattern)
                 
@@ -93,6 +95,8 @@ class PatternDetectionWorker(QThread):
                 if exchange_info:
                     filter_result["exchange_info"] = exchange_info
                 
+                if self.isInterruptionRequested():
+                    return
                 self.patternFiltered.emit({
                     "pattern": pattern,
                     "filter_result": filter_result
@@ -584,6 +588,8 @@ class EnhancedChessViewer(QMainWindow):
         worker = PatternDetectionWorker(
             self.board, move, eval_before, eval_after
         )
+        # Parent the thread to the viewer so Qt manages lifetime
+        worker.setParent(self)
         worker.patternDetected.connect(self.on_pattern_detected)
         worker.patternFiltered.connect(self.on_pattern_filtered)
         worker.finished.connect(self._on_worker_finished)
