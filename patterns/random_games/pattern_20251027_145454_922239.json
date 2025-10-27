@@ -1,0 +1,17 @@
+{
+  "fen": "rnbqkbnr/pppp1ppp/4p3/8/8/7P/PPPPPPP1/RNBQKBNR w KQkq - 0 2",
+  "move": "e2e4",
+  "pattern_types": [
+    "center_control"
+  ],
+  "description": "Controls center square",
+  "evaluation": {
+    "center_control": true
+  },
+  "metadata": {
+    "pattern_type": "center_control",
+    "square": "e4",
+    "game_id": "random_game_20251027_145316",
+    "added_at": "2025-10-27T14:53:16.167775"
+  }
+}

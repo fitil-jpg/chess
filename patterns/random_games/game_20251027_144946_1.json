@@ -1,0 +1,189 @@
+{
+  "start_fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "moves": [
+    {
+      "ply": 1,
+      "side": "White",
+      "move": "e2e4",
+      "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      "pre_score": 0,
+      "post_score": 67,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 40,
+        "mobility": 20,
+        "attacks_white": 29,
+        "attacks_black": 22,
+        "delta_attacks": 7,
+        "total": 67
+      }
+    },
+    {
+      "ply": 2,
+      "side": "Black",
+      "move": "a7a5",
+      "fen": "rnbqkbnr/1ppppppp/8/p7/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "pre_score": 67,
+      "post_score": 68,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 45,
+        "mobility": 18,
+        "attacks_white": 29,
+        "attacks_black": 24,
+        "delta_attacks": 5,
+        "total": 68
+      }
+    },
+    {
+      "ply": 3,
+      "side": "White",
+      "move": "b1c3",
+      "fen": "rnbqkbnr/1ppppppp/8/p7/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 2",
+      "pre_score": 68,
+      "post_score": 129,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 100,
+        "mobility": 22,
+        "attacks_white": 31,
+        "attacks_black": 24,
+        "delta_attacks": 7,
+        "total": 129
+      }
+    },
+    {
+      "ply": 4,
+      "side": "Black",
+      "move": "c7c6",
+      "fen": "rnbqkbnr/1p1ppppp/2p5/p7/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3",
+      "pre_score": 129,
+      "post_score": 147,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 120,
+        "mobility": 22,
+        "attacks_white": 31,
+        "attacks_black": 26,
+        "delta_attacks": 5,
+        "total": 147
+      }
+    },
+    {
+      "ply": 5,
+      "side": "White",
+      "move": "b2b3",
+      "fen": "rnbqkbnr/1p1ppppp/2p5/p7/4P3/1PN5/P1PP1PPP/R1BQKBNR b KQkq - 0 3",
+      "pre_score": 147,
+      "post_score": 134,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 105,
+        "mobility": 24,
+        "attacks_white": 31,
+        "attacks_black": 26,
+        "delta_attacks": 5,
+        "total": 134
+      }
+    },
+    {
+      "ply": 6,
+      "side": "Black",
+      "move": "c6c5",
+      "fen": "rnbqkbnr/1p1ppppp/8/p1p5/4P3/1PN5/P1PP1PPP/R1BQKBNR w KQkq - 0 4",
+      "pre_score": 134,
+      "post_score": 123,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 95,
+        "mobility": 22,
+        "attacks_white": 31,
+        "attacks_black": 25,
+        "delta_attacks": 6,
+        "total": 123
+      }
+    },
+    {
+      "ply": 7,
+      "side": "White",
+      "move": "c3b5",
+      "fen": "rnbqkbnr/1p1ppppp/8/pNp5/4P3/1P6/P1PP1PPP/R1BQKBNR b KQkq - 1 4",
+      "pre_score": 123,
+      "post_score": 114,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 80,
+        "mobility": 26,
+        "attacks_white": 33,
+        "attacks_black": 25,
+        "delta_attacks": 8,
+        "total": 114
+      }
+    },
+    {
+      "ply": 8,
+      "side": "Black",
+      "move": "d7d6",
+      "fen": "rnbqkbnr/1p2pppp/3p4/pNp5/4P3/1P6/P1PP1PPP/R1BQKBNR w KQkq - 0 5",
+      "pre_score": 114,
+      "post_score": 75,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 60,
+        "mobility": 12,
+        "attacks_white": 33,
+        "attacks_black": 30,
+        "delta_attacks": 3,
+        "total": 75
+      }
+    },
+    {
+      "ply": 9,
+      "side": "White",
+      "move": "d1f3",
+      "fen": "rnbqkbnr/1p2pppp/3p4/pNp5/4P3/1P3Q2/P1PP1PPP/R1B1KBNR b KQkq - 1 5",
+      "pre_score": 75,
+      "post_score": 101,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 70,
+        "mobility": 26,
+        "attacks_white": 35,
+        "attacks_black": 30,
+        "delta_attacks": 5,
+        "total": 101
+      }
+    },
+    {
+      "ply": 10,
+      "side": "Black",
+      "move": "h7h5",
+      "fen": "rnbqkbnr/1p2ppp1/3p4/pNp4p/4P3/1P3Q2/P1PP1PPP/R1B1KBNR w KQkq - 0 6",
+      "pre_score": 101,
+      "post_score": 103,
+      "confidence": 0.0,
+      "details": {
+        "material": 0,
+        "pst": 75,
+        "mobility": 24,
+        "attacks_white": 35,
+        "attacks_black": 31,
+        "delta_attacks": 4,
+        "total": 103
+      }
+    }
+  ],
+  "result": "*",
+  "reason": "move limit reached",
+  "patterns_detected": [],
+  "total_plies": 10
+}
