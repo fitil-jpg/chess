@@ -251,7 +251,7 @@ class EnhancedChessViewer(QMainWindow):
         self.pattern_filter = PatternFilter()
         self.drawer_manager = DrawerManager()
         # Track background workers to ensure clean shutdown
-        self._workers: list[PatternDetectionWorker] = []
+        self._workers: List[QThread] = []
         
         # Game state
         self.auto_running = False
@@ -592,15 +592,23 @@ class EnhancedChessViewer(QMainWindow):
         worker.setParent(self)
         worker.patternDetected.connect(self.on_pattern_detected)
         worker.patternFiltered.connect(self.on_pattern_filtered)
-        # Track and clean up on finish
+        worker.finished.connect(self._on_worker_finished)
+        # Keep a strong reference so the thread isn't destroyed prematurely
         self._workers.append(worker)
-        def _on_finished():
-            try:
-                self._workers.remove(worker)
-            except ValueError:
-                pass
-        worker.finished.connect(_on_finished)
         worker.start()
+
+    def _on_worker_finished(self):
+        """Clean up finished worker threads"""
+        sender = self.sender()
+        if isinstance(sender, QThread):
+            try:
+                # Remove from tracking list if present
+                self._workers = [w for w in self._workers if w is not sender]
+            finally:
+                try:
+                    sender.deleteLater()
+                except Exception:
+                    pass
     
     def on_pattern_detected(self, pattern: ChessPattern):
         """Handle detected pattern"""
@@ -691,19 +699,26 @@ class EnhancedChessViewer(QMainWindow):
         QMessageBox.critical(self, title, message)
 
     def closeEvent(self, event):
-        """Ensure background workers are stopped before closing."""
+        """Ensure all background threads are stopped before closing"""
         try:
-            # Stop timers
-            self.pause_auto()
-            # Ask workers to stop and wait for them
+            # Stop timers/auto-play to avoid spawning new workers
+            self.auto_running = False
+            if hasattr(self, 'auto_timer'):
+                try:
+                    self.auto_timer.stop()
+                except Exception:
+                    pass
+
+            # Wait for any running worker threads to finish
             for worker in list(self._workers):
                 try:
-                    worker.requestInterruption()
-                    worker.quit()
-                    # Wait a short time for graceful exit
-                    if not worker.wait(2000):
-                        worker.terminate()
-                        worker.wait()
+                    if worker.isRunning():
+                        # Wait up to 2 seconds per worker to finish gracefully
+                        worker.wait(2000)
+                except Exception:
+                    pass
+                try:
+                    worker.deleteLater()
                 except Exception:
                     pass
             self._workers.clear()
