@@ -226,9 +226,27 @@
     }
 
     async function makeMove(){
-      await api('/api/game/move', { method:'POST', body: '{}' });
-      await refreshBoard();
-      await refreshStatus();
+      try {
+        await api('/api/game/move', { method:'POST', body: '{}' });
+        await refreshBoard();
+        await refreshStatus();
+      } catch (error) {
+        // If move fails because no game is active, start a game first
+        if (error.message.includes('Гра не активна') || error.message.includes('400') || error.message.includes('BAD REQUEST')) {
+          console.log('No active game, starting a new game...');
+          await startGame();
+          // Try the move again after starting the game
+          try {
+            await api('/api/game/move', { method:'POST', body: '{}' });
+            await refreshBoard();
+            await refreshStatus();
+          } catch (secondError) {
+            console.error('Move failed even after starting game:', secondError);
+          }
+        } else {
+          console.error('Move failed:', error);
+        }
+      }
     }
 
     async function stopGame(){
