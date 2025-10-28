@@ -1,1281 +1,273 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess AI Analytics Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <!-- Use Chart.js UMD build (global Chart) to avoid ESM export errors -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
-            onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/chart.js@4.4.3/dist/chart.umd.min.js';document.head.appendChild(s);})();"></script>
-    <!-- Load a stable chess.js that exposes global `Chess`; fallback to jsDelivr if cdnjs fails -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js" onerror="(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chess.js@0.13.4/chess.min.js';document.head.appendChild(s);})();"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess AI Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f1221;
+      --panel: #171b31;
+      --panel-2: #1e2340;
+      --text: #e8eaf6;
+      --muted: #9aa0b6;
+      --accent: #7c4dff;
+      --accent-2: #00e5ff;
+      --good: #2ecc71;
+      --bad: #e74c3c;
+      --board-a: #b58863;
+      --board-b: #f0d9b5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 80% -10%, rgba(124,77,255,0.08), transparent 60%),
+                  radial-gradient(900px 700px at -10% 110%, rgba(0,229,255,0.08), transparent 60%),
+                  var(--bg);
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid #2a2f54; background: linear-gradient(180deg, #131836, #111630);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { font-size: 18px; margin: 0; letter-spacing: 0.3px; }
+    header .actions { display: flex; gap: 10px; }
+    button {
+      background: linear-gradient(135deg, var(--accent), #5b35ff);
+      color: white; border: none; border-radius: 10px; padding: 10px 14px; cursor: pointer; font-weight: 600;
+      box-shadow: 0 6px 20px rgba(124,77,255,0.35), inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+    button.secondary { background: linear-gradient(135deg, #2d335c, #23294b); color: #e0e3ff; }
+    button.ghost { background: transparent; border: 1px solid #2d335c; color: #c7cbf6; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        html, body {
-            height: 100%;
-        }
+    .layout {
+      display: grid; grid-template-columns: 280px 1fr 360px; gap: 16px; padding: 16px; align-items: start;
+    }
+    .panel { background: var(--panel); border: 1px solid #23294b; border-radius: 14px; padding: 14px; }
+    .panel h2 { font-size: 14px; font-weight: 700; margin: 0 0 10px; color: #c7cbf6; letter-spacing: 0.2px; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            /* Ensure page is scrollable on macOS Safari */
-            min-height: 100vh;
-            min-height: 100dvh;
-            overflow-y: auto;
-            color: #333;
-        }
+    /* Board */
+    .board-wrap { display: grid; grid-template-rows: auto auto; gap: 12px; }
+    .board { width: 560px; height: 560px; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); border-radius: 12px; overflow: hidden; border: 2px solid #2a2f54; }
+    .cell { display: grid; place-items: center; font-size: 36px; user-select: none; }
+    .a { background: var(--board-a); color: #111; }
+    .b { background: var(--board-b); color: #111; }
+    .hl { outline: 3px solid rgba(0,229,255,0.75); outline-offset: -3px; }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+    .controls { display: flex; gap: 10px; }
+    .status { font-size: 13px; color: var(--muted); margin-top: 6px; }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
+    .stat {
+      display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px;
+      background: var(--panel-2); border: 1px solid #2a2f54;
+    }
+    .bar { height: 8px; background: #2a2f54; border-radius: 999px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .panel {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .panel:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        }
-
-        .panel h3 {
-            color: #4a5568;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 10px;
-        }
-
-        .chess-board {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(8, 1fr);
-            aspect-ratio: 1;
-            border: 3px solid #2d3748;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-
-        .cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            font-family: "DejaVu Sans", "Segoe UI Symbol", "Noto Sans Symbols2", "Arial Unicode MS", sans-serif;
-            line-height: 1;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .cell:hover {
-            transform: scale(1.05);
-            z-index: 10;
-        }
-
-        .cell.white {
-            background-color: #f0d9b5;
-        }
-
-        .cell.black {
-            background-color: #b58863;
-        }
-
-        .cell.highlight {
-            background-color: #ffd700 !important;
-            box-shadow: inset 0 0 0 3px #ff6b6b;
-        }
-
-        .cell.selected {
-            background-color: #4ecdc4 !important;
-            box-shadow: inset 0 0 0 3px #45b7aa;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: scale(1.05);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin: 20px 0;
-        }
-
-        .game-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .game-item {
-            padding: 15px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
-        }
-
-        .game-item:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
-        }
-
-        .game-item.selected {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .game-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-
-        .game-result {
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-        }
-
-        .result-white { background: #d4edda; color: #155724; }
-        .result-black { background: #f8d7da; color: #721c24; }
-        .result-draw { background: #fff3cd; color: #856404; }
-
-        .move-timeline {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-
-        .move-item {
-            padding: 4px 8px;
-            background: #e2e8f0;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .move-item:hover {
-            background: #cbd5e0;
-            transform: scale(1.05);
-        }
-
-        .move-item.selected {
-            background: #667eea;
-            color: white;
-        }
-
-        .module-usage {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .module-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .module-name {
-            min-width: 120px;
-            font-weight: 600;
-        }
-
-        .module-progress {
-            flex: 1;
-            height: 20px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .module-fill {
-            height: 100%;
-            border-radius: 10px;
-            transition: width 0.5s ease;
-            position: relative;
-        }
-
-        .module-count {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e2e8f0;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            padding: 12px 24px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-
-        .tab:hover {
-            background: #f8f9fa;
-        }
-
-        .tab.active {
-            border-bottom-color: #667eea;
-            color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @media (max-width: 1200px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .cell {
-                font-size: 2rem;
-            }
-            
-            .controls {
-                justify-content: center;
-            }
-        }
-    </style>
+    .list { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #262c54; border: 1px solid #2d335c; color: #dfe2ff; font-size: 12px; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>♟️ Chess AI Analytics Dashboard</h1>
-            <p>Інтерактивна аналітика шахових ботів з реальним часом</p>
-        </div>
-
-        <div class="dashboard">
-            <!-- Ліва панель - Статистика ботів -->
-            <div class="panel">
-                <h3>📊 Статистика ботів</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="current-game">0</div>
-                        <div class="stat-label">Поточна гра</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="total-games">0</div>
-                        <div class="stat-label">Всього ігор</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="white-wins">0</div>
-                        <div class="stat-label">Перемоги білих</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="black-wins">0</div>
-                        <div class="stat-label">Перемоги чорних</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="draws">0</div>
-                        <div class="stat-label">Нічиї</div>
-                    </div>
-                </div>
-
-                <h3>🎯 Використання модулів</h3>
-                <div class="module-usage" id="module-usage">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                        Завантаження...
-                    </div>
-                </div>
-            </div>
-
-            <!-- Центральна панель - Шахова доска -->
-            <div class="panel">
-                <h3>♟️ Шахова доска</h3>
-                <div class="chess-board" id="chess-board"></div>
-                <div class="controls">
-                    <button class="btn" id="btn-start"><span aria-hidden="true">♾️</span><span>Безкінечна гра</span></button>
-                    <button class="btn" id="btn-pause" disabled>⏸️ Пауза</button>
-                    <button class="btn" id="btn-stop" disabled>⏹️ Стоп</button>
-                    <button class="btn" id="btn-reset">🔄 Скинути</button>
-                </div>
-                <div id="game-status" style="margin-top: 15px; text-align: center; font-weight: 600; color: #4a5568;">
-                    Готовий до початку гри
-                </div>
-            </div>
-
-            <!-- Права панель - Результати ігор -->
-            <div class="panel">
-                <h3>📋 Результати ігор</h3>
-                <div class="tabs">
-                    <div class="tab active" data-tab="games">Ігри</div>
-                    <div class="tab" data-tab="timeline">Хроніка</div>
-                </div>
-                
-                <div class="tab-content active" id="games-tab">
-                    <div class="game-list" id="game-list">
-                        <div class="loading">
-                            <div class="spinner"></div>
-                            Завантаження ігор...
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="timeline-tab">
-                    <div class="move-timeline" id="move-timeline">
-                        <div class="loading">Оберіть гру для перегляду хроніки</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Графіки -->
-        <div class="panel">
-            <h3>📈 Аналітика</h3>
-            <div class="tabs">
-                <div class="tab active" data-tab="results-chart">Результати</div>
-                <div class="tab" data-tab="modules-chart">Модулі</div>
-                <div class="tab" data-tab="timeline-chart">Часова лінія</div>
-            </div>
-            
-            <div class="tab-content active" id="results-chart-tab">
-                <div class="chart-container">
-                    <canvas id="results-chart"></canvas>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="modules-chart-tab">
-                <div class="chart-container">
-                    <canvas id="modules-chart"></canvas>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="timeline-chart-tab">
-                <div class="chart-container">
-                    <canvas id="timeline-chart"></canvas>
-                </div>
-            </div>
-        </div>
+  <header>
+    <h1>Chess AI Dashboard</h1>
+    <div class="actions">
+      <select id="whiteBot"></select>
+      <select id="blackBot"></select>
+      <button id="startBtn">▶️ Почати гру</button>
+      <button id="moveBtn" class="secondary">⏭️ Хід</button>
+      <button id="stopBtn" class="ghost">⏹️ Стоп</button>
+      <button id="resetBtn" class="ghost">🔄 Скинути</button>
     </div>
+  </header>
 
-    <script>
-        // Глобальні змінні
-        const MOVE_DELAY_MS = 400; // мінімальна затримка між ходами
-        let game = null;
-        let currentGame = null;
-        let gameHistory = [];
-        let isPlaying = false;
-        let gameInterval = null; // використовується як timeoutId у режимі автогри
-        let selectedGame = null;
-        let infiniteMode = true; // Режим безкінечної гри
-        let currentGameNumber = 0; // Номер поточної гри
+  <main class="layout">
+    <section class="panel">
+      <h2>Статус</h2>
+      <div class="stat"><div>Стан сервера</div><div id="srvStatus" class="pill">—</div></div>
+      <div class="stat"><div>Хід</div><div id="turn" class="pill">—</div></div>
+      <div class="stat"><div>Результат</div><div id="result" class="pill">—</div></div>
+      <div class="stat"><div>Ходів</div><div id="moveCount" class="pill">0</div></div>
 
-        // Універсальний конструктор Chess для UMD/ESM збірок chess.js
-        function createChessInstance() {
-            const ChessCtor = window.Chess || (window.chess && window.chess.Chess);
-            if (!ChessCtor) {
-                console.error('Chess is not defined: бібліотека chess.js не завантажилась або недоступна як глобальна змінна.');
-                alert('Помилка: не вдалося завантажити chess.js. Перевірте підключення до мережі.');
-                return null;
-            }
-            return new ChessCtor();
+      <h2 style="margin-top:12px">Модулі</h2>
+      <div class="list" id="modulesList"></div>
+    </section>
+
+    <section class="panel board-wrap">
+      <div id="board" class="board" aria-label="chess-board"></div>
+      <div class="controls">
+        <div class="status mono" id="status">—</div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h2>Ігри</h2>
+      <div class="list" id="games"></div>
+      <h2 style="margin-top:12px">Метрики</h2>
+      <div class="list">
+        <div class="stat"><div>Фаза</div><div id="phase" class="pill">—</div></div>
+        <div>
+          <div class="bar"><span id="mobBar" style="width:0%"></span></div>
+          <div class="status mono">Mobility: <span id="mobility">0</span></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const PIECES = {
+      'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
+      'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'
+    };
+
+    const boardEl = document.getElementById('board');
+    const startBtn = document.getElementById('startBtn');
+    const moveBtn = document.getElementById('moveBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const whiteSel = document.getElementById('whiteBot');
+    const blackSel = document.getElementById('blackBot');
+
+    let autoPlayTimer = null;
+
+    function cellAt(r,c){ return document.querySelector(`[data-r="${r}"][data-c="${c}"]`); }
+
+    function drawBoard(boardArray){
+      boardEl.innerHTML = '';
+      for(let r=0;r<8;r++){
+        for(let c=0;c<8;c++){
+          const sq = boardArray[r][c];
+          const div = document.createElement('div');
+          div.className = `cell ${(r+c)%2? 'a' : 'b'}`;
+          div.dataset.r = r; div.dataset.c = c;
+          if(sq && sq.symbol){ div.textContent = PIECES[sq.symbol] || ''; }
+          boardEl.appendChild(div);
         }
+      }
+    }
 
-        // Ініціалізація
-        document.addEventListener('DOMContentLoaded', function() {
-            // Ініціалізуємо локальний стан гри, щоб фігури відобразилися одразу
-            // (до початку автоматичної гри через сервер)
-            try { game = new Chess(); } catch (e) { console.error('Chess.js не завантажено', e); }
-            initializeChessBoard();
-            initializeTabs();
-            initializeCharts();
-            loadGameData();
-            setupEventListeners();
-            // Якщо chess.js недоступний, показуємо позицію через FEN з бекенду
-            if (!game) {
-                loadBoardStateAndRender();
-            }
+    async function api(path, opts){
+      const res = await fetch(path, {headers:{'Content-Type':'application/json'}, ...opts});
+      if(!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    async function refreshStatus(){
+      try{
+        const stats = await api('/api/stats');
+        document.getElementById('phase').textContent = stats.phase;
+        document.getElementById('mobility').textContent = stats.legal_moves_count;
+        document.getElementById('mobBar').style.width = Math.min(100, stats.legal_moves_count*3) + '%';
+        document.getElementById('turn').textContent = stats.turn;
+        document.getElementById('result').textContent = stats.result ?? '—';
+        document.getElementById('moveCount').textContent = stats.move_count;
+      }catch(e){ /* ignore */ }
+    }
+
+    async function refreshBoard(){
+      const data = await api('/api/board');
+      drawBoard(data.board);
+    }
+
+    async function refreshGames(){
+      const games = await api('/api/games');
+      const wrap = document.getElementById('games');
+      wrap.innerHTML='';
+      games.slice(0,50).forEach(g=>{
+        const row = document.createElement('div');
+        row.className = 'stat';
+        row.innerHTML = `<div>#${g.id} • ${g.result} • ${g.moves} moves</div><div class="pill">${g.modules.white} vs ${g.modules.black}</div>`;
+        wrap.appendChild(row);
+      });
+    }
+
+    async function refreshModules(){
+      const mods = await api('/api/modules');
+      const wrap = document.getElementById('modulesList');
+      wrap.innerHTML = '';
+      Object.entries(mods).sort((a,b)=>b[1]-a[1]).forEach(([name,count])=>{
+        const item = document.createElement('div');
+        item.className = 'stat';
+        item.innerHTML = `<div>${name}</div><div class="pill">${count}</div>`;
+        wrap.appendChild(item);
+      });
+    }
+
+    async function populateBots(){
+      const bots = await api('/api/bots');
+      const fill = (sel)=>{
+        sel.innerHTML = '';
+        bots.forEach(b=>{
+          const opt = document.createElement('option');
+          opt.value = opt.textContent = b;
+          sel.appendChild(opt);
         });
+      };
+      fill(whiteSel); fill(blackSel);
+      whiteSel.value = 'StockfishBot';
+      blackSel.value = 'DynamicBot';
+    }
 
-        // Ініціалізація шахової доски
-        function initializeChessBoard() {
-            const board = document.getElementById('chess-board');
-            board.innerHTML = '';
-            
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    const cell = document.createElement('div');
-                    cell.className = `cell ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
-                    cell.dataset.row = row;
-                    cell.dataset.col = col;
-                    cell.addEventListener('click', () => handleCellClick(row, col));
-                    board.appendChild(cell);
-                }
-            }
-            
-            updateBoard();
-        }
+    async function startGame(){
+      await api('/api/game/start', { method:'POST', body: JSON.stringify({
+        white_bot: whiteSel.value, black_bot: blackSel.value, infinite_mode: true
+      })});
+      document.getElementById('status').textContent = 'Гра розпочата';
+      if(autoPlayTimer) clearInterval(autoPlayTimer);
+      autoPlayTimer = setInterval(async ()=>{
+        try{ await api('/api/game/move', {method:'POST', body: '{}'}); }catch(e){ /* stop when fails */ }
+        await refreshBoard();
+        await refreshStatus();
+      }, 800);
+    }
 
-        // Оновлення доски
-        function updateBoard() {
-            if (!game) return;
-            
-            const board = game.board();
-            const cells = document.querySelectorAll('.cell');
-            
-            cells.forEach(cell => {
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                const piece = board[row][col];
-                
-                cell.innerHTML = piece ? getPieceSymbol(piece) : '';
-                cell.classList.remove('highlight', 'selected');
-            });
-        }
+    async function makeMove(){
+      await api('/api/game/move', { method:'POST', body: '{}' });
+      await refreshBoard();
+      await refreshStatus();
+    }
 
-        // --- Без chess.js: мінімальний FEN-рендерер ----------------------
-        // Перетворити FEN у 8x8 сітку кодів на кшталт 'wP', 'bK' або null
-        function fenToGrid(fen) {
-            const placement = (fen || '').split(' ')[0];
-            if (!placement) return Array.from({ length: 8 }, () => Array(8).fill(null));
-            const rows = placement.split('/');
-            const grid = [];
-            for (let r = 0; r < 8; r++) {
-                const row = [];
-                const rowStr = rows[r] || '';
-                for (let i = 0; i < rowStr.length; i++) {
-                    const ch = rowStr[i];
-                    if (/^[1-8]$/.test(ch)) {
-                        const n = parseInt(ch, 10);
-                        for (let k = 0; k < n; k++) row.push(null);
-                    } else {
-                        const isWhite = ch === ch.toUpperCase();
-                        const code = (isWhite ? 'w' : 'b') + ch.toUpperCase();
-                        row.push(code);
-                    }
-                }
-                // Заповнюємо ряд до 8 клітинок (на випадок некоректного FEN)
-                while (row.length < 8) row.push(null);
-                grid.push(row.slice(0, 8));
-            }
-            return grid;
-        }
+    async function stopGame(){
+      if(autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer=null; }
+      await api('/api/game/stop', { method:'POST', body: '{}' });
+      document.getElementById('status').textContent = 'Гру зупинено';
+    }
 
-        // Намалювати дошку із сітки кодів 'wP'/'bK'
-        function renderBoardFromGrid(grid) {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(cell => {
-                const row = parseInt(cell.dataset.row);
-                const col = parseInt(cell.dataset.col);
-                const code = (grid[row] || [])[col] || null;
-                cell.innerHTML = code ? getPieceSymbol(code) : '';
-                cell.classList.remove('highlight', 'selected');
-            });
-        }
+    async function resetGame(){
+      if(autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer=null; }
+      await api('/api/reset', { method:'POST', body: '{}' });
+      await refreshBoard();
+      await refreshStatus();
+      document.getElementById('status').textContent = 'Дошку скинуто';
+    }
 
-        // Завантажити стан із сервера та відрендерити без chess.js
-        async function loadBoardStateAndRender() {
-            try {
-                const resp = await fetch('/api/game/state').catch(() => null);
-                if (resp && resp.ok) {
-                    const data = await resp.json();
-                    const grid = fenToGrid(data.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-                    renderBoardFromGrid(grid);
-                    // Оновимо статус
-                    document.getElementById('game-status').textContent = `Хід ${data.turn === 'white' ? 'білих' : 'чорних'}`;
-                } else {
-                    // Fallback до стартової позиції
-                    const grid = fenToGrid('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-                    renderBoardFromGrid(grid);
-                }
-            } catch (e) {
-                const grid = fenToGrid('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-                renderBoardFromGrid(grid);
-            }
-        }
+    async function health(){
+      try{ const h = await api('/health');
+        document.getElementById('srvStatus').textContent = 'healthy';
+      }catch(e){ document.getElementById('srvStatus').textContent = 'offline'; }
+    }
 
-        // Отримання символу фігури
-        function getPieceSymbol(piece) {
-            const symbols = {
-                'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
-                'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
-            };
-            if (!piece) return '';
-            // Підтримка як рядкових кодів ('wK'), так і об'єктів chess.js ({ type, color })
-            if (typeof piece === 'string') {
-                return symbols[piece] || '';
-            }
-            if (typeof piece === 'object') {
-                const code = (piece.color === 'w' ? 'w' : 'b') + String(piece.type || '').toUpperCase();
-                return symbols[code] || '';
-            }
-            return '';
-        }
+    // Wire buttons
+    startBtn.onclick = startGame;
+    moveBtn.onclick = makeMove;
+    stopBtn.onclick = stopGame;
+    resetBtn.onclick = resetGame;
 
-        // Обробка кліку по клітинці
-        function handleCellClick(row, col) {
-            if (!game || isPlaying) return;
-            
-            const square = String.fromCharCode(97 + col) + (8 - row);
-            const move = game.move({
-                from: square,
-                to: square,
-                promotion: 'q'
-            });
-            
-            if (move) {
-                updateBoard();
-                updateGameStatus();
-            }
-        }
-
-        // Ініціалізація табів
-        function initializeTabs() {
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const tabName = tab.dataset.tab;
-                    switchTab(tabName);
-                });
-            });
-        }
-
-        // Перемикання табів
-        function switchTab(tabName) {
-            // Видаляємо активний клас з усіх табів
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Додаємо активний клас до обраного табу
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-        }
-
-        // Ініціалізація графіків
-        function initializeCharts() {
-            // Графік результатів
-            const resultsCtx = document.getElementById('results-chart').getContext('2d');
-            new Chart(resultsCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Білі виграли', 'Чорні виграли', 'Нічиї'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#4CAF50', '#F44336', '#FF9800'],
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-
-            // Графік модулів
-            const modulesCtx = document.getElementById('modules-chart').getContext('2d');
-            new Chart(modulesCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Використання',
-                        data: [],
-                        backgroundColor: '#667eea',
-                        borderColor: '#764ba2',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            // Графік часової лінії
-            const timelineCtx = document.getElementById('timeline-chart').getContext('2d');
-            new Chart(timelineCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Оцінка позиції',
-                        data: [],
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        // Завантаження даних ігор
-        async function loadGameData() {
-            try {
-                showLoading();
-                
-                // Завантажуємо дані з сервера з таймаутом
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-                
-                const [gamesResponse, modulesResponse] = await Promise.all([
-                    fetch('/api/games', { signal: controller.signal }).catch(err => {
-                        console.warn('Games API недоступний:', err.message);
-                        return { ok: false };
-                    }),
-                    fetch('/api/modules', { signal: controller.signal }).catch(err => {
-                        console.warn('Modules API недоступний:', err.message);
-                        return { ok: false };
-                    })
-                ]);
-                
-                clearTimeout(timeoutId);
-                
-                if (gamesResponse.ok) {
-                    gameHistory = await gamesResponse.json();
-                } else {
-                    console.warn('Не вдалося завантажити ігри, використовуємо тестові дані');
-                    generateMockData();
-                }
-                
-                if (modulesResponse.ok) {
-                    const modulesData = await modulesResponse.json();
-                    updateModuleUsageFromServer(modulesData);
-                } else {
-                    console.warn('Не вдалося завантажити модулі, використовуємо локальні дані');
-                }
-                
-                updateUI();
-                hideLoading();
-            } catch (error) {
-                console.error('Помилка завантаження даних:', error);
-                generateMockData();
-                updateUI();
-                hideLoading();
-            }
-        }
-
-        // Генерація тестових даних
-        function generateMockData() {
-            gameHistory = [];
-            const results = ['1-0', '0-1', '1/2-1/2'];
-            const modules = ['StockfishBot', 'DynamicBot', 'RandomBot', 'AggressiveBot', 'FortifyBot'];
-            
-            for (let i = 0; i < 20; i++) {
-                const game = {
-                    id: i + 1,
-                    result: results[Math.floor(Math.random() * results.length)],
-                    moves: Math.floor(Math.random() * 50) + 20,
-                    duration: Math.floor(Math.random() * 30000) + 5000,
-                    modules: {
-                        white: modules[Math.floor(Math.random() * modules.length)],
-                        black: modules[Math.floor(Math.random() * modules.length)]
-                    },
-                    movesList: generateMockMoves(Math.floor(Math.random() * 50) + 20)
-                };
-                gameHistory.push(game);
-            }
-        }
-
-        // Генерація тестових ходів
-        function generateMockMoves(count) {
-            const moves = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6'];
-            const result = [];
-            for (let i = 0; i < count; i++) {
-                result.push(moves[i % moves.length]);
-            }
-            return result;
-        }
-
-        // Оновлення UI
-        function updateUI() {
-            updateStats();
-            updateGameList();
-            updateCharts();
-            updateModuleUsage();
-        }
-
-        // Оновлення статистики
-        function updateStats() {
-            const totalGames = gameHistory.length;
-            const whiteWins = gameHistory.filter(g => g.result === '1-0').length;
-            const blackWins = gameHistory.filter(g => g.result === '0-1').length;
-            const draws = gameHistory.filter(g => g.result === '1/2-1/2').length;
-
-            document.getElementById('current-game').textContent = currentGameNumber;
-            document.getElementById('total-games').textContent = totalGames;
-            document.getElementById('white-wins').textContent = whiteWins;
-            document.getElementById('black-wins').textContent = blackWins;
-            document.getElementById('draws').textContent = draws;
-        }
-
-        // Оновлення списку ігор
-        function updateGameList() {
-            const gameList = document.getElementById('game-list');
-            gameList.innerHTML = '';
-
-            gameHistory.forEach(game => {
-                const gameItem = document.createElement('div');
-                gameItem.className = 'game-item';
-                gameItem.innerHTML = `
-                    <div class="game-info">
-                        <span>Гра #${game.id}</span>
-                        <span class="game-result result-${game.result.replace('/', '-')}">${game.result}</span>
-                    </div>
-                    <div>${game.modules.white} vs ${game.modules.black}</div>
-                    <div>${game.moves} ходів • ${Math.round(game.duration / 1000)}с</div>
-                `;
-                gameItem.addEventListener('click', (evt) => selectGame(game, evt));
-                gameList.appendChild(gameItem);
-            });
-        }
-
-        // Вибір гри
-        function selectGame(game, evt) {
-            selectedGame = game;
-            document.querySelectorAll('.game-item').forEach(item => item.classList.remove('selected'));
-            if (evt && evt.currentTarget) {
-                evt.currentTarget.classList.add('selected');
-            }
-            
-            updateMoveTimeline(game);
-        }
-
-        // Оновлення часової лінії ходів
-        function updateMoveTimeline(game) {
-            const timeline = document.getElementById('move-timeline');
-            timeline.innerHTML = '';
-
-            game.movesList.forEach((move, index) => {
-                const moveItem = document.createElement('div');
-                moveItem.className = 'move-item';
-                moveItem.textContent = `${index + 1}. ${move}`;
-                moveItem.addEventListener('click', () => {
-                    document.querySelectorAll('.move-item').forEach(item => item.classList.remove('selected'));
-                    moveItem.classList.add('selected');
-                });
-                timeline.appendChild(moveItem);
-            });
-        }
-
-        // Оновлення графіків
-        function updateCharts() {
-            // Графік результатів
-            const resultsChart = Chart.getChart('results-chart');
-            if (resultsChart) {
-                const whiteWins = gameHistory.filter(g => g.result === '1-0').length;
-                const blackWins = gameHistory.filter(g => g.result === '0-1').length;
-                const draws = gameHistory.filter(g => g.result === '1/2-1/2').length;
-                
-                resultsChart.data.datasets[0].data = [whiteWins, blackWins, draws];
-                resultsChart.update();
-            }
-
-            // Графік модулів
-            const modulesChart = Chart.getChart('modules-chart');
-            if (modulesChart) {
-                const moduleCounts = {};
-                gameHistory.forEach(game => {
-                    moduleCounts[game.modules.white] = (moduleCounts[game.modules.white] || 0) + 1;
-                    moduleCounts[game.modules.black] = (moduleCounts[game.modules.black] || 0) + 1;
-                });
-
-                const labels = Object.keys(moduleCounts);
-                const data = Object.values(moduleCounts);
-
-                modulesChart.data.labels = labels;
-                modulesChart.data.datasets[0].data = data;
-                modulesChart.update();
-            }
-        }
-
-        // Оновлення використання модулів
-        function updateModuleUsage() {
-            const moduleUsage = document.getElementById('module-usage');
-            moduleUsage.innerHTML = '';
-
-            const moduleCounts = {};
-            gameHistory.forEach(game => {
-                moduleCounts[game.modules.white] = (moduleCounts[game.modules.white] || 0) + 1;
-                moduleCounts[game.modules.black] = (moduleCounts[game.modules.black] || 0) + 1;
-            });
-
-            const total = Object.values(moduleCounts).reduce((sum, count) => sum + count, 0);
-            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
-
-            Object.entries(moduleCounts).forEach(([module, count], index) => {
-                const percentage = (count / total) * 100;
-                const color = colors[index % colors.length];
-
-                const moduleBar = document.createElement('div');
-                moduleBar.className = 'module-bar';
-                moduleBar.innerHTML = `
-                    <div class="module-name">${module}</div>
-                    <div class="module-progress">
-                        <div class="module-fill" style="width: ${percentage}%; background: ${color};">
-                            <div class="module-count">${count}</div>
-                        </div>
-                    </div>
-                `;
-                moduleUsage.appendChild(moduleBar);
-            });
-        }
-
-        // Налаштування обробників подій
-        function setupEventListeners() {
-            document.getElementById('btn-start').addEventListener('click', startGame);
-            document.getElementById('btn-pause').addEventListener('click', pauseGame);
-            document.getElementById('btn-stop').addEventListener('click', stopGame);
-            document.getElementById('btn-reset').addEventListener('click', resetGame);
-            
-            // Автоматичне оновлення даних кожні 5 секунд
-            setInterval(loadGameData, 5000);
-        }
-
-        // Початок безкінечної гри
-        async function startGame() {
-            try {
-                // Перевіряємо чи завантажений Chess.js
-                if (typeof Chess === 'undefined') {
-                    console.error('Chess.js не завантажений');
-                    alert('Помилка: Chess.js бібліотека не завантажена. Перезавантажте сторінку.');
-                    return;
-                }
-                
-                currentGameNumber++;
-                const response = await fetch('/api/game/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        white_bot: 'StockfishBot',
-                        black_bot: 'DynamicBot',
-                        infinite_mode: true
-                    })
-                }).catch(err => {
-                    console.warn('Сервер недоступний, запускаємо локальну гру');
-                    return { ok: false };
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (typeof Chess === 'undefined') {
-                        console.error('Chess.js не завантажено — бібліотека недоступна.');
-                        alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
-                        return;
-                    }
-                    game = new Chess();
-                    updateBoard();
-                    
-                    isPlaying = true;
-                    document.getElementById('btn-start').disabled = true;
-                    document.getElementById('btn-pause').disabled = false;
-                    document.getElementById('btn-stop').disabled = false;
-                    document.getElementById('game-status').textContent = `Безкінечна гра #${currentGameNumber} в процесі...`;
-
-                    // Автоматична гра через сервер з мінімальною затримкою 400мс та без накладання викликів
-                    const autoPlayStep = async () => {
-                        if (!isPlaying) return;
-                        await makeServerMove();
-                        if (isPlaying) {
-                            gameInterval = setTimeout(autoPlayStep, MOVE_DELAY_MS);
-                        }
-                    };
-                    autoPlayStep();
-                } else {
-                    // Запускаємо локальну гру якщо сервер недоступний
-                    console.log('Запуск локальної безкінечної гри...');
-                    game = new Chess();
-                    updateBoard();
-                    
-                    isPlaying = true;
-                    document.getElementById('btn-start').disabled = true;
-                    document.getElementById('btn-pause').disabled = false;
-                    document.getElementById('btn-stop').disabled = false;
-                    document.getElementById('game-status').textContent = `Локальна безкінечна гра #${currentGameNumber} в процесі...`;
-                    
-                    // Простий локальний режим — просто оновлюємо статус із затримкою 400мс
-                    const localAutoStep = () => {
-                        if (!isPlaying) return;
-                        updateGameStatus();
-                        gameInterval = setTimeout(localAutoStep, MOVE_DELAY_MS);
-                    };
-                    localAutoStep();
-                }
-            } catch (error) {
-                console.error('Помилка початку гри:', error);
-                alert('Помилка початку гри: ' + error.message);
-            }
-        }
-
-        // Пауза гри
-        function pauseGame() {
-            isPlaying = false;
-            clearTimeout(gameInterval);
-            document.getElementById('btn-start').disabled = false;
-            document.getElementById('btn-pause').disabled = true;
-            document.getElementById('game-status').textContent = 'Гра на паузі';
-        }
-
-        // Зупинка гри (локальна версія)
-        function stopGameLocal() {
-            isPlaying = false;
-            clearTimeout(gameInterval);
-            document.getElementById('btn-start').disabled = false;
-            document.getElementById('btn-pause').disabled = true;
-            document.getElementById('btn-stop').disabled = true;
-            document.getElementById('game-status').textContent = 'Гра зупинена';
-        }
-
-        // Скидання гри
-        function resetGame() {
-            stopGame();
-            if (typeof Chess === 'undefined') {
-                console.error('Chess.js не завантажено — бібліотека недоступна.');
-                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
-                return;
-            }
-            game = new Chess();
-            updateBoard();
-            document.getElementById('game-status').textContent = 'Готовий до початку гри';
-        }
-
-        // Оновлення статусу гри
-        function updateGameStatus() {
-            if (!game) return;
-            
-            let status = '';
-            if (game.isCheckmate()) {
-                status = `Мат! ${game.turn() === 'w' ? 'Чорні' : 'Білі'} виграли`;
-            } else if (game.isDraw()) {
-                status = 'Нічия';
-            } else if (game.isCheck()) {
-                status = `Шах! Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`;
-            } else {
-                status = `Хід ${game.turn() === 'w' ? 'білих' : 'чорних'}`;
-            }
-            
-            document.getElementById('game-status').textContent = status;
-        }
-
-        // Зробити хід через сервер
-        async function makeServerMove() {
-            try {
-                const response = await fetch('/api/game/move', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.move_result) {
-                        const move = data.move_result.move;
-                        if (game && game.move(move)) {
-                            updateBoard();
-                            updateGameStatus();
-                            
-                            // Оновлюємо дані після завершення гри
-                            if (data.move_result.is_game_over) {
-                                await handleGameEnd(data.move_result);
-                                // Автоматично перезапускаємо гру в безкінечному режимі
-                                if (infiniteMode) {
-                                    setTimeout(() => {
-                                        if (isPlaying) {
-                                            startGame();
-                                        }
-                                    }, 1000); // Затримка 1 секунда перед новою грою
-                                } else {
-                                    stopGameLocal();
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    console.error('Помилка виконання ходу');
-                    stopGameLocal();
-                }
-            } catch (error) {
-                console.error('Помилка з\'єднання:', error);
-                stopGameLocal();
-            }
-        }
-
-        // Обробка завершення гри
-        async function handleGameEnd(gameResult) {
-            try {
-                // Оновлюємо статистику
-                const gameData = {
-                    result: gameResult.result,
-                    moves: game_manager ? game_manager.game_moves : [],
-                    modules: game_manager ? game_manager.game_modules : { white: [], black: [] },
-                    duration: 0, // Буде оновлено сервером
-                    timestamp: new Date().toISOString(),
-                    game_number: currentGameNumber
-                };
-                
-                // Відправляємо дані на сервер для оновлення ELO та збереження hitmap
-                await fetch('/api/game/end', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(gameData)
-                });
-                
-                // Оновлюємо локальну статистику
-                loadGameData();
-                
-                console.log(`Гра #${currentGameNumber} завершена: ${gameResult.result}`);
-            } catch (error) {
-                console.error('Помилка обробки завершення гри:', error);
-            }
-        }
-
-        // Зупинка гри через сервер
-        async function stopGame() {
-            try {
-                await fetch('/api/game/stop', { method: 'POST' });
-            } catch (error) {
-                console.error('Помилка зупинки гри:', error);
-            }
-            
-            isPlaying = false;
-            clearTimeout(gameInterval);
-            document.getElementById('btn-start').disabled = false;
-            document.getElementById('btn-pause').disabled = true;
-            document.getElementById('btn-stop').disabled = true;
-            document.getElementById('game-status').textContent = 'Гра зупинена';
-        }
-
-        // Скидання гри через сервер
-        async function resetGameServer() {
-            try {
-                await fetch('/api/game/reset', { method: 'POST' }).catch(err => {
-                    console.warn('Сервер недоступний для скидання гри');
-                });
-            } catch (error) {
-                console.error('Помилка скидання гри:', error);
-            }
-            
-            stopGame();
-            if (typeof Chess === 'undefined') {
-                console.error('Chess.js не завантажено — бібліотека недоступна.');
-                alert('Не вдалося завантажити шаховий рушій (chess.js). Спробуйте оновити сторінку.');
-                return;
-            }
-            game = new Chess();
-            updateBoard();
-            document.getElementById('game-status').textContent = 'Готовий до початку гри';
-        }
-
-        // Оновлення використання модулів з сервера
-        function updateModuleUsageFromServer(modulesData) {
-            const moduleUsage = document.getElementById('module-usage');
-            moduleUsage.innerHTML = '';
-
-            const total = Object.values(modulesData).reduce((sum, count) => sum + count, 0);
-            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
-
-            Object.entries(modulesData).forEach(([module, count], index) => {
-                const percentage = (count / total) * 100;
-                const color = colors[index % colors.length];
-
-                const moduleBar = document.createElement('div');
-                moduleBar.className = 'module-bar';
-                moduleBar.innerHTML = `
-                    <div class="module-name">${module}</div>
-                    <div class="module-progress">
-                        <div class="module-fill" style="width: ${percentage}%; background: ${color};">
-                            <div class="module-count">${count}</div>
-                        </div>
-                    </div>
-                `;
-                moduleUsage.appendChild(moduleBar);
-            });
-        }
-
-        // Показати завантаження
-        function showLoading() {
-            document.querySelectorAll('.loading').forEach(el => {
-                el.style.display = 'block';
-            });
-        }
-
-        // Приховати завантаження
-        function hideLoading() {
-            document.querySelectorAll('.loading').forEach(el => {
-                el.style.display = 'none';
-            });
-        }
-    </script>
+    // Boot
+    (async function init(){
+      await health();
+      await populateBots();
+      await refreshGames();
+      await refreshModules();
+      await refreshBoard();
+      await refreshStatus();
+      setInterval(refreshGames, 5000);
+      setInterval(refreshModules, 7000);
+    })();
+  </script>
 </body>
 </html>

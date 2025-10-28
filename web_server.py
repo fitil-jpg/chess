@@ -331,12 +331,20 @@ game_manager = GameManager()
 @app.route('/')
 @handle_api_errors
 def index():
-    """Головна сторінка"""
-    try:
-        return send_from_directory('.', 'web_interface.html')
-    except FileNotFoundError:
-        logger.warning("Файл web_interface.html не знайдено")
-        return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
+    """Головна сторінка: віддаємо оновлений UI або запасні сторінки."""
+    candidates = [
+        'web_interface.html',   # Новий повноцінний інтерфейс
+        'index.html',           # Легкий демо‑інтерфейс
+        'chess_board.html',     # Альтернативна дошка
+        'chess_board_standalone.html',
+        'chess-demo-simple.html',
+        'minimal_chess_test.html',
+    ]
+    for name in candidates:
+        if Path(name).exists():
+            return send_from_directory('.', name)
+    logger.warning("Жодну HTML‑сторінку інтерфейсу не знайдено")
+    return jsonify({'error': 'Веб-інтерфейс не знайдено'}), 404
 
 # Lightweight board viewer (simple Flask UI)
 @app.route('/board')

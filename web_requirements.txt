@@ -1,12 +1,4 @@
-# Веб-сервер залежності для Chess AI Dashboard
-Flask==2.3.3
-Flask-CORS==4.0.0
-Werkzeug==2.3.7
-
-# Існуючі залежності проекту
-# Use python-chess (provides 'import chess'); avoid 'chess' name clash
-python-chess==1.999
-
-# Додаткові залежності для веб-функціональності
-requests==2.31.0
-gunicorn==21.2.0
+flask>=2.3.3
+flask-cors>=4.0.0
+python-chess>=1.10.0
+requests>=2.31.0
