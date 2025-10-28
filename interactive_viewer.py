@@ -333,8 +333,8 @@ class GameWorker(QThread):
                 fork_hint = True
                 importance += 0.15
 
-        # Threshold for interesting pattern
-        if importance < 0.25 and not fork_hint and legal_count < 25:
+        # Threshold for interesting pattern (lowered for more sensitivity)
+        if importance < 0.15 and not fork_hint and legal_count < 20:
             return None
 
         piece_name = self._piece_type_to_name(src_piece.piece_type) if src_piece else None
@@ -462,6 +462,9 @@ class InteractiveChessViewer(QMainWindow):
         # Результаты игр
         self.game_results: List[GameResult] = []
         self.current_game_index = 0
+        
+        # Обнаруженные паттерны
+        self.discovered_patterns: List[dict] = []
         
         # Инициализация агентов
         self._init_agents()
