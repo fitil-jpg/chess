@@ -16,7 +16,7 @@ import chess
 import chess.engine
 
 # Добавляем путь к модулям
-sys.path.append('/app')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from chess_ai.bot_agent import get_agent_names, make_agent
 from core.pst_trainer import update_from_board, update_from_history
