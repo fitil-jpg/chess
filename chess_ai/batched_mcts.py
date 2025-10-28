@@ -117,6 +117,14 @@ class BatchedMCTS:
         must already contain the current board state.
         """
 
+        logger.info(
+            "AI-Technique MCTS(Batched): sims=%d batch=%d dirichlet=%s temp=%.3f c_puct=%.2f",
+            n_simulations,
+            batch_size,
+            str(add_dirichlet),
+            temperature,
+            self.c_puct,
+        )
         board = root.board
         legal = list(board.legal_moves)
         if not legal:
@@ -199,6 +207,13 @@ def choose_move_one_shot(
     epsilon: float = 0.25,
 ) -> Optional[chess.Move]:
     """Choose a move using only the network's policy for the current board."""
+    logger.info(
+        "AI-Technique NN-Policy: one_shot add_dirichlet=%s temp=%.3f alpha=%.3f eps=%.3f",
+        str(add_dirichlet),
+        temperature,
+        dirichlet_alpha,
+        epsilon,
+    )
     legal = list(board.legal_moves)
     if not legal:
         return None
