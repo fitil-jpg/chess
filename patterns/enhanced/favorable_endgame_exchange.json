@@ -1,0 +1,56 @@
+{
+  "id": "favorable_endgame_exchange",
+  "name": "Выгодный размен в эндшпиле",
+  "description": "Размен, упрощающий позицию в выгодном эндшпиле",
+  "category": "exchange",
+  "fen": "8/8/8/3k4/8/3K4/3R4/8 w - - 0 1",
+  "key_move": "Rd5+",
+  "alternative_moves": [],
+  "participating_pieces": [
+    {
+      "square": "d2",
+      "piece_type": "rook",
+      "color": "white",
+      "role": "attacker",
+      "importance": 1.0,
+      "move_sequence": null
+    },
+    {
+      "square": "d5",
+      "piece_type": "king",
+      "color": "black",
+      "role": "target",
+      "importance": 0.9,
+      "move_sequence": null
+    }
+  ],
+  "excluded_pieces": [],
+  "exchange_sequence": {
+    "moves": [
+      "Rd5+",
+      "Kxd5"
+    ],
+    "material_balance": 0,
+    "positional_gain": 50.0,
+    "evaluation_change": 50.0,
+    "probability": 0.9
+  },
+  "exchange_type": "favorable_trade",
+  "frequency": 0.4,
+  "success_rate": 0.8,
+  "elo_range": [
+    800,
+    2800
+  ],
+  "game_phase": "endgame",
+  "conditions": {},
+  "tags": [
+    "exchange",
+    "endgame",
+    "simplification"
+  ],
+  "created_at": "2025-10-28T17:04:33.789036",
+  "updated_at": "2025-10-28T17:04:33.789036",
+  "author": "system",
+  "enabled": true
+}

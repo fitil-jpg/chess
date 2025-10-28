@@ -1,0 +1,55 @@
+{
+  "id": "italian_game_development",
+  "name": "Развитие в итальянской партии",
+  "description": "Быстрое развитие фигур в итальянской партии",
+  "category": "opening",
+  "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+  "key_move": "Be7",
+  "alternative_moves": [],
+  "participating_pieces": [
+    {
+      "square": "c4",
+      "piece_type": "bishop",
+      "color": "white",
+      "role": "attacker",
+      "importance": 0.9,
+      "move_sequence": null
+    },
+    {
+      "square": "f3",
+      "piece_type": "knight",
+      "color": "white",
+      "role": "support",
+      "importance": 0.8,
+      "move_sequence": null
+    },
+    {
+      "square": "c8",
+      "piece_type": "bishop",
+      "color": "black",
+      "role": "defender",
+      "importance": 0.7,
+      "move_sequence": null
+    }
+  ],
+  "excluded_pieces": [],
+  "exchange_sequence": null,
+  "exchange_type": null,
+  "frequency": 0.6,
+  "success_rate": 0.65,
+  "elo_range": [
+    800,
+    2800
+  ],
+  "game_phase": "opening",
+  "conditions": {},
+  "tags": [
+    "italian",
+    "development",
+    "opening"
+  ],
+  "created_at": "2025-10-28T17:04:33.789222",
+  "updated_at": "2025-10-28T17:04:33.789222",
+  "author": "system",
+  "enabled": true
+}

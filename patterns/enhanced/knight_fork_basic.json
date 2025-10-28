@@ -1,0 +1,55 @@
+{
+  "id": "knight_fork_basic",
+  "name": "Вилка конём",
+  "description": "Конь атакует две или более фигуры одновременно",
+  "category": "tactical",
+  "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 4",
+  "key_move": "Nd4",
+  "alternative_moves": [],
+  "participating_pieces": [
+    {
+      "square": "f3",
+      "piece_type": "knight",
+      "color": "white",
+      "role": "attacker",
+      "importance": 1.0,
+      "move_sequence": null
+    },
+    {
+      "square": "e8",
+      "piece_type": "king",
+      "color": "black",
+      "role": "target",
+      "importance": 0.9,
+      "move_sequence": null
+    },
+    {
+      "square": "c6",
+      "piece_type": "knight",
+      "color": "black",
+      "role": "target",
+      "importance": 0.8,
+      "move_sequence": null
+    }
+  ],
+  "excluded_pieces": [],
+  "exchange_sequence": null,
+  "exchange_type": null,
+  "frequency": 0.3,
+  "success_rate": 0.75,
+  "elo_range": [
+    800,
+    2800
+  ],
+  "game_phase": "middlegame",
+  "conditions": {},
+  "tags": [
+    "fork",
+    "knight",
+    "tactical"
+  ],
+  "created_at": "2025-10-28T17:04:33.788787",
+  "updated_at": "2025-10-28T17:04:33.788787",
+  "author": "system",
+  "enabled": true
+}
