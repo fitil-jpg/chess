@@ -17,6 +17,8 @@ import logging
 from collections import defaultdict
 import random
 import math
+import time
+from dataclasses import dataclass
 
 from .dynamic_bot import DynamicBot
 from .enhanced_pattern_system import PatternManager
@@ -25,6 +27,76 @@ from core.evaluator import Evaluator
 from utils import GameContext
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EnhancedBotStats:
+    """Statistics tracking for Enhanced DynamicBot."""
+    
+    # Move selection stats
+    pattern_moves: int = 0
+    anti_stockfish_moves: int = 0
+    endgame_moves: int = 0
+    base_dynamic_moves: int = 0
+    
+    # Pattern detection stats
+    patterns_detected: int = 0
+    pattern_matches: int = 0
+    
+    # Opponent analysis
+    stockfish_detections: int = 0
+    human_detections: int = 0
+    
+    # Performance tracking
+    total_moves: int = 0
+    start_time: float = 0.0
+    elapsed: float = 0.0
+    
+    def reset(self) -> None:
+        self.pattern_moves = 0
+        self.anti_stockfish_moves = 0
+        self.endgame_moves = 0
+        self.base_dynamic_moves = 0
+        self.patterns_detected = 0
+        self.pattern_matches = 0
+        self.stockfish_detections = 0
+        self.human_detections = 0
+        self.total_moves = 0
+        self.start_time = 0.0
+        self.elapsed = 0.0
+    
+    def start(self) -> None:
+        """Reset counters and start the timer."""
+        self.reset()
+        self.start_time = time.time()
+    
+    def stop(self) -> None:
+        """Stop the timer."""
+        if self.start_time:
+            self.elapsed = time.time() - self.start_time
+    
+    @property
+    def moves_per_sec(self) -> float:
+        return self.total_moves / self.elapsed if self.elapsed else 0.0
+    
+    @property
+    def pattern_usage_pct(self) -> float:
+        return (self.pattern_moves / self.total_moves * 100) if self.total_moves else 0.0
+    
+    @property
+    def anti_sf_usage_pct(self) -> float:
+        return (self.anti_stockfish_moves / self.total_moves * 100) if self.total_moves else 0.0
+    
+    def summary(self) -> str:
+        return (
+            f"moves={self.total_moves} ({self.moves_per_sec:.1f}/s), "
+            f"patterns={self.pattern_moves} ({self.pattern_usage_pct:.1f}%), "
+            f"anti_sf={self.anti_stockfish_moves} ({self.anti_sf_usage_pct:.1f}%), "
+            f"endgame={self.endgame_moves}, "
+            f"detections={self.patterns_detected}, "
+            f"opponent_sf={self.stockfish_detections}, "
+            f"time={self.elapsed:.3f}s"
+        )
 
 
 class EnhancedDynamicBot(DynamicBot):
@@ -73,6 +145,9 @@ class EnhancedDynamicBot(DynamicBot):
         # Эндшпильные таблицы
         self.endgame_knowledge = self._load_endgame_knowledge()
         
+        # Statistics tracking
+        self.stats = EnhancedBotStats()
+        
         logger.info(f"Enhanced DynamicBot initialized for {'white' if color else 'black'}")
     
     def choose_move(
@@ -84,6 +159,10 @@ class EnhancedDynamicBot(DynamicBot):
     ) -> Tuple[Optional[chess.Move], float]:
         """Выбрать ход с использованием улучшенной логики"""
         
+        # Start stats tracking
+        if self.stats.total_moves == 0:
+            self.stats.start()
+        
         # Обновить историю
         self._update_history(board)
         
@@ -94,19 +173,29 @@ class EnhancedDynamicBot(DynamicBot):
         if self.anti_stockfish_mode and self.opponent_type == "stockfish":
             book_move = self._get_anti_stockfish_book_move(board)
             if book_move:
+                self.stats.anti_stockfish_moves += 1
+                self.stats.total_moves += 1
                 return book_move, 0.9
         
         # 2. Использовать паттерны
         pattern_move, pattern_confidence = self._get_pattern_move(board)
+        if pattern_move:
+            self.stats.pattern_moves += 1
         
         # 3. Получить ходы от базового DynamicBot
         base_move, base_confidence = super().choose_move(board, context, evaluator, debug)
+        if base_move:
+            self.stats.base_dynamic_moves += 1
         
         # 4. Специальные анти-Stockfish стратегии
         anti_sf_move, anti_sf_confidence = self._get_anti_stockfish_move(board)
+        if anti_sf_move:
+            self.stats.anti_stockfish_moves += 1
         
         # 5. Эндшпильная экспертиза
         endgame_move, endgame_confidence = self._get_endgame_move(board)
+        if endgame_move:
+            self.stats.endgame_moves += 1
         
         # Объединить все предложения
         candidates = []
@@ -145,6 +234,15 @@ class EnhancedDynamicBot(DynamicBot):
                 for i, (m, c, s) in enumerate(candidates[:3]):
                     logger.info(f"  {i+1}. {m} ({c:.3f}, {s})")
             
+            # Update stats
+            self.stats.total_moves += 1
+            
+            # Log stats summary every 10 moves
+            if self.stats.total_moves % 10 == 0:
+                self.stats.stop()
+                logger.info(f"Enhanced Bot: {self.stats.summary()}")
+                self.stats.start()
+            
             return move, confidence
         
         # Fallback к базовому DynamicBot
@@ -171,6 +269,8 @@ class EnhancedDynamicBot(DynamicBot):
                 board, max_patterns=5, include_exchanges=True
             )
             
+            self.stats.patterns_detected += len(matches) if matches else 0
+            
             if not matches:
                 return None, 0.0
             
@@ -181,6 +281,7 @@ class EnhancedDynamicBot(DynamicBot):
                 try:
                     move = chess.Move.from_uci(best_match.suggested_move)
                     if move in board.legal_moves:
+                        self.stats.pattern_matches += 1
                         return move, best_match.confidence
                 except:
                     pass
@@ -316,8 +417,10 @@ class EnhancedDynamicBot(DynamicBot):
         
         if stockfish_indicators >= 3:
             self.opponent_type = "stockfish"
+            self.stats.stockfish_detections += 1
         else:
             self.opponent_type = "human"
+            self.stats.human_detections += 1
     
     def _find_asymmetric_move(self, board: chess.Board) -> Optional[chess.Move]:
         """Найти ход, создающий асимметрию"""
@@ -449,3 +552,12 @@ class EnhancedDynamicBot(DynamicBot):
             "pattern_weight": self.pattern_weight,
             "move_count": len(self.move_history)
         }
+    
+    def get_stats_summary(self) -> str:
+        """Получить статистику работы бота"""
+        self.stats.stop()
+        return self.stats.summary()
+    
+    def reset_stats(self) -> None:
+        """Сбросить статистику"""
+        self.stats.reset()

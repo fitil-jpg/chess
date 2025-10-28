@@ -326,8 +326,10 @@ class ChessViewer(QMainWindow):
         self.btn_save_png = QPushButton("📷 PNG")
         self.btn_refresh_elo = QPushButton("🔄 ELO")
         self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
+        self.btn_reset_stats = QPushButton("📊 Reset AI Stats")
+        self.btn_reset_stats.setToolTip("Reset AI bot statistics")
         self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
+        for b in (self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.btn_reset_stats, self.debug_verbose):
             btn_row.addWidget(b)
         
         # Добавить новые кнопки управления игрой
@@ -390,6 +392,7 @@ class ChessViewer(QMainWindow):
         self.btn_copy_pgn.clicked.connect(self.copy_pgn)
         self.btn_save_png.clicked.connect(self.save_png)
         self.btn_refresh_elo.clicked.connect(self._refresh_elo_ratings)
+        self.btn_reset_stats.clicked.connect(self._reset_ai_stats)
 
         # Створюємо таби
         self.tab_widget = QTabWidget()
@@ -406,6 +409,7 @@ class ChessViewer(QMainWindow):
         self.lbl_attacks  = QLabel("Attacks: —")
         self.lbl_leaders  = QLabel("Attack leaders: —")
         self.lbl_king     = QLabel("King coeff: —")
+        self.lbl_stats    = QLabel("AI Stats: —")
 
         for lab in (
             self.lbl_module,
@@ -414,6 +418,7 @@ class ChessViewer(QMainWindow):
             self.lbl_attacks,
             self.lbl_leaders,
             self.lbl_king,
+            self.lbl_stats,
         ):
             lab.setWordWrap(True)
             status_layout.addWidget(lab)
@@ -1055,6 +1060,35 @@ class ChessViewer(QMainWindow):
                 f"• Check if ratings.json exists\n"
                 f"• Verify file permissions\n"
                 f"• Restart the application"
+            )
+    
+    def _reset_ai_stats(self):
+        """Reset AI bot statistics."""
+        try:
+            # Reset stats for both agents if they have the method
+            if hasattr(self, 'white_agent') and hasattr(self.white_agent, 'reset_stats'):
+                self.white_agent.reset_stats()
+                logger.info("Reset white agent stats")
+            
+            if hasattr(self, 'black_agent') and hasattr(self.black_agent, 'reset_stats'):
+                self.black_agent.reset_stats()
+                logger.info("Reset black agent stats")
+            
+            # Update the display
+            self._update_status("Stats Reset", None)
+            
+            QMessageBox.information(
+                self,
+                "📊 AI Stats Reset",
+                "AI bot statistics have been reset successfully!"
+            )
+            
+        except Exception as exc:
+            logger.error(f"Failed to reset AI stats: {exc}")
+            QMessageBox.warning(
+                self,
+                "⚠️ Stats Reset Failed",
+                f"Failed to reset AI statistics: {exc}"
             )
 
     def _draw_board_widgets(self):
@@ -2343,6 +2377,21 @@ class ChessViewer(QMainWindow):
         try:
             self.lbl_module.setText(f"Модуль: {reason}")
             self.lbl_features.setText(f"Фічі: {self._truthy_features_preview(feats)}")
+            
+            # Показати AI stats для Enhanced Bot
+            stats_text = "—"
+            if hasattr(self, 'white_agent') and hasattr(self.white_agent, 'get_stats_summary'):
+                try:
+                    stats_text = self.white_agent.get_stats_summary()
+                except:
+                    pass
+            elif hasattr(self, 'black_agent') and hasattr(self.black_agent, 'get_stats_summary'):
+                try:
+                    stats_text = self.black_agent.get_stats_summary()
+                except:
+                    pass
+            
+            self.lbl_stats.setText(f"AI Stats: {stats_text}")
 
             try:
                 metrics_lines = build_sidebar_metrics(
