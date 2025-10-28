@@ -239,8 +239,12 @@ class GameWorker(QThread):
                 try:
                     pattern_obj = self._build_pattern_if_interesting(board, move, san, mover_color, legal_count, game_id, len(moves))
                     if pattern_obj is not None:
+                        logger.info(f"Emitting pattern: {pattern_obj}")
                         self.patternDetected.emit(pattern_obj)
-                except Exception:
+                    else:
+                        logger.debug(f"No pattern detected for move {san}")
+                except Exception as e:
+                    logger.error(f"Error in pattern detection: {e}")
                     pass
                 
                 board.push(move)
@@ -333,8 +337,14 @@ class GameWorker(QThread):
                 fork_hint = True
                 importance += 0.15
 
-        # Threshold for interesting pattern (lowered for more sensitivity)
-        if importance < 0.15 and not fork_hint and legal_count < 20:
+        # Threshold for interesting pattern (very sensitive for testing)
+        logger.debug(f"Pattern analysis: importance={importance:.3f}, fork_hint={fork_hint}, legal_count={legal_count}")
+        
+        # For testing: always detect patterns for captures and checks
+        if is_capture or gives_check:
+            logger.debug(f"Pattern accepted: capture={is_capture}, check={gives_check}")
+        elif importance < 0.05 and not fork_hint and legal_count < 15:
+            logger.debug(f"Pattern rejected: importance too low")
             return None
 
         piece_name = self._piece_type_to_name(src_piece.piece_type) if src_piece else None
@@ -871,6 +881,7 @@ class InteractiveChessViewer(QMainWindow):
     # ---------------- Pattern editor logic -----------------
     def _on_pattern_detected(self, pattern: dict):
         """Получен новый паттерн во время автоигры."""
+        logger.info(f"Pattern detected: {pattern}")
         self.discovered_patterns.append(pattern)
         label = f"G{pattern.get('game_id', '?')} M{pattern.get('move_index', '?')}: {pattern.get('san', '')} [{', '.join(pattern.get('tags', []))}]"
         self.patterns_list.addItem(label)
