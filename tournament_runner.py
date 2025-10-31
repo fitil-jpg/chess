@@ -139,8 +139,9 @@ class TournamentRunner:
                 if move is None:
                     break
                 
+                san_move = board.san(move)
                 board.push(move)
-                moves.append(board.san(move))
+                moves.append(san_move)
                 fens.append(board.fen())
                 
             except Exception as e:
