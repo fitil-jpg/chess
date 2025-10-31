@@ -172,6 +172,23 @@ def effective_pst_for_piece(
         if board is None:
             raise ValueError("either board or phase must be provided")
         phase = game_phase_from_board(board)
+    # Log PST access with resolved phase/piece for traceability
+    try:
+        from_square = SYMBOL_TO_PIECE  # touch to please linters unused
+    except Exception:
+        pass
+    try:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "AI-Technique PST: piece=%s phase=%s source_layers=%s",
+            PIECE_SYMBOLS.get(piece_type, str(piece_type)),
+            phase,
+            ",".join(LAYERS),
+        )
+    except Exception:
+        # Logging must not interfere with evaluation
+        pass
     if phase not in PHASES:
         raise ValueError(f"unknown game phase: {phase}")
     tables = _combined_tables_for_phase(phase)

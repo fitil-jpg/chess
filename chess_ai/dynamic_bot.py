@@ -196,7 +196,15 @@ class DynamicBot:
     def _resolve_phase_weight(self, phase: str, agent_name: str) -> float:
         by_phase = self.weights_by_phase.get(phase)
         if by_phase is not None and agent_name in by_phase:
-            return float(by_phase[agent_name])
+            w = float(by_phase[agent_name])
+            # Confirm phase-aware weighting in logs for traceability
+            logger.info(
+                "AI-Technique PhaseWeights: phase=%s agent=%s weight=%.3f",
+                phase,
+                agent_name,
+                w,
+            )
+            return w
         return float(self.base_weights.get(agent_name, 1.0))
 
     def _position_bucket(self, board: chess.Board, evaluator: Evaluator) -> str:
@@ -221,6 +229,15 @@ class DynamicBot:
             new_w = w * (2.718281828 ** (lr * reward))
             # Clamp to avoid explosion/vanishing; renormalize later on read
             self._bandit_weights[bucket][name] = max(0.25, min(new_w, 4.0))
+            logger.info(
+                "AI-Technique BanditUpdate: bucket=%s agent=%s alpha=%.3f reward=%.3f old=%.3f new=%.3f",
+                bucket,
+                name,
+                lr,
+                reward,
+                w,
+                self._bandit_weights[bucket][name],
+            )
 
     # ---- Diversity helpers --------------------------------------------------
     @staticmethod
@@ -330,6 +347,16 @@ class DynamicBot:
         # Phase-aware + bandit-aware weights
         phase = GamePhaseDetector.detect(board)
         position_bucket = self._position_bucket(board, evaluator)
+        logger.info(
+            "AI-Technique Ensemble: phase=%s agents=%d bucket=%s diversity=%s(bonus=%.2f) bandit=%s(alpha=%.2f)",
+            phase,
+            len(self.agents),
+            position_bucket,
+            str(self.enable_diversity),
+            self.diversity_bonus,
+            str(self.enable_bandit),
+            self.bandit_alpha,
+        )
         # Track per-agent best move for diversity bonus and bandit credit
         agent_best: Dict[str, Tuple[chess.Move, float]] = {}
 

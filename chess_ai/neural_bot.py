@@ -79,6 +79,24 @@ class NeuralBot:
         """
 
         net = self._get_net()
+        try:
+            temp = float(getattr(net, "policy_temperature", 1.0))
+            vscale = float(getattr(net, "value_scale", 1.0))
+            vbias = float(getattr(net, "value_bias", 0.0))
+            half = bool(getattr(net, "_use_half", False))
+            quant = bool(getattr(net, "_quantized", False))
+            device = getattr(getattr(net, "device", None), "type", "cpu")
+        except Exception:
+            temp, vscale, vbias, half, quant, device = 1.0, 1.0, 0.0, False, False, "cpu"
+        logger.info(
+            "AI-Technique NeuralNet: infer device=%s temp=%.2f vscale=%.2f vbias=%.2f half=%s quant=%s",
+            device,
+            temp,
+            vscale,
+            vbias,
+            str(half),
+            str(quant),
+        )
         policy, value = net.predict_many([board])[0]
         if not policy:
             return None, float(value)
@@ -107,6 +125,12 @@ class NeuralBot:
             blend_lambda = 0.5
 
         if shallow_depth > 0 and topk > 0:
+            logger.info(
+                "AI-Technique NN+AlphaBeta: blend depth=%d topk=%d lambda=%.2f",
+                shallow_depth,
+                topk,
+                blend_lambda,
+            )
             # Select top-k policy candidates
             items = sorted(policy.items(), key=lambda kv: kv[1], reverse=True)[:topk]
             try:
