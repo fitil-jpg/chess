@@ -241,7 +241,7 @@ class EnhancedChessViewer(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Enhanced Chess Viewer — Pattern Management")
+        self.setWindowTitle("Enhanced Chess Viewer ? Pattern Management")
         self.resize(1400, 900)
         
         # Initialize components
@@ -312,11 +312,11 @@ class EnhancedChessViewer(QMainWindow):
         # Game controls
         controls_layout = QHBoxLayout()
         
-        self.btn_start = QPushButton("▶ Start")
-        self.btn_pause = QPushButton("⏸ Pause")
-        self.btn_stop = QPushButton("⏹ Stop")
-        self.btn_reset = QPushButton("🔄 Reset")
-        self.btn_new_game = QPushButton("🆕 New Game")
+        self.btn_start = QPushButton("? Start")
+        self.btn_pause = QPushButton("? Pause")
+        self.btn_stop = QPushButton("? Stop")
+        self.btn_reset = QPushButton("?? Reset")
+        self.btn_new_game = QPushButton("?? New Game")
         
         self.btn_start.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
@@ -348,15 +348,15 @@ class EnhancedChessViewer(QMainWindow):
         
         # Pattern display tab
         self.pattern_display = PatternDisplayWidget()
-        tab_widget.addTab(self.pattern_display, "🎯 Patterns")
+        tab_widget.addTab(self.pattern_display, "?? Patterns")
         
         # Pattern management tab
         pattern_mgmt_tab = self._create_pattern_management_tab()
-        tab_widget.addTab(pattern_mgmt_tab, "📚 Pattern Library")
+        tab_widget.addTab(pattern_mgmt_tab, "?? Pattern Library")
         
         # Settings tab
         settings_tab = self._create_settings_tab()
-        tab_widget.addTab(settings_tab, "⚙️ Settings")
+        tab_widget.addTab(settings_tab, "?? Settings")
         
         layout.addWidget(tab_widget)
         
@@ -388,7 +388,7 @@ class EnhancedChessViewer(QMainWindow):
         search_layout.addLayout(piece_layout)
         
         # Search button
-        self.search_btn = QPushButton("🔍 Search")
+        self.search_btn = QPushButton("?? Search")
         self.search_btn.clicked.connect(self.search_patterns)
         search_layout.addWidget(self.search_btn)
         
@@ -403,10 +403,10 @@ class EnhancedChessViewer(QMainWindow):
         # Pattern actions
         actions_layout = QHBoxLayout()
         
-        self.btn_add_pattern = QPushButton("➕ Add Pattern")
-        self.btn_edit_pattern = QPushButton("✏️ Edit")
-        self.btn_delete_pattern = QPushButton("🗑️ Delete")
-        self.btn_export_patterns = QPushButton("📤 Export")
+        self.btn_add_pattern = QPushButton("? Add Pattern")
+        self.btn_edit_pattern = QPushButton("?? Edit")
+        self.btn_delete_pattern = QPushButton("??? Delete")
+        self.btn_export_patterns = QPushButton("?? Export")
         
         self.btn_add_pattern.clicked.connect(self.add_custom_pattern)
         self.btn_edit_pattern.clicked.connect(self.edit_pattern)
@@ -570,10 +570,19 @@ class EnhancedChessViewer(QMainWindow):
             if move is None or not self.board.is_legal(move):
                 self.pause_auto()
                 return
-            
+
+            # Cache SAN before mutating the board
+            try:
+                move_san = self.board.san(move)
+            except Exception:
+                move_san = move.uci()
+
             # Apply move
             self.board.push(move)
-            
+
+            # Snapshot board after the move for async detectors
+            board_after_move = self.board.copy()
+
             # Get evaluation after move
             eval_after, _ = evaluate(self.board)
             eval_after_dict = {"total": eval_after}
@@ -590,10 +599,9 @@ class EnhancedChessViewer(QMainWindow):
             
             # Detect patterns if enabled
             if self.auto_detect_checkbox.isChecked():
-                self._detect_patterns_async(move, eval_before_dict, eval_after_dict)
+                self._detect_patterns_async(board_after_move, move, eval_before_dict, eval_after_dict)
             
             # Update status
-            move_san = self.board.san(move)
             self.status_label.setText(f"Last move: {move_san}")
             
         except Exception as e:
@@ -607,10 +615,10 @@ class EnhancedChessViewer(QMainWindow):
         # This method can be used for any post-refresh actions
         pass
     
-    def _detect_patterns_async(self, move, eval_before, eval_after):
+    def _detect_patterns_async(self, board_after_move, move, eval_before, eval_after):
         """Detect patterns asynchronously"""
         worker = PatternDetectionWorker(
-            self.board, move, eval_before, eval_after
+            board_after_move, move, eval_before, eval_after
         )
         # Parent the thread to the viewer so Qt manages lifetime
         worker.setParent(self)

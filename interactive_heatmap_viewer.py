@@ -3,12 +3,23 @@
 Interactive Heatmap Viewer - показує heatmap в інтерактивному вікні
 """
 
+import argparse
 import json
 import os
-import matplotlib.pyplot as plt
-import numpy as np
+import sys
 from pathlib import Path
-import matplotlib.patches as patches
+
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+except ImportError:
+    matplotlib = None
+    plt = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 def load_heatmap_data(heatmap_dir="."):
     """Load heatmap data from JSON files."""
@@ -24,8 +35,18 @@ def load_heatmap_data(heatmap_dir="."):
     
     return heatmaps
 
-def create_interactive_heatmap(heatmaps):
-    """Create an interactive heatmap viewer."""
+def create_interactive_heatmap(heatmaps, save_path=None):
+    """Create an interactive heatmap viewer.
+
+    Parameters
+    ----------
+    heatmaps : dict
+        Mapping of piece names to 8x8 heatmap data.
+    save_path : pathlib.Path or str or None
+        When provided, the figure is written to this path instead of
+        blocking with ``plt.show()``. The parent directory is created
+        automatically.
+    """
     # Chess board coordinates
     files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     ranks = ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -87,11 +108,16 @@ def create_interactive_heatmap(heatmaps):
         axes_flat[idx].set_visible(False)
     
     plt.tight_layout()
-    
-    # Show the plot
-    plt.show()
 
-def create_combined_heatmap(heatmaps):
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, bbox_inches="tight")
+        plt.close(fig)
+    else:
+        plt.show()
+
+def create_combined_heatmap(heatmaps, save_path=None):
     """Create a combined heatmap showing all pieces."""
     # Sum all heatmaps
     combined_data = None
@@ -150,26 +176,107 @@ def create_combined_heatmap(heatmaps):
                        fontweight='bold')
     
     plt.tight_layout()
-    plt.show()
 
-def main():
+    if save_path:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(save_path, bbox_inches="tight")
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+def _detect_headless_environment():
+    """Return True when no interactive GUI backend is available."""
+    if matplotlib is None:
+        return True
+    backend = matplotlib.get_backend().lower()
+    if "agg" in backend or backend.startswith("module://matplotlib_inline"):
+        return True
+
+    # On Unix-like systems, DISPLAY must be set for most GUI backends.
+    if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
+        return True
+
+    # macOS can show windows without DISPLAY, but headless runs often set
+    # QT_API to offscreen or reuse Agg; rely on backend detection above.
+    return False
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        description="Visualize chess heatmaps interactively or save them to files.")
+    parser.add_argument(
+        "--heatmap-dir",
+        type=Path,
+        default=Path.cwd(),
+        help="Directory containing heatmap_*.json files (default: current working directory).",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("output/heatmap_viewer"),
+        help="Where to write PNG files when saving (default: output/heatmap_viewer).",
+    )
+    parser.add_argument(
+        "--save-only",
+        action="store_true",
+        help="Skip opening GUI windows and just save the figures as PNG files.",
+    )
+    parser.add_argument(
+        "--force-gui",
+        action="store_true",
+        help="Force GUI display even if the environment looks headless.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
     """Main function to create interactive heatmap visualizations."""
+    args = parse_args(argv or sys.argv[1:])
+
     print("Loading heatmap data...")
-    heatmaps = load_heatmap_data()
-    
+    heatmaps = load_heatmap_data(args.heatmap_dir)
+
     if not heatmaps:
         print("No heatmap data found")
         return
-    
+
+    if matplotlib is None or plt is None:
+        print("matplotlib is required for heatmap visualization. Install it with 'pip install matplotlib'.")
+        return
+
+    if np is None:
+        print("NumPy is required for heatmap visualization. Install it with 'pip install numpy'.")
+        return
+
     print(f"Found {len(heatmaps)} heatmap files: {list(heatmaps.keys())}")
-    
-    print("\n1. Showing individual piece heatmaps...")
-    create_interactive_heatmap(heatmaps)
-    
-    print("\n2. Showing combined heatmap...")
-    create_combined_heatmap(heatmaps)
-    
-    print("\nHeatmap visualization completed!")
+
+    headless = _detect_headless_environment()
+    if headless and not args.force_gui:
+        print(
+            "Detected headless environment or non-interactive backend. "
+            "Automatically enabling --save-only mode.")
+        args.save_only = True
+
+    if args.save_only:
+        individual_path = args.output_dir / "individual_pieces.png"
+        combined_path = args.output_dir / "combined_heatmap.png"
+
+        print(f"\n1. Saving individual piece heatmaps to {individual_path}")
+        create_interactive_heatmap(heatmaps, save_path=individual_path)
+
+        print(f"\n2. Saving combined heatmap to {combined_path}")
+        create_combined_heatmap(heatmaps, save_path=combined_path)
+
+        print("\nHeatmap images saved. Open the PNG files to inspect the visualizations.")
+    else:
+        print("\n1. Showing individual piece heatmaps...")
+        create_interactive_heatmap(heatmaps)
+
+        print("\n2. Showing combined heatmap...")
+        create_combined_heatmap(heatmaps)
+
+        print("\nHeatmap visualization completed!")
 
 if __name__ == "__main__":
     main()
