@@ -1,31 +1,45 @@
 #!/usr/bin/env python3
 """
-Interactive Heatmap Viewer - показує heatmap в інтерактивному вікні
+Interactive Heatmap Viewer.
+
+Enhanced to support both interactive display and a headless-friendly mode
+that writes the generated figures to disk when no GUI backend is available.
 """
 
+import argparse
 import json
 import os
-import matplotlib.pyplot as plt
-import numpy as np
+import sys
 from pathlib import Path
-import matplotlib.patches as patches
 
-def load_heatmap_data(heatmap_dir="."):
-    """Load heatmap data from JSON files."""
+try:
+    import matplotlib
+    import matplotlib.pyplot as plt
+except ImportError as exc:  # pragma: no cover - handled at runtime
+    print("Matplotlib is required to run this script. Install it with 'pip install matplotlib'.")
+    raise SystemExit(1) from exc
+
+import numpy as np
+
+def load_heatmap_data(heatmap_dir: Path) -> dict:
+    """Load heatmap data from JSON files located in ``heatmap_dir``."""
     heatmaps = {}
-    
-    for filename in os.listdir(heatmap_dir):
-        if filename.startswith("heatmap_") and filename.endswith(".json"):
-            piece_type = filename.replace("heatmap_", "").replace(".json", "")
-            filepath = os.path.join(heatmap_dir, filename)
-            
-            with open(filepath, 'r') as f:
+
+    if not heatmap_dir.exists() or not heatmap_dir.is_dir():
+        raise FileNotFoundError(f"Heatmap directory not found: {heatmap_dir}")
+
+    for filepath in sorted(heatmap_dir.glob("heatmap_*.json")):
+        piece_type = filepath.stem.replace("heatmap_", "")
+        try:
+            with filepath.open("r", encoding="utf-8") as f:
                 heatmaps[piece_type] = json.load(f)
-    
+        except json.JSONDecodeError as exc:
+            print(f"Warning: Skipping {filepath.name} (invalid JSON: {exc})")
+
     return heatmaps
 
 def create_interactive_heatmap(heatmaps):
-    """Create an interactive heatmap viewer."""
+    """Create and return a figure with individual piece heatmaps."""
     # Chess board coordinates
     files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     ranks = ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -86,13 +100,12 @@ def create_interactive_heatmap(heatmaps):
     for idx in range(len(piece_types), len(axes_flat)):
         axes_flat[idx].set_visible(False)
     
-    plt.tight_layout()
-    
-    # Show the plot
-    plt.show()
+    fig.tight_layout()
+
+    return fig
 
 def create_combined_heatmap(heatmaps):
-    """Create a combined heatmap showing all pieces."""
+    """Create and return a figure for the combined heatmap showing all pieces."""
     # Sum all heatmaps
     combined_data = None
     
@@ -149,27 +162,110 @@ def create_combined_heatmap(heatmaps):
                        color="white" if value > combined_data.max()/2 else "black",
                        fontweight='bold')
     
-    plt.tight_layout()
-    plt.show()
+    fig.tight_layout()
+
+    return fig
+
+
+def backend_supports_interactive() -> bool:
+    """Return True if the current matplotlib backend supports interactive display."""
+    backend = matplotlib.get_backend().lower()
+    headless_backends = {
+        "agg", "cairoagg", "svg", "pdf", "ps", "template"
+    }
+
+    if backend in headless_backends:
+        return False
+
+    # Heuristic: on Linux-like systems require a display variable
+    if sys.platform.startswith("linux"):
+        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            return False
+
+    return True
 
 def main():
-    """Main function to create interactive heatmap visualizations."""
-    print("Loading heatmap data...")
-    heatmaps = load_heatmap_data()
-    
+    """Main entry point for the heatmap viewer."""
+    parser = argparse.ArgumentParser(description="Display or export chess piece heatmaps.")
+    parser.add_argument(
+        "--heatmap-dir",
+        type=Path,
+        default=Path("."),
+        help="Directory containing heatmap_*.json files (default: current directory)."
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["auto", "show", "save"],
+        default="auto",
+        help="Display figures, save them, or auto-detect the best option."
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Directory to write generated images when saving. Default: ./heatmap_visualizations"
+    )
+
+    args = parser.parse_args()
+
+    try:
+        print("Loading heatmap data...")
+        heatmaps = load_heatmap_data(args.heatmap_dir)
+    except FileNotFoundError as exc:
+        print(str(exc))
+        return
+
     if not heatmaps:
         print("No heatmap data found")
         return
-    
-    print(f"Found {len(heatmaps)} heatmap files: {list(heatmaps.keys())}")
-    
-    print("\n1. Showing individual piece heatmaps...")
-    create_interactive_heatmap(heatmaps)
-    
-    print("\n2. Showing combined heatmap...")
-    create_combined_heatmap(heatmaps)
-    
-    print("\nHeatmap visualization completed!")
+
+    print(f"Found {len(heatmaps)} heatmap files: {sorted(heatmaps.keys())}")
+
+    interactive_available = backend_supports_interactive()
+    requested_mode = args.mode
+
+    if requested_mode == "auto":
+        mode = "show" if interactive_available else "save"
+    elif requested_mode == "show" and not interactive_available:
+        print(
+            "Interactive display backend not available (backend="
+            f"{matplotlib.get_backend()}). Falling back to saving images."
+        )
+        mode = "save"
+    else:
+        mode = requested_mode
+
+    print("\n1. Generating individual piece heatmaps...")
+    individual_fig = create_interactive_heatmap(heatmaps)
+    print("\n2. Generating combined heatmap...")
+    combined_fig = create_combined_heatmap(heatmaps)
+
+    figs = [("heatmap_individual.png", individual_fig), ("heatmap_combined.png", combined_fig)]
+
+    if mode == "save":
+        output_dir = args.output_dir or (args.heatmap_dir / "heatmap_visualizations")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        saved_paths = []
+        for filename, fig in figs:
+            if fig is None:
+                continue
+            target = output_dir / filename
+            fig.savefig(target, dpi=200)
+            saved_paths.append(target)
+            plt.close(fig)
+
+        if saved_paths:
+            print("Saved heatmap images:")
+            for path in saved_paths:
+                print(f"  - {path}")
+        else:
+            print("No figures to save.")
+
+        print("\nHeatmap generation completed (saved to disk).")
+    else:  # mode == "show"
+        print("\nDisplaying heatmaps in interactive windows...")
+        plt.show()
+        print("\nHeatmap visualization completed!")
 
 if __name__ == "__main__":
     main()
