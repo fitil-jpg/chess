@@ -60,7 +60,7 @@ class InteractiveBarChart(QChartView):
             # Подключаем сигналы
             bar_set.clicked.connect(lambda index, k=key: self._on_bar_clicked(k))
             
-            self._series.addBarSet(bar_set)
+            self._series.append(bar_set)
             self._bars[i] = key
         
         self.chart.addSeries(self._series)
