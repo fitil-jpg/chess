@@ -60,6 +60,15 @@ class BatchMCTS:
         ``batch_size`` to ``1`` reproduces standard, non-batched MCTS
         behaviour.
         """
+        logger.info(
+            "AI-Technique MCTS: start sims=%d temp=%.3f alpha=%.3f eps=%.3f batch=%d deadline=%s",
+            n_simulations,
+            temperature,
+            dirichlet_alpha,
+            epsilon,
+            batch_size,
+            str(deadline is not None),
+        )
         root = Node(board.copy())
         legal = list(board.legal_moves)
         if not legal:

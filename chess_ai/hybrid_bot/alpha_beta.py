@@ -165,6 +165,14 @@ def ab_search(
     # Start profiling at the root if not already active
     if ply == 0 and STATS.start_time == 0.0:
         STATS.start()
+        logger.info(
+            "AI-Technique AlphaBeta: start depth=%d alpha=%.1f beta=%.1f allow_null=%s deadline=%s",
+            depth,
+            alpha,
+            beta,
+            str(allow_null),
+            str(deadline is not None),
+        )
     STATS.nodes += 1
 
     if deadline is not None and time.monotonic() >= deadline:
@@ -293,6 +301,17 @@ def search(board: chess.Board, depth: int, deadline: float | None = None) -> Tup
     TT.clear()
     KILLERS.clear()
     HISTORY.clear()
+
+    try:
+        n_moves = len(list(board.legal_moves))
+    except Exception:
+        n_moves = 0
+    logger.info(
+        "AI-Technique AlphaBeta: wrapper depth=%d legal_moves=%d deadline=%s",
+        depth,
+        n_moves,
+        str(deadline is not None),
+    )
 
     alpha, beta = -INF, INF
     best_score, best_move = -INF, None

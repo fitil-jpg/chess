@@ -128,6 +128,11 @@ class RiskAnalyzer:
         """
 
         color = board.turn
+        logger.info(
+            "AI-Technique AlphaBeta(Shallow): risk_check move=%s depth=%d",
+            move.uci() if hasattr(move, 'uci') else str(move),
+            depth,
+        )
         before = self._material(board, color)
 
         board.push(move)
