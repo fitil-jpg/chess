@@ -7,6 +7,7 @@ analysis system that detects, categorizes, and stores chess patterns during
 bot games for future analysis and learning.
 """
 
+import argparse
 import sys
 import time
 import json
@@ -17,6 +18,7 @@ from typing import Dict, List, Optional, Any, Set, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 from collections import defaultdict, Counter
+import textwrap
 
 # Try to import chess, fall back to None if not available
 try:
@@ -729,6 +731,290 @@ class PatternStorage:
         except Exception as e:
             logger.error(f"Failed to save patterns: {e}")
 
+
+def _build_cli_parser():
+    """Return argument parser for CLI mode."""
+    parser = argparse.ArgumentParser(
+        description="Inspect stored chess patterns from the terminal.",
+        add_help=False,
+    )
+    parser.add_argument("--cli", action="store_true",
+                        help="Force CLI mode even when PySide6 is available.")
+    parser.add_argument("--pattern-id",
+                        help="Pattern ID or numeric index to open automatically in CLI mode.")
+    parser.add_argument("--list", action="store_true",
+                        help="List available patterns and exit when used with --no-interactive.")
+    parser.add_argument("--limit", type=int, default=10,
+                        help="Maximum number of patterns to show when listing (default: 10).")
+    parser.add_argument("--no-interactive", action="store_true",
+                        help="Disable interactive prompt; useful for piping output.")
+    parser.add_argument("-h", "--help", action="help",
+                        help="Show this help message and exit.")
+    return parser
+
+
+def _render_ascii_board(board: 'chess.Board', highlights: Dict[int, str]) -> str:
+    """Render board as ASCII with highlight markers."""
+    files = "abcdefgh"
+    lines: List[str] = []
+    separator = "  +-------------------------------+"
+    lines.append(separator)
+
+    marker_for_role = {
+        'from': '>',
+        'to': '<',
+        'focus': '*',
+    }
+
+    for rank in range(7, -1, -1):
+        row_cells = []
+        for file in range(8):
+            square = chess.square(file, rank)
+            piece = board.piece_at(square)
+            symbol = piece.symbol() if piece else '.'
+            marker = marker_for_role.get(highlights.get(square, ''), ' ')
+            row_cells.append(f"{marker}{symbol}")
+        lines.append(f"{rank + 1} | {' '.join(row_cells)} |")
+
+    lines.append(separator)
+    lines.append("    " + " ".join(files))
+    lines.append("    Legend: > = move from, < = move to, * = focus square")
+    return "\n".join(lines)
+
+
+def _extract_highlights(pattern: ChessPattern, max_focus: int = 6,
+                        min_abs_influence: float = 0.4) -> Tuple[Dict[int, str], List[Tuple[str, float]]]:
+    """Determine which squares to highlight and return top influences."""
+    highlights: Dict[int, str] = {}
+    top_influences: List[Tuple[str, float]] = []
+
+    if not CHESS_AVAILABLE:
+        return highlights, top_influences
+
+    # Highlight the move squares
+    try:
+        move = chess.Move.from_uci(pattern.move_uci)
+        highlights[move.from_square] = 'from'
+        highlights[move.to_square] = 'to'
+    except Exception:
+        pass
+
+    influences = pattern.heatmap_influences or {}
+    scored = []
+    for square_name, value in influences.items():
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            continue
+        try:
+            square = chess.parse_square(square_name)
+        except ValueError:
+            continue
+        scored.append((abs(numeric), numeric, square_name, square))
+
+    scored.sort(reverse=True)
+
+    for _, numeric, square_name, square in scored:
+        if len(top_influences) >= max_focus:
+            break
+        if abs(numeric) < min_abs_influence:
+            continue
+        if square in highlights:
+            continue
+        highlights[square] = 'focus'
+        top_influences.append((square_name, numeric))
+
+    return highlights, top_influences
+
+
+def _list_patterns(patterns: List[ChessPattern], limit: int) -> None:
+    """Print a table of available patterns."""
+    if not patterns:
+        print("No patterns stored yet.")
+        return
+
+    print(f"Total stored patterns: {len(patterns)}")
+    print("Index | Move | Confidence | Categories | Pattern ID")
+    print("-" * 72)
+    for idx, pattern in enumerate(patterns[:limit]):
+        categories = ", ".join(pattern.categories[:3]) or "-"
+        if len(pattern.categories) > 3:
+            categories += ", ..."
+        move_label = pattern.move_san or pattern.move_uci
+        print(f"{idx:>5} | {move_label:<12} | {pattern.confidence:>5.2f} | {categories:<30} | {pattern.id}")
+
+
+def _show_pattern(pattern: ChessPattern, index: Optional[int] = None) -> None:
+    """Display detailed information about one pattern."""
+    header = f"Pattern {pattern.id}"
+    if index is not None:
+        header = f"[{index}] {header}"
+    print("\n" + header)
+    print("=" * len(header))
+
+    move_label = pattern.move_san or pattern.move_uci
+    print(f"Move: {move_label} ({pattern.move_uci})")
+    print(f"Confidence: {pattern.confidence:.2f}")
+    if pattern.categories:
+        print(f"Categories: {', '.join(pattern.categories)}")
+    if pattern.tags:
+        print(f"Tags: {', '.join(pattern.tags)}")
+
+    if pattern.description:
+        print("Description:")
+        print(textwrap.indent(textwrap.fill(pattern.description, width=78), "  "))
+
+    if CHESS_AVAILABLE:
+        try:
+            board = chess.Board(pattern.position_fen)
+        except Exception as exc:
+            print(f"Failed to load board from FEN: {exc}")
+        else:
+            highlights, top_influences = _extract_highlights(pattern)
+            print(_render_ascii_board(board, highlights))
+            if top_influences:
+                print("Top focus squares:")
+                for square_name, value in top_influences:
+                    print(f"  {square_name}: {value:+.2f}")
+    else:
+        print("python-chess is not available, board rendering disabled.")
+
+    if pattern.alternative_moves:
+        print("Alternative moves considered:")
+        for alt in pattern.alternative_moves[:5]:
+            info = f"  {alt.get('move_san', alt.get('move_uci'))}"
+            if alt.get('is_capture'):
+                info += " (capture)"
+            if alt.get('is_check'):
+                info += " (check)"
+            eval_score = alt.get('evaluation_score')
+            if isinstance(eval_score, (int, float)):
+                info += f", eval {eval_score:+.2f}"
+            print(info)
+
+    if pattern.bot_evaluations:
+        print("Bot evaluations:")
+        for bot_name, eval_data in pattern.bot_evaluations.items():
+            if not isinstance(eval_data, dict):
+                print(f"  {bot_name}: {eval_data}")
+                continue
+            details = []
+            if 'confidence' in eval_data:
+                details.append(f"confidence {eval_data['confidence']:.2f}")
+            if 'evaluation_score' in eval_data:
+                try:
+                    details.append(f"score {float(eval_data['evaluation_score']):+.2f}")
+                except (TypeError, ValueError):
+                    details.append(f"score {eval_data['evaluation_score']}")
+            reason = eval_data.get('reason')
+            if reason:
+                details.append(f"reason: {reason}")
+            extras = ", ".join(details)
+            print(f"  {bot_name}: {extras}")
+
+    context = pattern.game_context or {}
+    if context:
+        print("Game context:")
+        for key in ["move_number", "turn", "material_balance", "game_phase"]:
+            if key in context:
+                print(f"  {key.replace('_', ' ').title()}: {context[key]}")
+
+
+def _resolve_pattern(patterns: List[ChessPattern], identifier: Optional[str]) -> Tuple[Optional[ChessPattern], Optional[int]]:
+    """Resolve pattern by ID or numeric index."""
+    if identifier is None:
+        return (None, None)
+
+    id_map = {p.id: (idx, p) for idx, p in enumerate(patterns)}
+    if identifier in id_map:
+        idx, pattern = id_map[identifier]
+        return pattern, idx
+
+    try:
+        idx = int(identifier)
+    except (TypeError, ValueError):
+        return (None, None)
+
+    if 0 <= idx < len(patterns):
+        return patterns[idx], idx
+    return (None, None)
+
+
+def _run_cli_mode(storage: PatternStorage, detector: PatternDetector, args) -> None:
+    """Entry point for CLI mode when PySide6 is unavailable."""
+    patterns = storage.get_all_patterns()
+    # Sort newest first to show recent detections prominently
+    patterns.sort(key=lambda p: getattr(p, 'timestamp', 0), reverse=True)
+
+    if not patterns:
+        print("No patterns stored yet. Run automatic detection to collect patterns.")
+        return
+
+    selected_pattern, selected_index = _resolve_pattern(patterns, args.pattern_id)
+    if selected_pattern is None:
+        selected_pattern = patterns[0]
+        selected_index = 0
+
+    _list_patterns(patterns, args.limit)
+
+    interactive = sys.stdin.isatty() and not args.no_interactive
+
+    if not interactive:
+        if args.pattern_id is not None or not args.list:
+            _show_pattern(selected_pattern, selected_index)
+        return
+
+    print("\nCommands: list [n], show <index|id>, next, prev, info, help, quit")
+    current_index = selected_index
+    _show_pattern(patterns[current_index], current_index)
+
+    while True:
+        try:
+            raw = input("pattern-cli> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting.")
+            break
+
+        if not raw:
+            continue
+
+        command, *rest = raw.split()
+        command = command.lower()
+
+        if command in {"quit", "exit", "q"}:
+            break
+        elif command == "help":
+            print("Commands: list [n], show <index|id>, next, prev, info, quit")
+            print("  list [n]  - show up to n patterns (default limit)")
+            print("  show X    - open pattern by index or id")
+            print("  next/prev - cycle through stored patterns")
+            print("  info      - reprint details for current pattern")
+        elif command == "list":
+            limit = args.limit
+            if rest:
+                try:
+                    limit = max(1, int(rest[0]))
+                except ValueError:
+                    print("Invalid limit; using previous value.")
+            _list_patterns(patterns, limit)
+        elif command == "show" and rest:
+            pattern, idx = _resolve_pattern(patterns, rest[0])
+            if pattern is None:
+                print("Pattern not found. Use 'list' to see available entries.")
+            else:
+                current_index = idx
+                _show_pattern(pattern, idx)
+        elif command == "next":
+            current_index = (current_index + 1) % len(patterns)
+            _show_pattern(patterns[current_index], current_index)
+        elif command == "prev":
+            current_index = (current_index - 1) % len(patterns)
+            _show_pattern(patterns[current_index], current_index)
+        elif command == "info":
+            _show_pattern(patterns[current_index], current_index)
+        else:
+            print("Unknown command. Type 'help' for available commands.")
+
 class GameWorker(QThread):
     """Worker thread for playing games and detecting patterns"""
     
@@ -1034,12 +1320,12 @@ class ChessBoardWidget(QWidget):
         
         # Unicode chess symbols
         symbols = {
-            chess.PAWN: "♟" if piece.color == chess.WHITE else "♙",
-            chess.KNIGHT: "♞" if piece.color == chess.WHITE else "♘", 
-            chess.BISHOP: "♝" if piece.color == chess.WHITE else "♗",
-            chess.ROOK: "♜" if piece.color == chess.WHITE else "♖",
-            chess.QUEEN: "♛" if piece.color == chess.WHITE else "♕",
-            chess.KING: "♚" if piece.color == chess.WHITE else "♔"
+            chess.PAWN: "?" if piece.color == chess.WHITE else "?",
+            chess.KNIGHT: "?" if piece.color == chess.WHITE else "?", 
+            chess.BISHOP: "?" if piece.color == chess.WHITE else "?",
+            chess.ROOK: "?" if piece.color == chess.WHITE else "?",
+            chess.QUEEN: "?" if piece.color == chess.WHITE else "?",
+            chess.KING: "?" if piece.color == chess.WHITE else "?"
         }
         
         symbol = symbols.get(piece.piece_type, "?")
@@ -1128,10 +1414,10 @@ class PatternEditorViewer(QMainWindow):
         # Control buttons
         button_layout = QHBoxLayout()
         
-        self.btn_start = QPushButton("▶ Start Auto Play")
-        self.btn_pause = QPushButton("⏸ Pause")
-        self.btn_stop = QPushButton("⏹ Stop")
-        self.btn_reset = QPushButton("🔄 Reset")
+        self.btn_start = QPushButton("? Start Auto Play")
+        self.btn_pause = QPushButton("? Pause")
+        self.btn_stop = QPushButton("? Stop")
+        self.btn_reset = QPushButton("?? Reset")
         
         self.btn_start.clicked.connect(self._start_auto_play)
         self.btn_pause.clicked.connect(self._pause_auto_play)
@@ -1237,8 +1523,8 @@ class PatternEditorViewer(QMainWindow):
         
         # Manual pattern creation
         manual_layout = QHBoxLayout()
-        self.btn_create_pattern = QPushButton("➕ Create Manual Pattern")
-        self.btn_import_pattern = QPushButton("📁 Import Pattern")
+        self.btn_create_pattern = QPushButton("? Create Manual Pattern")
+        self.btn_import_pattern = QPushButton("?? Import Pattern")
         
         self.btn_create_pattern.clicked.connect(self._create_manual_pattern)
         self.btn_import_pattern.clicked.connect(self._import_pattern)
@@ -1278,9 +1564,9 @@ class PatternEditorViewer(QMainWindow):
         # Pattern actions
         actions_layout = QHBoxLayout()
         
-        self.btn_save_pattern = QPushButton("💾 Save Pattern")
-        self.btn_edit_pattern = QPushButton("✏️ Edit Pattern")
-        self.btn_delete_pattern = QPushButton("🗑️ Delete Pattern")
+        self.btn_save_pattern = QPushButton("?? Save Pattern")
+        self.btn_edit_pattern = QPushButton("?? Edit Pattern")
+        self.btn_delete_pattern = QPushButton("??? Delete Pattern")
         
         self.btn_save_pattern.clicked.connect(self._save_current_pattern)
         self.btn_edit_pattern.clicked.connect(self._edit_current_pattern)
@@ -1764,19 +2050,23 @@ class PatternEditorViewer(QMainWindow):
 
 def main():
     """Main function"""
-    if not PYSIDE_AVAILABLE:
-        print("PySide6 not available. Running in command-line mode.")
-        print("To use the GUI version, install PySide6: pip install PySide6")
-        
-        # Simple command-line interface
+    parser = _build_cli_parser()
+    args, qt_args = parser.parse_known_args(sys.argv[1:])
+
+    cli_mode = args.cli or not PYSIDE_AVAILABLE
+
+    if cli_mode:
+        if not PYSIDE_AVAILABLE:
+            print("PySide6 not available. Running in command-line mode.")
+            print("To use the GUI version, install PySide6: pip install PySide6")
         pattern_storage = PatternStorage()
         detector = PatternDetector()
-        
-        print(f"Loaded {len(pattern_storage.patterns)} existing patterns")
-        print("Pattern detection system initialized.")
-        print("Use the GUI version for interactive pattern analysis.")
+        _run_cli_mode(pattern_storage, detector, args)
         return
-    
+
+    # Rebuild argv for Qt so it only receives arguments it understands
+    sys.argv = [sys.argv[0]] + qt_args
+
     app = QApplication(sys.argv)
     app.setApplicationName("Chess Pattern Editor/Viewer")
     app.setApplicationVersion("1.0")
