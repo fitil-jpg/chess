@@ -21,17 +21,33 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from chess_ai.bot_agent import get_agent_names, make_agent
 from core.pst_trainer import update_from_board, update_from_history
 
-# Настройка логирования
+# Настройка логирования - только важные события
 os.makedirs('tournament_logs', exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler('tournament_logs/tournament.log'),
-        logging.StreamHandler()
-    ]
-)
+
+# Создаем два логгера - один для детальных логов, другой для консоли
+logging.basicConfig(level=logging.WARNING)  # Отключаем детальные логи по умолчанию
+
+# Детальный логгер (только в файл)
+detailed_handler = logging.FileHandler('tournament_logs/tournament.log')
+detailed_handler.setLevel(logging.WARNING)
+
+# Консольный логгер (только важная информация)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Формат для консоли
+console_formatter = logging.Formatter('%(message)s')
+console_handler.setFormatter(console_formatter)
+
+# Основной логгер
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(console_handler)
+logger.addHandler(detailed_handler)
+
+# Отключаем логи от chess бібліотеки
+logging.getLogger('chess').setLevel(logging.WARNING)
+logging.getLogger('chess.engine').setLevel(logging.WARNING)
 
 class TournamentRunner:
     def __init__(self):
@@ -41,13 +57,24 @@ class TournamentRunner:
         self.games_per_match = int(os.environ.get('GAMES_PER_MATCH', '3'))
         self.time_per_game = int(os.environ.get('TIME_PER_GAME', '180'))  # 3 минуты в секундах
         
+        # Метрики использования ботов
+        self.bot_metrics = {}
+        for bot_name in self.bot_names:
+            self.bot_metrics[bot_name] = {
+                'moves_count': 0,
+                'total_think_time': 0.0,
+                'avg_think_time': 0.0,
+                'games_played': 0
+            }
+        
         # Создаем директории
         os.makedirs('tournament_logs', exist_ok=True)
         os.makedirs('tournament_patterns', exist_ok=True)
         os.makedirs('tournament_stats', exist_ok=True)
         
-        logger.info(f"Турнир: {len(self.bot_names)} ботов, {self.games_per_match} игр на матч, {self.time_per_game}с на игру")
-        logger.info(f"Боты: {', '.join(self.bot_names)}")
+        print(f"🏆 Турнир: {len(self.bot_names)} ботов, {self.games_per_match} игр на матч, {self.time_per_game}с на игру")
+        print(f"🤖 Участники: {', '.join(self.bot_names)}")
+        print()
 
     def _get_available_bots(self) -> List[str]:
         """Получить список доступных ботов"""
@@ -68,16 +95,15 @@ class TournamentRunner:
 
     def play_match(self, bot1_name: str, bot2_name: str) -> Dict:
         """Сыграть матч между двумя ботами (Bo3)"""
-        logger.info(f"Начинаем матч: {bot1_name} vs {bot2_name}")
+        print(f"⚔️  Матч: {bot1_name} vs {bot2_name}")
         
         bot1_wins = 0
         bot2_wins = 0
         draws = 0
         games = []
+        match_start_time = time.time()
         
         for game_num in range(1, self.games_per_match + 1):
-            logger.info(f"Игра {game_num}/{self.games_per_match}: {bot1_name} vs {bot2_name}")
-            
             # Создаем ботов
             bot1 = make_agent(bot1_name, chess.WHITE)
             bot2 = make_agent(bot2_name, chess.BLACK)
@@ -108,6 +134,8 @@ class TournamentRunner:
         else:
             winner = "Draw"
         
+        match_duration = time.time() - match_start_time
+        
         match_result = {
             'bot1': bot1_name,
             'bot2': bot2_name,
@@ -119,7 +147,8 @@ class TournamentRunner:
             'timestamp': datetime.now().isoformat()
         }
         
-        logger.info(f"Матч завершен: {bot1_name} {bot1_wins}-{bot2_wins} {bot2_name}, Победитель: {winner}")
+        # Выводим результат матча с метриками
+        self._show_match_result(bot1_name, bot2_name, bot1_wins, bot2_wins, draws, winner, match_duration)
         
         return match_result
 
@@ -130,14 +159,31 @@ class TournamentRunner:
         fens = []
         start_time = time.time()
         
+        # Счетчики ходов для метрик
+        bot1_moves = 0
+        bot2_moves = 0
+        
         while not board.is_game_over() and (time.time() - start_time) < self.time_per_game:
             current_bot = bot1 if board.turn == chess.WHITE else bot2
             current_name = bot1_name if board.turn == chess.WHITE else bot2_name
             
             try:
+                move_start = time.time()
                 move = current_bot.choose_move(board)
+                move_time = time.time() - move_start
+                
                 if move is None:
                     break
+                
+                # Обновляем метрики
+                if current_name == bot1_name:
+                    bot1_moves += 1
+                    self.bot_metrics[bot1_name]['moves_count'] += 1
+                    self.bot_metrics[bot1_name]['total_think_time'] += move_time
+                else:
+                    bot2_moves += 1
+                    self.bot_metrics[bot2_name]['moves_count'] += 1
+                    self.bot_metrics[bot2_name]['total_think_time'] += move_time
                 
                 san_move = board.san(move)
                 board.push(move)
@@ -145,7 +191,9 @@ class TournamentRunner:
                 fens.append(board.fen())
                 
             except Exception as e:
-                logger.error(f"Ошибка в игре {game_num}: {e}")
+                # Записываем в файл логов только ошибки
+                with open('tournament_logs/tournament.log', 'a') as f:
+                    f.write(f"{datetime.now().isoformat()} [ERROR] Ошибка в игре {game_num}: {e}\n")
                 break
         
         # Определяем результат
@@ -172,6 +220,10 @@ class TournamentRunner:
         if len(moves) > 10:  # Только для игр с достаточным количеством ходов
             self._extract_patterns(board, moves, bot1_name, bot2_name, result)
         
+        # Обновляем счетчик игр
+        self.bot_metrics[bot1_name]['games_played'] += 1
+        self.bot_metrics[bot2_name]['games_played'] += 1
+        
         # Обновляем PST таблицы для победителя
         if result in ("1-0", "0-1"):
             winner = chess.WHITE if result == "1-0" else chess.BLACK
@@ -193,23 +245,45 @@ class TournamentRunner:
         }
         self.tournament_patterns.append(pattern_data)
 
+    def _show_match_result(self, bot1_name: str, bot2_name: str, bot1_wins: int, bot2_wins: int, draws: int, winner: str, duration: float):
+        """Показать результат матча с метриками"""
+        # Вычисляем среднее время мышления
+        for bot_name in [bot1_name, bot2_name]:
+            if self.bot_metrics[bot_name]['moves_count'] > 0:
+                self.bot_metrics[bot_name]['avg_think_time'] = (
+                    self.bot_metrics[bot_name]['total_think_time'] / 
+                    self.bot_metrics[bot_name]['moves_count']
+                )
+        
+        print(f"   Результат: {bot1_wins}-{draws}-{bot2_wins} | Победитель: {winner} | Время: {duration:.1f}s")
+        print(f"   📊 Метрики:")
+        print(f"      {bot1_name}: {self.bot_metrics[bot1_name]['moves_count']} ходов, "
+              f"{self.bot_metrics[bot1_name]['avg_think_time']:.3f}s сред. время")
+        print(f"      {bot2_name}: {self.bot_metrics[bot2_name]['moves_count']} ходов, "
+              f"{self.bot_metrics[bot2_name]['avg_think_time']:.3f}s сред. время")
+        print()
+
     def run_tournament(self):
         """Запустить полный турнир"""
-        logger.info("Начинаем турнир!")
+        print("🚀 Начинаем турнир!")
         start_time = time.time()
         
         # Создаем все возможные пары ботов
         matches = list(itertools.combinations(self.bot_names, 2))
         total_matches = len(matches)
         
-        logger.info(f"Всего матчей: {total_matches}")
+        print(f"📋 Всего матчей: {total_matches}\n")
         
         tournament_results = []
         
         for i, (bot1, bot2) in enumerate(matches, 1):
-            logger.info(f"Матч {i}/{total_matches}")
+            print(f"📍 Матч {i}/{total_matches}")
             match_result = self.play_match(bot1, bot2)
             tournament_results.append(match_result)
+            
+            # Показываем промежуточную таблицу
+            if i % 7 == 0 or i == total_matches:  # Каждые 7 матчей или в конце
+                self._show_current_standings(tournament_results)
             
             # Сохраняем промежуточные результаты
             self._save_tournament_data(tournament_results)
@@ -218,10 +292,57 @@ class TournamentRunner:
         self._calculate_final_stats(tournament_results)
         
         total_time = time.time() - start_time
-        logger.info(f"Турнир завершен за {total_time:.2f} секунд")
+        print(f"\n🏁 Турнир завершен за {total_time:.2f} секунд")
         
         # Сохраняем финальные результаты
         self._save_final_results(tournament_results)
+
+    def _show_current_standings(self, tournament_results: List[Dict]):
+        """Показать текущую турнирную таблицу"""
+        print("\n📊 Текущая турнирная таблица:")
+        print("=" * 60)
+        
+        bot_stats = {}
+        for bot_name in self.bot_names:
+            bot_stats[bot_name] = {
+                'wins': 0,
+                'losses': 0,
+                'draws': 0,
+                'points': 0.0
+            }
+        
+        for match in tournament_results:
+            bot1 = match['bot1']
+            bot2 = match['bot2']
+            
+            if match['winner'] == bot1:
+                bot_stats[bot1]['wins'] += 1
+                bot_stats[bot1]['points'] += 1.0
+                bot_stats[bot2]['losses'] += 1
+            elif match['winner'] == bot2:
+                bot_stats[bot2]['wins'] += 1
+                bot_stats[bot2]['points'] += 1.0
+                bot_stats[bot1]['losses'] += 1
+            else:
+                bot_stats[bot1]['draws'] += 1
+                bot_stats[bot2]['draws'] += 1
+                bot_stats[bot1]['points'] += 0.5
+                bot_stats[bot2]['points'] += 0.5
+        
+        # Сортируем по очкам
+        sorted_bots = sorted(bot_stats.items(), key=lambda x: x[1]['points'], reverse=True)
+        
+        print(f"{'Место':<6} {'Бот':<15} {'Очки':<6} {'В-П-Н':<10} {'Ходов':<8} {'Время/ход':<10}")
+        print("-" * 60)
+        
+        for i, (bot_name, stats) in enumerate(sorted_bots, 1):
+            moves = self.bot_metrics[bot_name]['moves_count']
+            avg_time = self.bot_metrics[bot_name]['avg_think_time']
+            print(f"{i:<6} {bot_name:<15} {stats['points']:<6.1f} "
+                  f"{stats['wins']}-{stats['losses']}-{stats['draws']:<3} "
+                  f"{moves:<8} {avg_time:<10.3f}")
+        
+        print()
 
     def _calculate_final_stats(self, tournament_results: List[Dict]):
         """Подсчитать финальную статистику турнира"""
@@ -284,13 +405,18 @@ class TournamentRunner:
         # Сохраняем паттерны
         with open('tournament_patterns/patterns.json', 'w', encoding='utf-8') as f:
             json.dump(self.tournament_patterns, f, ensure_ascii=False, indent=2)
+        
+        # Сохраняем метрики ботов
+        with open('tournament_stats/bot_metrics.json', 'w', encoding='utf-8') as f:
+            json.dump(self.bot_metrics, f, ensure_ascii=False, indent=2)
 
     def _save_final_results(self, tournament_results: List[Dict]):
         """Сохранить финальные результаты турнира"""
         final_results = {
             'tournament_stats': self.tournament_stats,
             'matches': tournament_results,
-            'patterns': self.tournament_patterns
+            'patterns': self.tournament_patterns,
+            'bot_metrics': self.bot_metrics
         }
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -321,16 +447,22 @@ class TournamentRunner:
                 f.write(f"   Матчи: {stats['wins']}W-{stats['losses']}L-{stats['draws']}D\n")
                 f.write(f"   Игры: {stats['games_won']}W-{stats['games_lost']}L-{stats['games_drawn']}D\n\n")
         
-        logger.info(f"Отчет сохранен: {report_path}")
+        print(f"📄 Отчет сохранен: {report_path}")
 
 def main():
     """Главная функция"""
     try:
         runner = TournamentRunner()
         runner.run_tournament()
-        logger.info("Турнир успешно завершен!")
+        print("✅ Турнир успешно завершен!")
+    except KeyboardInterrupt:
+        print("\n⏹️  Турнир прерван пользователем")
+        sys.exit(0)
     except Exception as e:
-        logger.error(f"Ошибка в турнире: {e}")
+        print(f"❌ Ошибка в турнире: {e}")
+        # Записываем ошибку в лог
+        with open('tournament_logs/tournament.log', 'a') as f:
+            f.write(f"{datetime.now().isoformat()} [ERROR] {e}\n")
         sys.exit(1)
 
 if __name__ == "__main__":

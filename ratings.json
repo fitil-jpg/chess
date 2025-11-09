@@ -17,6 +17,13 @@
       "confidence": 1.0,
       "last_update_reason": "Test game draw",
       "last_update_platform": "local"
+    },
+    "EnhancedDynamicBot": {
+      "elo": 1500.0,
+      "games_played": 0,
+      "last_updated": "2025-11-10T00:24:02.182157",
+      "platform_ratings": {},
+      "confidence": 1.0
     }
   },
   "platforms": {

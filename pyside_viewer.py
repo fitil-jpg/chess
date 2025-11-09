@@ -65,6 +65,7 @@ from core.evaluator import Evaluator
 # Import enhanced pattern system
 from ui.pattern_display_widget import PatternDisplayWidget, GameControlsWidget
 from ui.pattern_management_widget import PatternManagementWidget
+from ui.method_status_widget import MethodStatusWidget
 from chess_ai.enhanced_pattern_system import PatternManager
 from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector
 
@@ -532,15 +533,15 @@ class ChessViewer(QMainWindow):
         types_row = QHBoxLayout()
         self.pattern_type_checkboxes = {}
         type_defs = [
-            ("Tactical", PatternType.TACTICAL_MOMENT.value),
-            ("Fork", PatternType.FORK.value),
-            ("Pin", PatternType.PIN.value),
-            ("Hanging", PatternType.HANGING_PIECE.value),
-            ("Opening", PatternType.OPENING_TRICK.value),
-            ("Endgame", PatternType.ENDGAME_TECHNIQUE.value),
-            ("Sacrifice", PatternType.SACRIFICE.value),
-            ("Critical", PatternType.CRITICAL_DECISION.value),
-            ("Exchange", PatternType.EXCHANGE.value),
+            ("Tactical", PatternType.TACTICAL_MOMENT),
+            ("Fork", PatternType.FORK),
+            ("Pin", PatternType.PIN),
+            ("Hanging", PatternType.HANGING_PIECE),
+            ("Opening", PatternType.OPENING_TRICK),
+            ("Endgame", PatternType.ENDGAME_TECHNIQUE),
+            ("Sacrifice", PatternType.SACRIFICE),
+            ("Critical", PatternType.CRITICAL_DECISION),
+            ("Exchange", PatternType.EXCHANGE),
         ]
         for label, key in type_defs:
             cb = QCheckBox(label)
