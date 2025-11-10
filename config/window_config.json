@@ -1,0 +1,47 @@
+{
+    "window": {
+        "title": "Chess Viewer — ThreatMap & Metrics",
+        "min_size": [800, 600],
+        "default_size": [1200, 800],
+        "resizable": true,
+        "restore_geometry": true
+    },
+    "layout": {
+        "board_size": 560,
+        "console_height": 140,
+        "console_min_height": 90,
+        "tab_position": "north",
+        "subtab_position": "south",
+        "enable_scroll": true,
+        "spacing": {
+            "main": 10,
+            "controls": 2,
+            "board": 0
+        }
+    },
+    "features": {
+        "auto_save_geometry": true,
+        "compact_mode": true,
+        "debug_mode": false,
+        "elo_refresh": true,
+        "theme": "default"
+    },
+    "tabs": {
+        "analysis": {
+            "enabled": true,
+            "subtabs": ["status", "moves"]
+        },
+        "usage": {
+            "enabled": true,
+            "subtabs": ["usage", "statistics"]
+        },
+        "patterns": {
+            "enabled": true,
+            "subtabs": ["display"]
+        },
+        "visualization": {
+            "enabled": true,
+            "subtabs": ["heatmap"]
+        }
+    }
+}

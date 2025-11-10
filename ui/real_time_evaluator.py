@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 import asyncio
 from typing import Dict, List, Optional, Callable, Any
-from PySide6.QtCore import QObject, QTimer, pyqtSignal
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QWidget
 import chess
 from chess import Board, Move
@@ -30,12 +30,12 @@ class RealTimeEvaluationVisualizer(QObject):
     """
     
     # Signals
-    evaluation_started = pyqtSignal(dict)  # move_info
-    phase_started = pyqtSignal(str, dict)  # phase_name, phase_info
-    step_completed = pyqtSignal(str, dict)  # step_name, step_result
-    evaluation_completed = pyqtSignal(dict)  # final_result
-    cell_highlighted = pyqtSignal(int, str)  # square, color
-    visualization_updated = pyqtSignal(dict)  # visualization_state
+    evaluation_started = Signal(dict)  # move_info
+    phase_started = Signal(str, dict)  # phase_name, phase_info
+    step_completed = Signal(str, dict)  # step_name, step_result
+    evaluation_completed = Signal(dict)  # final_result
+    cell_highlighted = Signal(int, str)  # square, color
+    visualization_updated = Signal(dict)  # visualization_state
     
     def __init__(self, parent=None):
         super().__init__(parent)

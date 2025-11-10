@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QTabWidget, QTextEdit, QProgressBar, QPushButton, QComboBox, QCheckBox,
     QScrollArea, QFrame, QGridLayout, QSplitter
 )
-from PySide6.QtCore import Qt, QTimer, pyqtSignal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QFont
 import chess
 
@@ -224,8 +224,8 @@ class BotUsageTracker(QWidget):
     """Main widget for tracking and displaying bot usage statistics."""
     
     # Signals
-    stats_updated = pyqtSignal(dict)
-    bot_selected = pyqtSignal(str)
+    stats_updated = Signal(dict)
+    bot_selected = Signal(str)
     
     def __init__(self, parent=None):
         super().__init__(parent)

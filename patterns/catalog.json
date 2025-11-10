@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "created": "2025-10-25T12:37:31.307038",
-  "count": 112,
+  "created": "2025-11-10T03:13:35.074953",
+  "count": 119,
   "patterns": [
     {
       "fen": "rnb1kbnr/1p1qp1pp/p1pp1p2/3P4/3NP3/4B3/PPP2PPP/RN1QKB1R b KQkq - 1 6",
@@ -4087,6 +4087,400 @@
         "is_check": true,
         "game_id": 9,
         "added_at": "2025-10-25T12:37:31.307031"
+      }
+    },
+    {
+      "fen": "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "move": "exd5",
+      "pattern_types": [
+        "exchange",
+        "exchange"
+      ],
+      "description": "Exchange sequence (SEE=+1); Exchange sequence 2 ply, net ±0",
+      "influencing_pieces": [
+        {
+          "square": "d8",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "attacker",
+          "role": "attacker"
+        },
+        {
+          "square": "e4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "d5",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 5
+        },
+        "after": {
+          "total": 132
+        },
+        "change": 127
+      },
+      "metadata": {
+        "fullmove_number": 2,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "e4d5",
+        "exchange_sequence": [
+          "e4d5",
+          "d8d5"
+        ],
+        "exchange_net": 0,
+        "focus_squares": [
+          "d5",
+          "d8",
+          "e4"
+        ],
+        "added_at": "2025-11-10T03:13:35.074897"
+      }
+    },
+    {
+      "fen": "r1bqkb1r/ppp1pppp/2n2n2/3P4/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4",
+      "move": "dxc6",
+      "pattern_types": [
+        "tactical_moment",
+        "exchange",
+        "exchange"
+      ],
+      "description": "Tactical moment with evaluation change: 341; Exchange sequence (SEE=+3); Exchange sequence 2 ply, net +220",
+      "influencing_pieces": [
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "attacker",
+          "role": "attacker"
+        },
+        {
+          "square": "d5",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "c6",
+          "piece": "Knight",
+          "color": "black",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 70
+        },
+        "after": {
+          "total": 411
+        },
+        "change": 341
+      },
+      "metadata": {
+        "fullmove_number": 4,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "d5c6",
+        "exchange_sequence": [
+          "d5c6",
+          "b7c6"
+        ],
+        "exchange_net": 220,
+        "focus_squares": [
+          "b7",
+          "c6",
+          "d5"
+        ],
+        "added_at": "2025-11-10T03:13:35.074914"
+      }
+    },
+    {
+      "fen": "r1bqkb1r/ppp1pppp/2P2n2/8/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 4",
+      "move": "bxc6",
+      "pattern_types": [
+        "exchange"
+      ],
+      "description": "Exchange sequence (SEE=+1)",
+      "influencing_pieces": [
+        {
+          "square": "b7",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "c6",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 411
+        },
+        "after": {
+          "total": 305
+        },
+        "change": -106
+      },
+      "metadata": {
+        "fullmove_number": 5,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "b7c6",
+        "exchange_sequence": [],
+        "exchange_net": 0,
+        "focus_squares": [
+          "b7",
+          "c6"
+        ],
+        "added_at": "2025-11-10T03:13:35.074920"
+      }
+    },
+    {
+      "fen": "r1bqkb1r/p1p1pppp/2p2n2/8/3P4/5N2/PPP2PPP/RNBQKB1R b KQkq - 1 5",
+      "move": "Qxd4",
+      "pattern_types": [
+        "tactical_moment",
+        "hanging_piece",
+        "exchange",
+        "exchange"
+      ],
+      "description": "Tactical moment with evaluation change: 179; Hanging piece: Queen hanging; Exchange sequence (SEE=+1); Exchange sequence 2 ply, net -800",
+      "influencing_pieces": [
+        {
+          "square": "d1",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "attacker",
+          "role": "attacker"
+        },
+        {
+          "square": "f3",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "attacker",
+          "role": "attacker"
+        },
+        {
+          "square": "d8",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "d4",
+          "piece": "Pawn",
+          "color": "white",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 355
+        },
+        "after": {
+          "total": 176
+        },
+        "change": -179
+      },
+      "metadata": {
+        "fullmove_number": 6,
+        "turn": "black",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "d8d4",
+        "exchange_sequence": [
+          "d8d4",
+          "f3d4"
+        ],
+        "exchange_net": -800,
+        "focus_squares": [
+          "d1",
+          "d4",
+          "d8",
+          "f3"
+        ],
+        "added_at": "2025-11-10T03:13:35.074926"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/p1p1pppp/2p2n2/8/3q4/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 6",
+      "move": "Nxd4",
+      "pattern_types": [
+        "tactical_moment",
+        "exchange"
+      ],
+      "description": "Tactical moment with evaluation change: 986; Exchange sequence (SEE=+9)",
+      "influencing_pieces": [
+        {
+          "square": "d1",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "defender",
+          "role": "defender"
+        },
+        {
+          "square": "f3",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "d4",
+          "piece": "Queen",
+          "color": "black",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 176
+        },
+        "after": {
+          "total": 1162
+        },
+        "change": 986
+      },
+      "metadata": {
+        "fullmove_number": 6,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "f3d4",
+        "exchange_sequence": [],
+        "exchange_net": 0,
+        "focus_squares": [
+          "d1",
+          "d4",
+          "f3"
+        ],
+        "added_at": "2025-11-10T03:13:35.074931"
+      }
+    },
+    {
+      "fen": "r1b1kbr1/p1p1pppp/2p2n2/8/3N4/8/PPP2PPP/RNBQKB1R w KQq - 1 7",
+      "move": "Nxc6",
+      "pattern_types": [
+        "exchange"
+      ],
+      "description": "Exchange sequence (SEE=+1)",
+      "influencing_pieces": [
+        {
+          "square": "d4",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "mover",
+          "role": "mover"
+        },
+        {
+          "square": "c6",
+          "piece": "Pawn",
+          "color": "black",
+          "relationship": "target",
+          "role": "target"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1163
+        },
+        "after": {
+          "total": 1269
+        },
+        "change": 106
+      },
+      "metadata": {
+        "fullmove_number": 7,
+        "turn": "white",
+        "is_capture": true,
+        "is_check": false,
+        "move_uci": "d4c6",
+        "exchange_sequence": [],
+        "exchange_net": 0,
+        "focus_squares": [
+          "c6",
+          "d4"
+        ],
+        "added_at": "2025-11-10T03:13:35.074936"
+      }
+    },
+    {
+      "fen": "r1b1kb1r/p1p1pppp/2N2n2/8/8/8/PPP2PPP/RNBQKB1R w KQq - 1 8",
+      "move": "Qd8#",
+      "pattern_types": [
+        "tactical_moment"
+      ],
+      "description": "Tactical moment with evaluation change: 98732",
+      "influencing_pieces": [
+        {
+          "square": "c6",
+          "piece": "Knight",
+          "color": "white",
+          "relationship": "defender",
+          "role": "defender"
+        },
+        {
+          "square": "e8",
+          "piece": "King",
+          "color": "black",
+          "relationship": "attacker",
+          "role": "attacker"
+        },
+        {
+          "square": "d1",
+          "piece": "Queen",
+          "color": "white",
+          "relationship": "mover",
+          "role": "mover"
+        }
+      ],
+      "evaluation": {
+        "before": {
+          "total": 1268
+        },
+        "after": {
+          "total": 100000
+        },
+        "change": 98732
+      },
+      "metadata": {
+        "fullmove_number": 8,
+        "turn": "white",
+        "is_capture": false,
+        "is_check": true,
+        "move_uci": "d1d8",
+        "exchange_sequence": [],
+        "exchange_net": 0,
+        "focus_squares": [
+          "c6",
+          "d1",
+          "d8",
+          "e8"
+        ],
+        "added_at": "2025-11-10T03:13:35.074941"
       }
     }
   ]

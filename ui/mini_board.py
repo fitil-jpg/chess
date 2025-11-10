@@ -116,6 +116,11 @@ class MiniBoard(QWidget):
                 )
                 cell.update()
 
+    def set_board(self, board):
+        """Set the chess board and refresh the display."""
+        self.board = board
+        self._refresh_board()
+
     # ------------------------------------------------------------------
     def _apply_border_highlights(self) -> None:
         for row in range(8):

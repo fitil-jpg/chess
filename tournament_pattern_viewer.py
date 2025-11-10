@@ -36,7 +36,7 @@ try:
         QTreeWidget, QTreeWidgetItem, QDialog, QDialogButtonBox, QLineEdit,
         QTableWidget, QTableWidgetItem, QHeaderView
     )
-    from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
+    from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread
     from PySide6.QtGui import QPainter, QColor, QPen, QPixmap, QFont, QBrush, QIcon
     PYSIDE_AVAILABLE = True
 except ImportError:
@@ -189,6 +189,22 @@ class TournamentPattern:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'TournamentPattern':
         """Create from dictionary"""
+        # Ensure required fields have defaults
+        if 'id' not in data:
+            # Generate ID from bot names, result, and timestamp
+            bot1 = data.get('bot1', 'unknown')
+            bot2 = data.get('bot2', 'unknown') 
+            result = data.get('result', 'unknown')
+            timestamp = data.get('timestamp', 'unknown')
+            data['id'] = f"{bot1}_vs_{bot2}_{result}_{timestamp}"
+        
+        if 'game_context' not in data:
+            data['game_context'] = {}
+        
+        # Ensure tags field exists
+        if 'tags' not in data:
+            data['tags'] = []
+        
         return cls(**data)
 
 class TournamentPatternStorage:

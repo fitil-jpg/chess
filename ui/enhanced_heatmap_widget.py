@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QGridLayout, QPushButton, QComboBox, QCheckBox, QSpinBox
 )
-from PySide6.QtCore import Qt, QTimer, pyqtSignal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QFont
 import chess
 from chess import Board, Square, Move
@@ -139,8 +139,8 @@ class EnhancedHeatmapWidget(QWidget):
     """Enhanced heatmap widget with mini-board and real-time visualization."""
     
     # Signals
-    heatmap_changed = pyqtSignal(str)  # Emitted when heatmap selection changes
-    visualization_updated = pyqtSignal(dict)  # Emitted when visualization updates
+    heatmap_changed = Signal(str)  # Emitted when heatmap selection changes
+    visualization_updated = Signal(dict)  # Emitted when visualization updates
     
     def __init__(self, parent=None):
         super().__init__(parent)

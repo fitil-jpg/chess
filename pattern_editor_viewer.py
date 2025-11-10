@@ -39,7 +39,7 @@ try:
         QTreeWidget, QTreeWidgetItem, QDialog, QDialogButtonBox, QLineEdit,
         QTableWidget, QTableWidgetItem, QHeaderView
     )
-    from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread, pyqtSignal
+    from PySide6.QtCore import QTimer, QRect, Qt, QSettings, Signal, QThread
     from PySide6.QtGui import QPainter, QColor, QPen, QPixmap, QFont, QBrush, QIcon
     PYSIDE_AVAILABLE = True
 except ImportError:
@@ -1018,10 +1018,10 @@ def _run_cli_mode(storage: PatternStorage, detector: PatternDetector, args) -> N
 class GameWorker(QThread):
     """Worker thread for playing games and detecting patterns"""
     
-    gameCompleted = pyqtSignal(object)  # GameResult
-    patternDetected = pyqtSignal(object)  # ChessPattern
-    progressUpdated = pyqtSignal(int)   # progress percentage
-    statusUpdated = pyqtSignal(str)     # status message
+    gameCompleted = Signal(object)  # GameResult
+    patternDetected = Signal(object)  # ChessPattern
+    progressUpdated = Signal(int)   # progress percentage
+    statusUpdated = Signal(str)     # status message
     
     def __init__(self, white_agent, black_agent, num_games=10):
         super().__init__()

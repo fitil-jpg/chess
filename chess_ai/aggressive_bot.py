@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from core.evaluator import Evaluator
 from utils import GameContext
+from core.phase import GamePhaseDetector
 from .utility_bot import piece_value
 from .see import static_exchange_eval
 
@@ -24,10 +25,16 @@ _SHARED_EVALUATOR: Evaluator | None = None
 
 
 class AggressiveBot:
-    def __init__(self, color: bool, capture_gain_factor: float = 1.5):
+    def __init__(self, color: bool, capture_gain_factor: float = 1.5, phase_factors: Dict[str, float] | None = None):
         self.color = color
         # Scaling applied to capture gains when we're behind in material.
         self.capture_gain_factor = capture_gain_factor
+        # Phase-specific capture gain factors
+        self.phase_factors = phase_factors or {
+            "opening": 1.2,
+            "middlegame": 1.3,
+            "endgame": 1.1
+        }
 
     def choose_move(
         self,
@@ -80,10 +87,14 @@ class AggressiveBot:
                     gain = piece_value(captured) - piece_value(attacker)
                     # Encourage trades when behind by boosting capture gains.
                     if context and context.material_diff < 0:
-                        gain *= self.capture_gain_factor
+                        # Use phase-specific factor if available
+                        phase = GamePhaseDetector.detect(board)
+                        phase_factor = self.phase_factors.get(phase, self.capture_gain_factor)
+                        gain *= phase_factor
                         if debug:
                             msg = (
-                                f"AggressiveBot: material deficit, scaled capture gain to {gain:.1f}"
+                                f"AggressiveBot: material deficit, phase={phase}, "
+                                f"scaled capture gain to {gain:.1f} (factor={phase_factor})"
                             )
                             logger.debug(msg)
                             print(msg)

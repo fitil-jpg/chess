@@ -9,6 +9,9 @@ from PySide6.QtCore import Qt, Signal
 class PatternDisplayWidget(QWidget):
     """Simple pattern display widget"""
     
+    # Define signals
+    pattern_selected = Signal()
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self._setup_ui()
@@ -20,6 +23,14 @@ class PatternDisplayWidget(QWidget):
         # Simple label
         label = QLabel("Pattern Display Widget")
         layout.addWidget(label)
+    
+    def set_board_position(self, board):
+        """Set board position - dummy implementation"""
+        pass
+    
+    def add_pattern(self, **kwargs):
+        """Add pattern - dummy implementation"""  
+        pass
 
 class GameControlsWidget(QWidget):
     """Simple game controls widget"""
@@ -59,3 +70,8 @@ class GameControlsWidget(QWidget):
         self.btn_new = QPushButton("New Game")
         self.btn_new.clicked.connect(self.new_game.emit)
         layout.addWidget(self.btn_new)
+    
+    def set_game_status(self, is_running: bool, message: str = ""):
+        """Set the game status and update button states."""
+        # This is a simple implementation - could be enhanced to show status
+        pass

@@ -14,11 +14,13 @@ import subprocess
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 from PySide6.QtWidgets import (
     QApplication, QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QCheckBox, QMessageBox, QSizePolicy,
     QListWidget, QScrollArea, QFileDialog, QTextEdit, QSplitter,
-    QScrollBar, QMainWindow, QTabWidget, QSpinBox, QComboBox
+    QScrollBar, QMainWindow, QTabWidget, QSpinBox, QComboBox,
+    QToolButton, QMenu
 )
 from PySide6.QtCore import QTimer, QRect, Qt, QSettings
 from PySide6.QtGui import QClipboard, QPainter, QColor, QPen, QPixmap, QFont
@@ -66,6 +68,7 @@ from core.evaluator import Evaluator
 from ui.pattern_display_widget import PatternDisplayWidget, GameControlsWidget
 from ui.pattern_management_widget import PatternManagementWidget
 from ui.method_status_widget import MethodStatusWidget
+from ui.mini_board_widget import MiniBoardWidget
 from chess_ai.enhanced_pattern_system import PatternManager
 from chess_ai.enhanced_pattern_detector import EnhancedPatternDetector
 
@@ -141,28 +144,29 @@ class OverallUsageChart(QWidget):
             if x_leg > w - self.pad:
                 break
 
-class ChessViewer(QMainWindow):
-    def __init__(self):
+from ui.chess_viewer_factory import ConfigurableViewerMixin
+from ui.enhanced_chess_viewer_factory import ChessViewerBuilder
+
+class ChessViewer(QMainWindow, ConfigurableViewerMixin):
+    def __init__(self, config_path=None):
         super().__init__()
-        self.setWindowTitle("Chess Viewer — ThreatMap & Metrics")
-        self.resize(980, 620)  # більше місця праворуч
         
-        # Import timing configuration
-        from core.timing_config import timing_manager
-        self.timing_manager = timing_manager
-        
-        # Мінімальна затримка між застосуванням ходів (мс)
-        self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
-        
-        # Create central widget
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
+        # Load configuration
+        from ui.chess_viewer_factory import ChessViewerFactory
+        config = ChessViewerFactory.load_config(config_path)
+        self.apply_config(config)
 
         try:
             # Логіка позиції
             self.board = chess.Board()
             self.piece_objects = {}
-            self.settings = QSettings("ChessViewer", "Preferences")
+            
+            # Import timing configuration
+            from core.timing_config import timing_manager
+            self.timing_manager = timing_manager
+            
+            # Мінімальна затримка між застосуванням ходів (мс)
+            self.min_move_delay_ms = self.timing_manager.get_move_time_ms()
         except Exception as exc:
             ErrorHandler.handle_chess_error(exc, "board initialization")
             self._show_critical_error(
@@ -178,6 +182,21 @@ class ChessViewer(QMainWindow):
                 f"• Check system memory availability"
             )
             return
+        
+        # Initialize scroll area if enabled in config
+        if self.config.get("layout", {}).get("enable_scroll", True):
+            self.scroll_area = QScrollArea()
+            self.scroll_area.setWidgetResizable(True)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.setCentralWidget(self.scroll_area)
+            
+            self.central_widget = QWidget()
+            self.scroll_area.setWidget(self.central_widget)
+        else:
+            self.central_widget = QWidget()
+            self.setCentralWidget(self.central_widget)
+        
         saved_set_raw = self.settings.value("heatmap/set")
         saved_set = str(saved_set_raw) if saved_set_raw is not None else None
         saved_piece_raw = self.settings.value("heatmap/piece")
@@ -263,8 +282,9 @@ class ChessViewer(QMainWindow):
         self.fen_history = []
 
         # ---- ЛЕВА КОЛОНКА: ДОШКА + КОНСОЛЬ ----
+        board_size = self.config.get("layout", {}).get("board_size", 560)
         self.board_frame = QFrame()
-        self.board_frame.setFixedSize(560, 560)
+        self.board_frame.setFixedSize(board_size, board_size)
         self.grid = QGridLayout(self.board_frame)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(0)
@@ -272,9 +292,11 @@ class ChessViewer(QMainWindow):
         self._draw_board_widgets()
 
         # Console output area
+        console_height = self.config.get("layout", {}).get("console_height", 140)
+        console_min_height = self.config.get("layout", {}).get("console_min_height", 90)
         self.console_output = QTextEdit()
-        self.console_output.setMaximumHeight(140)  # Зменшено на 60 пікселів (4 рядки)
-        self.console_output.setMinimumHeight(90)   # Зменшено на 60 пікселів
+        self.console_output.setMaximumHeight(console_height)
+        self.console_output.setMinimumHeight(console_min_height)
         self.console_output.setReadOnly(True)
         self.console_output.setStyleSheet("""
             QTextEdit {
@@ -314,22 +336,103 @@ class ChessViewer(QMainWindow):
         self._update_title_with_elo()
         right_col.addWidget(self.title_label)
 
-        # Кнопки управления игрой
-        btn_row = QHBoxLayout()
-        self.btn_auto  = QPushButton("▶ Авто")
-        self.btn_pause = QPushButton("⏸ Пауза")
-        self.btn_reset = QPushButton("⟲ Ресет")
-        self.btn_newgame = QPushButton("🆕 Новая игра")
-        self.btn_auto_play = QPushButton("🎮 10 Игр")
-        self.btn_auto_play.setToolTip("Автоматически сыграть 10 игр подряд")
-        self.btn_copy_san = QPushButton("⧉ SAN")
-        self.btn_copy_pgn = QPushButton("⧉ PGN")
-        self.btn_save_png = QPushButton("📷 PNG")
-        self.btn_refresh_elo = QPushButton("🔄 ELO")
-        self.btn_refresh_elo.setToolTip("Refresh ELO ratings from ratings.json file")
-        self.debug_verbose = QCheckBox("Debug")
-        for b in (self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame, self.btn_auto_play, self.btn_copy_san, self.btn_copy_pgn, self.btn_save_png, self.btn_refresh_elo, self.debug_verbose):
-            btn_row.addWidget(b)
+        # Компактная панель управления с выпадающими меню
+        controls_row = QHBoxLayout()
+        controls_row.setSpacing(2)
+        controls_row.setContentsMargins(0, 0, 0, 0)
+        
+        # Основные кнопки управления игрой
+        self.btn_auto = QPushButton("▶")
+        self.btn_pause = QPushButton("⏸")
+        self.btn_reset = QPushButton("⟲")
+        self.btn_newgame = QPushButton("🆕")
+        
+        # Выпадающее меню для игровых функций
+        self.game_menu_btn = QToolButton()
+        self.game_menu_btn.setText("🎮")
+        self.game_menu_btn.setPopupMode(QToolButton.InstantPopup)
+        self.game_menu = QMenu(self.game_menu_btn)
+        self.game_menu.addAction("Auto Play 10 Games", self.start_auto_play)
+        self.game_menu.addAction("New Game", self.start_new_game)
+        self.game_menu.addAction("Reset Position", self.reset_game)
+        self.game_menu_btn.setMenu(self.game_menu)
+        
+        # Выпадающее меню для экспорта
+        self.export_menu_btn = QToolButton()
+        self.export_menu_btn.setText("📋")
+        self.export_menu_btn.setPopupMode(QToolButton.InstantPopup)
+        self.export_menu = QMenu(self.export_menu_btn)
+        self.export_menu.addAction("Copy SAN", self.copy_san)
+        self.export_menu.addAction("Copy PGN", self.copy_pgn)
+        self.export_menu.addAction("Save PNG", self.save_png)
+        self.export_menu_btn.setMenu(self.export_menu)
+        
+        # Кнопка обновления ELO
+        self.btn_refresh_elo = QPushButton("🔄")
+        self.btn_refresh_elo.setToolTip("Refresh ELO ratings")
+        
+        # Чекбокс отладки
+        self.debug_verbose = QCheckBox("Dbg")
+        
+        # Переключатель режима просмотра
+        self.compact_mode_cb = QCheckBox("Compact")
+        self.compact_mode_cb.setToolTip("Переключить в компактный режим")
+        self.compact_mode_cb.stateChanged.connect(self._toggle_compact_mode)
+        
+        # Компактный стиль для кнопок
+        compact_button_style = """
+            QPushButton, QToolButton {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 2px 4px;
+                font-weight: bold;
+                font-size: 10px;
+                min-width: 24px;
+                max-width: 24px;
+                min-height: 24px;
+                max-height: 24px;
+            }
+            QPushButton:hover, QToolButton:hover {
+                background-color: #e9ecef;
+                border-color: #adb5bd;
+            }
+            QPushButton:pressed, QToolButton:pressed {
+                background-color: #dee2e6;
+                border-color: #6c757d;
+            }
+        """
+        
+        # Применяем стили
+        for btn in [self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame, 
+                   self.game_menu_btn, self.export_menu_btn, self.btn_refresh_elo]:
+            btn.setStyleSheet(compact_button_style)
+        
+        self.debug_verbose.setStyleSheet("""
+            QCheckBox {
+                font-weight: bold;
+                font-size: 9px;
+                padding: 1px;
+            }
+            QCheckBox::indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 2px;
+                border: 1px solid #adb5bd;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #007bff;
+                border-color: #007bff;
+            }
+        """)
+        
+        # Добавляем элементы на панель
+        for widget in [self.btn_auto, self.btn_pause, self.btn_reset, self.btn_newgame,
+                      self.game_menu_btn, self.export_menu_btn, self.btn_refresh_elo, 
+                      self.debug_verbose, self.compact_mode_cb]:
+            controls_row.addWidget(widget)
+        
+        controls_row.addStretch()
         
         # Добавить новые кнопки управления игрой
         self.game_controls = GameControlsWidget()
@@ -338,7 +441,7 @@ class ChessViewer(QMainWindow):
         self.game_controls.reset_game.connect(self._on_reset_game)
         self.game_controls.refresh_game.connect(self._on_refresh_game)
         self.game_controls.new_game.connect(self._on_new_game)
-        right_col.addLayout(btn_row)
+        right_col.addLayout(controls_row)
         right_col.addWidget(self.game_controls)
         
         # Timing controls
@@ -376,303 +479,101 @@ class ChessViewer(QMainWindow):
         self.spin_delay.setRange(100, 3000)
         self.spin_delay.setSingleStep(50)
         self.spin_delay.setValue(self.min_move_delay_ms)
-        self.spin_delay.setToolTip("Интервал авто-хода, мс")
+        self.spin_delay.setToolTip("Інтервал авто-хода, мс")
         self.spin_delay.valueChanged.connect(self._on_delay_changed)
         speed_row.addWidget(self.spin_delay)
         right_col.addLayout(speed_row)
 
-        # Зв’язки
+        # Зв’язки (обновленные для новых кнопок)
         self.btn_auto.clicked.connect(self.start_auto)
         self.btn_pause.clicked.connect(self.pause_auto)
         self.btn_reset.clicked.connect(self.reset_game)
         self.btn_newgame.clicked.connect(self.start_new_game)
-        self.btn_auto_play.clicked.connect(self.start_auto_play)
-        self.btn_copy_san.clicked.connect(self.copy_san)
-        self.btn_copy_pgn.clicked.connect(self.copy_pgn)
-        self.btn_save_png.clicked.connect(self.save_png)
         self.btn_refresh_elo.clicked.connect(self._refresh_elo_ratings)
 
-        # Створюємо таби
+        # Створюємо таби з ієрархічною структурою
         self.tab_widget = QTabWidget()
+        tab_position = self.config.get("layout", {}).get("tab_position", "north")
+        if tab_position == "north":
+            self.tab_widget.setTabPosition(QTabWidget.North)
+        elif tab_position == "south":
+            self.tab_widget.setTabPosition(QTabWidget.South)
+        elif tab_position == "west":
+            self.tab_widget.setTabPosition(QTabWidget.West)
+        elif tab_position == "east":
+            self.tab_widget.setTabPosition(QTabWidget.East)
         right_col.addWidget(self.tab_widget)
-
-        # Таб 1: Статуси та метрики
+        
+        # === ОСНОВНАЯ 1: ИГРА И АНАЛИЗ ===
+        self.analysis_tab = QTabWidget()
+        subtab_position = self.config.get("layout", {}).get("subtab_position", "south")
+        if subtab_position == "north":
+            self.analysis_tab.setTabPosition(QTabWidget.North)
+        elif subtab_position == "south":
+            self.analysis_tab.setTabPosition(QTabWidget.South)
+        elif subtab_position == "west":
+            self.analysis_tab.setTabPosition(QTabWidget.West)
+        elif subtab_position == "east":
+            self.analysis_tab.setTabPosition(QTabWidget.East)
+        
+        # Под-вкладка: Статусы
         self.status_tab = QWidget()
         status_layout = QVBoxLayout(self.status_tab)
-
-        # Статуси
         self.lbl_module   = QLabel("Модуль: —")
         self.lbl_features = QLabel("Фічі: —")
         self.lbl_threat   = QLabel("ThreatMap: —")
         self.lbl_attacks  = QLabel("Attacks: —")
         self.lbl_leaders  = QLabel("Attack leaders: —")
         self.lbl_king     = QLabel("King coeff: —")
-
-        for lab in (
-            self.lbl_module,
-            self.lbl_features,
-            self.lbl_threat,
-            self.lbl_attacks,
-            self.lbl_leaders,
-            self.lbl_king,
-        ):
+        for lab in (self.lbl_module, self.lbl_features, self.lbl_threat,
+                    self.lbl_attacks, self.lbl_leaders, self.lbl_king):
             lab.setWordWrap(True)
             status_layout.addWidget(lab)
-        
         status_layout.addStretch()
-        self.tab_widget.addTab(self.status_tab, "📊 Статуси")
-
-        # Підготовка віджетів для вкладок (табів)
-        self.chart_usage_w = OverallUsageChart()
-        self.chart_usage_b = OverallUsageChart()
-
-        # Список ходів SAN
-        self.moves_list = QListWidget()
-
-        # Таймлайн застосованих модулів
-        self.timeline = UsageTimeline()
-        self.timeline.moveClicked.connect(self._on_timeline_click)
-        # Таб 2: Usage та Timeline
-        self.usage_tab = QWidget()
-        usage_layout = QVBoxLayout(self.usage_tab)
+        self.analysis_tab.addTab(self.status_tab, "📊 Статуси")
         
-        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
+        # Под-вкладка: Ходы
+        self.moves_tab = QWidget()
+        moves_layout = QVBoxLayout(self.moves_tab)
+        moves_layout.addWidget(QLabel("Moves:"))
+        self.moves_list = QListWidget()
+        moves_layout.addWidget(self.moves_list)
+        moves_layout.addStretch()
+        self.analysis_tab.addTab(self.moves_tab, "♟️ Ходы")
+        
+        self.tab_widget.addTab(self.analysis_tab, "🎯 Игра и анализ")
+
+        # === ОСНОВНАЯ 2: ИСПОЛЬЗОВАНИЕ И СТАТИСТИКА ===
+        self.usage_tab = QTabWidget()
+        self.usage_tab.setTabPosition(QTabWidget.South)
+        
+        # Под-вкладка: Usage
+        self.usage_sub_tab = QWidget()
+        usage_layout = QVBoxLayout(self.usage_sub_tab)
         self.chart_usage_w = OverallUsageChart()
-        usage_layout.addWidget(self.chart_usage_w)
-
-        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
         self.chart_usage_b = OverallUsageChart()
+        usage_layout.addWidget(QLabel("Dynamic usage (W):"))
+        usage_layout.addWidget(self.chart_usage_w)
+        usage_layout.addWidget(QLabel("Dynamic usage (B):"))
         usage_layout.addWidget(self.chart_usage_b)
-
-        # Таймлайн застосованих модулів
         usage_layout.addWidget(QLabel("Usage timeline:"))
         self.timeline = UsageTimeline()
         self.timeline.moveClicked.connect(self._on_timeline_click)
         usage_layout.addWidget(self.timeline)
-        
-        # Method Status Widget
         usage_layout.addWidget(QLabel("Method Status Pipeline:"))
         self.method_status_widget = MethodStatusWidget()
         usage_layout.addWidget(self.method_status_widget)
-        
         usage_layout.addStretch()
-        self.tab_widget.addTab(self.usage_tab, "📈 Usage")
-
-        # Таб 3: Patterns (detected during gameplay)
-        self.patterns_tab = QWidget()
-        patterns_layout = QVBoxLayout(self.patterns_tab)
-        # Controls row
-        patterns_controls = QHBoxLayout()
-        patterns_controls.addWidget(QLabel("Filter:"))
-        self.pattern_filter_combo = QComboBox()
-        # Available pattern types ("All" + known types)
-        pattern_types = [
-            "all",
-            PatternType.TACTICAL_MOMENT,
-            PatternType.FORK,
-            PatternType.PIN,
-            PatternType.SKEWER,
-            PatternType.DISCOVERED_ATTACK,
-            PatternType.HANGING_PIECE,
-            PatternType.EXCHANGE,
-            PatternType.OPENING_TRICK,
-            PatternType.CRITICAL_DECISION,
-            PatternType.ENDGAME_TECHNIQUE,
-            PatternType.SACRIFICE,
-        ]
-        for pt in pattern_types:
-            self.pattern_filter_combo.addItem(pt)
-        self.pattern_filter_combo.setCurrentText("all")
-        self.pattern_filter_combo.currentTextChanged.connect(self._on_pattern_filter_changed)
-        patterns_controls.addWidget(self.pattern_filter_combo)
-
-        # Toggle to hide pieces not involved in current pattern
-        self.cb_participating_only = QCheckBox("Participating only")
-        self.cb_participating_only.setToolTip("Hide pieces that do not participate in the latest detected pattern")
-        self.cb_participating_only.stateChanged.connect(lambda _v: self._refresh_board())
-        patterns_controls.addWidget(self.cb_participating_only)
-
-        # Refresh patterns from configs
-        self.btn_refresh_patterns = QPushButton("⟳ Refresh Patterns")
-        self.btn_refresh_patterns.clicked.connect(self._on_refresh_patterns)
-        patterns_controls.addStretch()
-        patterns_controls.addWidget(self.btn_refresh_patterns)
-        patterns_layout.addLayout(patterns_controls)
-
-        # List of detected patterns
-        self.patterns_list = QListWidget()
-        patterns_layout.addWidget(self.patterns_list)
-        self.tab_widget.addTab(self.patterns_tab, "🧩 Patterns")
-
-        # Таб 4: Ходи
-        self.moves_tab = QWidget()
-        moves_layout = QVBoxLayout(self.moves_tab)
+        self.usage_tab.addTab(self.usage_sub_tab, "📈 Usage")
         
-        moves_layout.addWidget(QLabel("Moves:"))
-        self.moves_list = QListWidget()
-        moves_layout.addWidget(self.moves_list)
-        
-        moves_layout.addStretch()
-        self.tab_widget.addTab(self.moves_tab, "♟️ Ходи")
-
-        # Таб 4: Patterns (детектор паттернов)
-        self.patterns_tab = QWidget()
-        patterns_layout = QVBoxLayout(self.patterns_tab)
-
-        # Фильтры
-        filters_row = QHBoxLayout()
-        self.cb_dynamic_only = QCheckBox("Только DynamicBot")
-        self.cb_auto_focus = QCheckBox("Автофокус")
-        self.cb_auto_focus.setChecked(True)
-        filters_row.addWidget(self.cb_dynamic_only)
-        filters_row.addWidget(self.cb_auto_focus)
-        filters_row.addStretch()
-        patterns_layout.addLayout(filters_row)
-
-        # Типы паттернов
-        types_row = QHBoxLayout()
-        self.pattern_type_checkboxes = {}
-        type_defs = [
-            ("Tactical", PatternType.TACTICAL_MOMENT),
-            ("Fork", PatternType.FORK),
-            ("Pin", PatternType.PIN),
-            ("Hanging", PatternType.HANGING_PIECE),
-            ("Opening", PatternType.OPENING_TRICK),
-            ("Endgame", PatternType.ENDGAME_TECHNIQUE),
-            ("Sacrifice", PatternType.SACRIFICE),
-            ("Critical", PatternType.CRITICAL_DECISION),
-            ("Exchange", PatternType.EXCHANGE),
-        ]
-        for label, key in type_defs:
-            cb = QCheckBox(label)
-            cb.setChecked(True)
-            cb.stateChanged.connect(self._on_pattern_filters_changed)
-            self.pattern_type_checkboxes[key] = cb
-            types_row.addWidget(cb)
-        types_row.addStretch()
-        patterns_layout.addLayout(types_row)
-
-        # Список паттернов
-        self.patterns_list = QListWidget()
-        self.patterns_list.itemClicked.connect(self._on_pattern_item_clicked)
-        patterns_layout.addWidget(self.patterns_list)
-
-        # Инфо по выбранному паттерну
-        self.pattern_info_label = QTextEdit()
-        self.pattern_info_label.setReadOnly(True)
-        self.pattern_info_label.setMinimumHeight(100)
-        patterns_layout.addWidget(self.pattern_info_label)
-
-        # Кнопки управления
-        pat_btns = QHBoxLayout()
-        self.btn_patterns_clear = QPushButton("Очистить")
-        self.btn_patterns_save = QPushButton("Сохранить в библиотеку")
-        self.btn_patterns_clear.clicked.connect(self._clear_detected_patterns)
-        self.btn_patterns_save.clicked.connect(self._save_detected_patterns)
-        pat_btns.addWidget(self.btn_patterns_clear)
-        pat_btns.addWidget(self.btn_patterns_save)
-        pat_btns.addStretch()
-        patterns_layout.addLayout(pat_btns)
-
-        self.tab_widget.addTab(self.patterns_tab, "📐 Patterns")
-
-        # Инициализация детектора паттернов
-        self.pattern_detector = PatternDetector()
-        self.session_patterns: list[ChessPattern] = []
-
-        # Таб 5: Heatmaps
-        self.heatmap_tab = QWidget()
-        heatmap_layout = QVBoxLayout(self.heatmap_tab)
-        
-        # Enhanced heatmap widget
-        from ui.enhanced_heatmap_widget import EnhancedHeatmapWidget
-        self.enhanced_heatmap_widget = EnhancedHeatmapWidget()
-        self.enhanced_heatmap_widget.heatmap_changed.connect(self._on_enhanced_heatmap_changed)
-        heatmap_layout.addWidget(self.enhanced_heatmap_widget)
-        
-        # Real-time visualization integrator
-        from ui.real_time_evaluator import RealTimeVisualizationIntegrator
-        self.real_time_integrator = RealTimeVisualizationIntegrator(self)
-        
-        # Heatmap statistics
-        self.heatmap_stats_label = QLabel()
-        self.heatmap_stats_label.setWordWrap(True)
-        self.heatmap_stats_label.setStyleSheet("""
-            QLabel {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-            }
-        """)
-        heatmap_layout.addWidget(self.heatmap_stats_label)
-        
-        # Mini Board Widget
-        self.mini_board_widget = MiniBoardWidget()
-        heatmap_layout.addWidget(self.mini_board_widget)
-        
-        # Heatmap selection panel
-        # Побудова вкладки Heatmaps (контент відрізняється залежно від наявності карт)
-        heatmaps_tab = QWidget()
-        heatmaps_tab_layout = QVBoxLayout(heatmaps_tab)
-        if self.drawer_manager.heatmaps:
-            heatmap_panel_layout, self.heatmap_set_combo, self.heatmap_piece_combo = create_heatmap_panel(
-                self._on_heatmap_piece,
-                set_callback=self._on_heatmap_set,
-                sets=self.drawer_manager.list_heatmap_sets(),
-                pieces=list(self.drawer_manager.heatmaps),
-                current_set=default_heatmap_set,
-                current_piece=default_heatmap_piece,
-            )
-            heatmap_layout.addLayout(heatmap_panel_layout)
-            self._populate_heatmap_pieces(default_heatmap_piece)
-            self._sync_heatmap_set_selection()
-            self._save_heatmap_preferences(
-                set_name=self.drawer_manager.active_heatmap_set,
-                piece_name=self.drawer_manager.active_heatmap_piece,
-            )
-            heatmaps_tab_layout.addStretch(1)
-        else:
-            msg = QLabel(
-                "🔍 <b>Heatmap Visualization Unavailable</b><br><br>"
-                "<b>What are heatmaps?</b><br>"
-                "Heatmaps show piece movement patterns and strategic hotspots on the chess board. "
-                "They help visualize where pieces are most likely to move or be most effective.<br><br>"
-                "<b>How to enable heatmaps:</b><br>"
-                "1. <b>Python method:</b> Run <code>utils.integration.generate_heatmaps</code><br>"
-                "2. <b>R script:</b> Execute <code>analysis/heatmaps/generate_heatmaps.R</code><br>"
-                "3. <b>Quick fix:</b> Click 'Generate heatmaps' button below<br><br>"
-                "<b>Requirements:</b> R or Wolfram Engine must be installed for heatmap generation."
-            )
-            msg.setWordWrap(True)
-            msg.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; }")
-            heatmap_layout.addWidget(msg)
-            btn_gen_heatmaps = QPushButton("🔧 Generate heatmaps now")
-            btn_gen_heatmaps.setStyleSheet("QPushButton { background-color: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; }")
-            btn_gen_heatmaps.clicked.connect(self._generate_heatmaps)
-            heatmap_layout.addWidget(btn_gen_heatmaps)
-        
-        # Mini preview board for the currently considered piece/heatmap
-        self.mini_board = MiniBoard(scale=0.35)
-        heatmap_layout.addWidget(QLabel("Mini heatmap board (active piece pattern):"))
-        heatmap_layout.addWidget(self.mini_board)
-        self.lbl_current_move = QLabel("Current move: —")
-        heatmap_layout.addWidget(self.lbl_current_move)
-
-        heatmap_layout.addStretch()
-        self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
-
-        # Таб 6: Bot Usage Statistics
+        # Под-вкладка: Bot Usage
         from ui.bot_usage_tracker import BotUsageTracker
         self.bot_usage_tracker = BotUsageTracker()
-        self.tab_widget.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
+        self.usage_tab.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
         
-        # Таб 7: Загальна статистика
+        # Под-вкладка: Общая статистика
         self.overall_tab = QWidget()
         overall_layout = QVBoxLayout(self.overall_tab)
-        
-        # Загальна діаграма використання модулів
         overall_layout.addWidget(QLabel("Overall module usage:"))
         self.overall_chart = OverallUsageChart()
         runs = load_runs("runs")
@@ -681,29 +582,122 @@ class ChessViewer(QMainWindow):
         chart_scroll.setWidgetResizable(True)
         chart_scroll.setWidget(self.overall_chart)
         overall_layout.addWidget(chart_scroll)
-        
         overall_layout.addStretch()
-        self.tab_widget.addTab(self.overall_tab, "📊 Загальна статистика")
+        self.usage_tab.addTab(self.overall_tab, "📊 Общая")
         
-        # Таб 7: Паттерны (новый)
+        self.tab_widget.addTab(self.usage_tab, "📊 Использование")
+
+        # === ОСНОВНАЯ 4: СТАТИСТИКА БОТОВ И ЭВРИСТИКИ ===
+        self.bot_stats_tab = self._create_bot_stats_tab()
+        self.tab_widget.addTab(self.bot_stats_tab, "🤖 Бот-статистика")
+
+        # === ОСНОВНАЯ 5: ПАТТЕРНЫ ===
+        self.patterns_main_tab = QTabWidget()
+        self.patterns_main_tab.setTabPosition(QTabWidget.South)
+        
+        # Под-вкладка: Детектированные паттерны
+        self.patterns_tab = QWidget()
+        patterns_layout = QVBoxLayout(self.patterns_tab)
+        patterns_controls = QHBoxLayout()
+        patterns_controls.addWidget(QLabel("Filter:"))
+        self.pattern_filter_combo = QComboBox()
+        pattern_types = ["all", PatternType.TACTICAL_MOMENT, PatternType.FORK, PatternType.PIN,
+                        PatternType.SKEWER, PatternType.DISCOVERED_ATTACK, PatternType.HANGING_PIECE,
+                        PatternType.EXCHANGE, PatternType.OPENING_TRICK, PatternType.CRITICAL_DECISION,
+                        PatternType.ENDGAME_TECHNIQUE, PatternType.SACRIFICE]
+        for pt in pattern_types:
+            self.pattern_filter_combo.addItem(pt)
+        self.pattern_filter_combo.setCurrentText("all")
+        self.pattern_filter_combo.currentTextChanged.connect(self._on_pattern_filter_changed)
+        patterns_controls.addWidget(self.pattern_filter_combo)
+        self.cb_participating_only = QCheckBox("Participating only")
+        self.cb_participating_only.setToolTip("Hide pieces that do not participate in the latest detected pattern")
+        self.cb_participating_only.stateChanged.connect(lambda _v: self._refresh_board())
+        patterns_controls.addWidget(self.cb_participating_only)
+        # Добавляем фильтр DynamicBot обратно
+        self.cb_dynamic_only = QCheckBox("DynamicBot only")
+        self.cb_dynamic_only.setToolTip("Show patterns from DynamicBot only")
+        patterns_controls.addWidget(self.cb_dynamic_only)
+        # Добавляем автофокус
+        self.cb_auto_focus = QCheckBox("Auto focus")
+        self.cb_auto_focus.setChecked(True)
+        self.cb_auto_focus.setToolTip("Auto focus on detected patterns")
+        patterns_controls.addWidget(self.cb_auto_focus)
+        self.btn_refresh_patterns = QPushButton("⟳ Refresh")
+        self.btn_refresh_patterns.clicked.connect(self._on_refresh_patterns)
+        patterns_controls.addStretch()
+        patterns_controls.addWidget(self.btn_refresh_patterns)
+        patterns_layout.addLayout(patterns_controls)
+        self.patterns_list = QListWidget()
+        patterns_layout.addWidget(self.patterns_list)
+        patterns_layout.addStretch()
+        self.patterns_main_tab.addTab(self.patterns_tab, "🧩 Найденные")
+        
+        # Под-вкладка: Управление паттернами
+        self.pattern_management_widget = PatternManagementWidget()
+        self.patterns_main_tab.addTab(self.pattern_management_widget, "⚙️ Управление")
+        
+        self.tab_widget.addTab(self.patterns_main_tab, "🎯 Паттерны")
+
+        # === ОСНОВНАЯ 4: ВИЗУАЛИЗАЦИЯ ===
+        self.visualization_tab = QTabWidget()
+        self.visualization_tab.setTabPosition(QTabWidget.South)
+        
+        # Под-вкладка: Heatmaps
+        self.heatmap_tab = QWidget()
+        heatmap_layout = QVBoxLayout(self.heatmap_tab)
+        from ui.enhanced_heatmap_widget import EnhancedHeatmapWidget
+        self.enhanced_heatmap_widget = EnhancedHeatmapWidget()
+        self.enhanced_heatmap_widget.heatmap_changed.connect(self._on_enhanced_heatmap_changed)
+        heatmap_layout.addWidget(self.enhanced_heatmap_widget)
+        self.heatmap_stats_label = QLabel()
+        self.heatmap_stats_label.setWordWrap(True)
+        self.heatmap_stats_label.setStyleSheet("""
+            QLabel { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 10px; font-weight: bold; }
+        """)
+        heatmap_layout.addWidget(self.heatmap_stats_label)
+        self.mini_board_widget = MiniBoardWidget()
+        heatmap_layout.addWidget(self.mini_board_widget)
+        self.mini_board = MiniBoard(scale=0.35)
+        heatmap_layout.addWidget(QLabel("Mini heatmap board:"))
+        heatmap_layout.addWidget(self.mini_board)
+        self.lbl_current_move = QLabel("Current move: —")
+        heatmap_layout.addWidget(self.lbl_current_move)
+        heatmap_layout.addStretch()
+        self.visualization_tab.addTab(self.heatmap_tab, "🔥 Heatmaps")
+        
+        # Под-вкладка: Pattern Display
         self.pattern_display_widget = PatternDisplayWidget()
         self.pattern_display_widget.pattern_selected.connect(self._on_pattern_selected)
-        self.tab_widget.addTab(self.pattern_display_widget, "🎯 Паттерны")
+        self.visualization_tab.addTab(self.pattern_display_widget, "🎯 Паттерны")
         
-        # Таб 8: Управление паттернами (новый)
-        self.pattern_management_widget = PatternManagementWidget()
-        self.tab_widget.addTab(self.pattern_management_widget, "⚙️ Управление паттернами")
+        self.tab_widget.addTab(self.visualization_tab, "👁️ Визуализация")
+
+        # Инициализация детектора паттернов
+        self.pattern_detector = PatternDetector()
+        self.session_patterns: list[ChessPattern] = []
 
         # Додаємо таби до основного лейауту (вже створені вище)
 
         # ---- ГОЛОВНИЙ ЛЕЙАУТ ----
         main = QHBoxLayout(self.central_widget)
         main.setContentsMargins(8, 8, 8, 8)
+# ... (rest of the code remains the same)
         main.setSpacing(12)
         main.addLayout(left_col, stretch=0)
         main.addLayout(right_col, stretch=1)
 
         self.board_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        # Восстановление сохраненных настроек UI
+        compact_mode = self.settings.value("ui/compact_mode", False, type=bool)
+        if compact_mode:
+            self.compact_mode_cb.setChecked(True)
+            # Применяем компактный режим без сохранения (уже сохранено)
+            self.board_frame.setFixedSize(400, 400)
+            self.console_output.setMaximumHeight(80)
+            self.tab_widget.setMinimumHeight(200)
+            self.resize(900, 650)
 
         # Таймер автогри
         self.auto_timer = QTimer()
@@ -1136,6 +1130,22 @@ class ChessViewer(QMainWindow):
                 f"<b>This may cause display issues.</b> Try restarting the game."
             )
 
+    def _refresh_mini_board_visuals(self):
+        """Refresh mini-board visualizations."""
+        try:
+            # Update mini board widget if it exists
+            if hasattr(self, 'mini_board_widget') and self.mini_board_widget:
+                self.mini_board_widget.set_board(self.board)
+                if hasattr(self, 'current_move_obj') and self.current_move_obj:
+                    self.mini_board_widget.set_current_move(self.current_move_obj)
+            
+            # Update mini board if it exists
+            if hasattr(self, 'mini_board') and self.mini_board:
+                self.mini_board.set_board(self.board)
+                
+        except Exception as exc:
+            logger.warning(f"Failed to refresh mini board visuals: {exc}")
+
     # ---------- Контролери гри ----------
 
     def start_auto(self):
@@ -1206,8 +1216,8 @@ class ChessViewer(QMainWindow):
         self.fen_history = [self.board.fen()]
         
         # Clear patterns
-        if hasattr(self, 'pattern_display'):
-            self.pattern_display._clear_patterns()
+        if hasattr(self, 'pattern_display_widget') and self.pattern_display_widget:
+            self.pattern_display_widget.clear_patterns()
         
         # Clear usage data
         self.usage_w.clear()
@@ -1472,13 +1482,12 @@ class ChessViewer(QMainWindow):
             # Detect patterns after move
             if hasattr(self, 'pattern_detector') and self.pattern_detector:
                 try:
-                    detected_pattern = self.pattern_detector.detect_pattern(
+                    detected_patterns = self.pattern_detector.detect_patterns(
                         self.board,
-                        move,
-                        depth=3  # Analyze 3 moves ahead for exchanges
+                        move
                     )
                     
-                    if detected_pattern:
+                    for detected_pattern in detected_patterns:
                         # Save the pattern
                         self.pattern_detector.save_pattern(detected_pattern)
                         
@@ -1549,7 +1558,7 @@ class ChessViewer(QMainWindow):
                     bot_analysis['features'] = agent.get_last_features()
                 
                 # Detect patterns
-                self.pattern_display.detect_patterns(
+                self.pattern_detector.detect_patterns(
                     self.board, move, evaluation_before, evaluation_after, bot_analysis
                 )
             except Exception as e:
@@ -2380,6 +2389,43 @@ class ChessViewer(QMainWindow):
             logger.error(f"Failed to update status: {exc}")
             # Don't show error dialog for status updates to avoid spam
 
+    def _toggle_compact_mode(self, state):
+        """Переключение между компактным и обычным режимом просмотра"""
+        is_compact = state == Qt.Checked
+        
+        if is_compact:
+            # Компактный режим - уменьшаем размеры и скрываем менее важные элементы
+            self.board_frame.setFixedSize(400, 400)
+            self.console_output.setMaximumHeight(80)
+            self.tab_widget.setMinimumHeight(200)
+            # Скрываем некоторые под-вкладки
+            self.analysis_tab.removeTab(self.analysis_tab.indexOf(self.moves_tab))
+            self.usage_tab.removeTab(self.usage_tab.indexOf(self.overall_tab))
+            # Уменьшаем размер окна
+            self.resize(900, 650)
+        else:
+            # Обычный режим - восстанавливаем размеры
+            self.board_frame.setFixedSize(560, 560)
+            self.console_output.setMaximumHeight(140)
+            self.tab_widget.setMinimumHeight(300)
+            # Восстанавливаем под-вкладки
+            if not hasattr(self, '_moves_tab_added'):
+                self.analysis_tab.addTab(self.moves_tab, "♟️ Ходы")
+                self._moves_tab_added = True
+            if not hasattr(self, '_overall_tab_added'):
+                self.usage_tab.addTab(self.overall_tab, "📊 Общая")
+                self._overall_tab_added = True
+            # Восстанавливаем размер окна
+            self.resize(1200, 800)
+        
+        # Сохраняем настройку
+        self.settings.setValue("ui/compact_mode", is_compact)
+
+    def closeEvent(self, event):
+        """Сохранение геометрии окна при закрытии"""
+        self.settings.setValue("geometry", self.saveGeometry())
+        super().closeEvent(event)
+
     def _show_critical_error(self, title: str, message: str):
         """Display a critical error message and close the application."""
         msg_box = QMessageBox(self)
@@ -2630,6 +2676,295 @@ class ChessViewer(QMainWindow):
         self._append_to_console("🆕 Новая игра начата")
         # Можно добавить диалог выбора ботов или настроек
 
+    def _create_bot_stats_tab(self):
+        """Создать вкладку статистики ботов с эвристиками и алгоритмами"""
+        from PySide6.QtWidgets import QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QTextEdit, QScrollArea, QFrame, QGridLayout, QComboBox, QPushButton
+        from PySide6.QtCore import Qt
+        
+        main_tab = QTabWidget()
+        main_tab.setTabPosition(QTabWidget.South)
+        
+        # === Под-вкладка: Обзор ботов ===
+        overview_tab = QWidget()
+        overview_layout = QVBoxLayout(overview_tab)
+        
+        # Таблица с информацией о ботах
+        bot_table = QTableWidget()
+        bot_table.setColumnCount(5)
+        bot_table.setHorizontalHeaderLabels(["Бот", "Тип", "Эвристика", "Сложность", "Описание"])
+        bot_table.horizontalHeader().setStretchLastSection(True)
+        
+        # Данные о ботах
+        bot_data = [
+            ("AggressiveBot", "Материальный", "Максимизация выигрыша материала", "Низкая", "Предпочитает захватывающие ходы"),
+            ("FortifyBot", "Защитный", "Плотность защиты, развитие фигур", "Средняя", "Укрепляет позицию и развивает фигуры"),
+            ("EndgameBot", "Эндшпиль", "Королевская активность, пешковые структуры", "Высокая", "Специализирован для эндшпиля"),
+            ("DynamicBot", "Метабот", "Комбинация нескольких ботов", "Высокая", "Использует голосование под-ботов"),
+            ("CriticalBot", "Тактический", "Угрозы ключевым фигурам", "Средняя", "Целится в важные фигуры противника"),
+            ("TrapBot", "Тактический", "Создание ловушек", "Средняя", "Ставит тактические ловушки"),
+            ("KingValueBot", "Оценочный", "Безопасность короля, ценность фигур", "Средняя", "Оценивает безопасность короля"),
+            ("NeuralBot", "Нейросеть", "Нейросетевая оценка", "Высокая", "Использует нейронную сеть"),
+            ("StockfishBot", "UCI Engine", "Alpha-beta поиск", "Очень высокая", "Интеграция с Stockfish"),
+            ("WolframBot", "Математический", "Анализ паттернов, математика", "Высокая", "Использует Wolfram Engine"),
+            ("PieceMateBot", "Тактический", "Блокировка путей отступления", "Средняя", "Запирает фигуры противника"),
+            ("RandomBot", "Случайный", "Случайный выбор + базовая оценка", "Низкая", "Базовый бот со случайным выбором"),
+        ]
+        
+        bot_table.setRowCount(len(bot_data))
+        for row, (name, bot_type, heuristic, complexity, description) in enumerate(bot_data):
+            bot_table.setItem(row, 0, QTableWidgetItem(name))
+            bot_table.setItem(row, 1, QTableWidgetItem(bot_type))
+            bot_table.setItem(row, 2, QTableWidgetItem(heuristic))
+            bot_table.setItem(row, 3, QTableWidgetItem(complexity))
+            bot_table.setItem(row, 4, QTableWidgetItem(description))
+        
+        bot_table.resizeColumnsToContents()
+        overview_layout.addWidget(QLabel("🤖 Обзор шахматных ботов и их алгоритмов"))
+        overview_layout.addWidget(bot_table)
+        main_tab.addTab(overview_tab, "📋 Обзор")
+        
+        # === Под-вкладка: Эвристики ===
+        heuristics_tab = QWidget()
+        heuristics_layout = QVBoxLayout(heuristics_tab)
+        
+        heuristics_text = QTextEdit()
+        heuristics_text.setReadOnly(True)
+        heuristics_text.setHtml("""
+        <h2>🧠 Эвристики и алгоритмы ботов</h2>
+        
+        <h3>🎯 Агрессивные эвристики</h3>
+        <ul>
+        <li><b>Material Gain:</b> Максимизация материального выигрыша (AggressiveBot)</li>
+        <li><b>Capture Priority:</b> Приоритет захватывающих ходов</li>
+        <li><b>SEE Evaluation:</b> Static Exchange Evaluation для тактических ходов</li>
+        </ul>
+        
+        <h3>🛡️ Защитные эвристики</h3>
+        <ul>
+        <li><b>Defense Density:</b> Плотность защиты каждой клетки (FortifyBot)</li>
+        <li><b>King Safety:</b> Безопасность короля и его окружения</li>
+        <li><b>Pawn Shield:</b> Целостность пешечной защиты короля</li>
+        <li><b>Escape Squares:</b> Наличие путей отступления для короля</li>
+        </ul>
+        
+        <h3>📈 Позиционные эвристики</h3>
+        <ul>
+        <li><b>Development:</b> Развитие легких фигур в дебюте</li>
+        <li><b>Center Control:</b> Контроль над центральными клетками</li>
+        <li><b>Pawn Structure:</b> Оценка пешечной структуры</li>
+        <li><b>Piece Activity:</b> Активность и мобильность фигур</li>
+        </ul>
+        
+        <h3>🎮 Тактические эвристики</h3>
+        <ul>
+        <li><b>Fork Detection:</b> Поиск вилок и двойных ударов</li>
+        <li><b>Pin/Skewer:</b> Выявление связок и рентгенов</li>
+        <li><b>Discovered Attack:</b> Открытые атаки</li>
+        <li><b>Hanging Pieces:</b> Поиск подвешенных фигур</li>
+        <li><b>Trap Setup:</b> Создание тактических ловушек</li>
+        </ul>
+        
+        <h3>🧮 Эндшпильные эвристики</h3>
+        <ul>
+        <li><b>King Activity:</b> Активность короля в эндшпиле</li>
+        <li><b>Pawn Promotion:</b> Проталкивание пешек к ферзю</li>
+        <li><b>Opposition:</b> Оппозиция королей</li>
+        <li><b>Zugzwang:</b> Выявление цугцванга</li>
+        </ul>
+        
+        <h3>🤖 Метабот-эвристики</h3>
+        <ul>
+        <li><b>Ensemble Voting:</b> Голосование нескольких ботов (DynamicBot)</li>
+        <li><b>Confidence Weighting:</b> Взвешивание по уверенности ботов</li>
+        <li><b>Phase Detection:</b> Адаптация к фазе игры</li>
+        <li><b>Pattern Recognition:</b> Распознавание паттернов позиции</li>
+        </ul>
+        
+        <h3>🧠 Нейросетевые эвристики</h3>
+        <ul>
+        <li><b>Neural Evaluation:</b> Нейросетевая оценка позиции (NeuralBot)</li>
+        <li><b>Feature Extraction:</b> Извлечение признаков доски</li>
+        <li><b>Pattern Matching:</b> Сопоставление с изученными паттернами</li>
+        </ul>
+        
+        <h3>⚡ Алгоритмы поиска</h3>
+        <ul>
+        <li><b>Alpha-Beta Pruning:</b> Альфа-бета отсечение (StockfishBot)</li>
+        <li><b>Iterative Deepening:</b> Итеративное углубление</li>
+        <li><b>Quiescence Search:</b> Спокойный поиск для тактики</li>
+        <li><b>Move Ordering:</b> Сортировка ходов для эффективности</li>
+        </ul>
+        """)
+        
+        heuristics_layout.addWidget(heuristics_text)
+        main_tab.addTab(heuristics_tab, "🧠 Эвристики")
+        
+        # === Под-вкладка: Внутренние алгоритмы ===
+        algorithms_tab = QWidget()
+        algorithms_layout = QVBoxLayout(algorithms_tab)
+        
+        algorithms_text = QTextEdit()
+        algorithms_text.setReadOnly(True)
+        algorithms_text.setHtml("""
+        <h2>⚙️ Внутренние алгоритмы ботов</h2>
+        
+        <h3>🎯 AggressiveBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Генерация всех легальных ходов</li>
+        <li>Оценка материального выигрыша для каждого хода</li>
+        <li>Применение SEE для тактической оценки</li>
+        <li>Выбор хода с максимальным выигрышем</li>
+        <li>Уверенность = материальный выигрыш</li>
+        </ol>
+        
+        <h3>🛡️ FortifyBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Анализ плотности защиты для каждой клетки</li>
+        <li>Оценка развития фигур (рыцари, слоны)</li>
+        <li>Бонус за создание слабостей у противника</li>
+        <li>Приоритет: развитие > защита > атака</li>
+        <li>Уверенность =综合 оценка безопасности</li>
+        </ol>
+        
+        <h3>🎮 DynamicBot (Метабот)</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Определение фазы игры (дебют/миттельшпиль/эндшпиль)</li>
+        <li>Выбор под-ботов для текущей фазы</li>
+        <li>Получение предложений от каждого под-бота</li>
+        <li>Голосование с весами уверенности</li>
+        <li>Выбор хода с максимальным весом</li>
+        </ol>
+        
+        <h3>🧠 NeuralBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Преобразование доски в тензор признаков</li>
+        <li>Прямой проход через нейронную сеть</li>
+        <li>Получение оценки позиции для каждого хода</li>
+        <li>Применение температурного сэмплирования</li>
+        <li>Выбор хода на основе нейросетевой оценки</li>
+        </ol>
+        
+        <h3>⚡ StockfishBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Инициализация UCI движка Stockfish</li>
+        <li>Отправка текущей позиции в движок</li>
+        <li>Настройка параметров поиска (глубина, время)</li>
+        <li>Получение лучшего хода от движка</li>
+        <li>Парсинг оценки и уверенности</li>
+        </ol>
+        
+        <h3>🪓 TrapBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Анализ потенциальных ловушек на доске</li>
+        <li>Поиск ходов, создающих скрытые угрозы</li>
+        <li>Оценка вероятности попадания в ловушку</li>
+        <li>Приоритет ходов с высокой вероятностью успеха</li>
+        <li>Уверенность = оценка силы ловушки</li>
+        </ol>
+        
+        <h3>🔍 CriticalBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Идентификация ключевых фигур противника</li>
+        <li>Оценка угроз для каждой фигуры</li>
+        <li>Поиск ходов, атакующих критические цели</li>
+        <li>Учет ценности фигуры и уровня угрозы</li>
+        <li>Выбор наиболее критического хода</li>
+        </ol>
+        
+        <h3>🏰 EndgameBot</h3>
+        <p><b>Алгоритм:</b></p>
+        <ol>
+        <li>Определение типа эндшпиля (материальный баланс)</li>
+        <li>Анализ королевской активности</li>
+        <li>Оценка пешковых продвижений</li>
+        <li>Применение специфических эндшпильных правил</li>
+        <li>Оптимизация для матовых сценариев</li>
+        </ol>
+        """)
+        
+        algorithms_layout.addWidget(algorithms_text)
+        main_tab.addTab(algorithms_tab, "⚙️ Алгоритмы")
+        
+        # === Под-вкладка: Метрики производительности ===
+        performance_tab = QWidget()
+        performance_layout = QVBoxLayout(performance_tab)
+        
+        performance_text = QTextEdit()
+        performance_text.setReadOnly(True)
+        performance_text.setHtml("""
+        <h2>📊 Метрики производительности ботов</h2>
+        
+        <h3>⏱️ Временные характеристики</h3>
+        <ul>
+        <li><b>RandomBot:</b> &lt;1мс (простой случайный выбор)</li>
+        <li><b>AggressiveBot:</b> 1-5мс (материальная оценка)</li>
+        <li><b>FortifyBot:</b> 5-15мс (анализ защиты)</li>
+        <li><b>CriticalBot:</b> 10-25мс (анализ угроз)</li>
+        <li><b>DynamicBot:</b> 50-200мс (голосование под-ботов)</li>
+        <li><b>NeuralBot:</b> 20-100мс (нейросетевой инференс)</li>
+        <li><b>StockfishBot:</b> 100-1000мс (глубокий поиск)</li>
+        <li><b>WolframBot:</b> 500-2000мс (математический анализ)</li>
+        </ul>
+        
+        <h3>🎯 Сила игры (ELO рейтинг)</h3>
+        <ul>
+        <li><b>RandomBot:</b> ~800 ELO (случайные ходы)</li>
+        <li><b>AggressiveBot:</b> ~1200 ELO (агрессивная тактика)</li>
+        <li><b>FortifyBot:</b> ~1400 ELO (позиционная игра)</li>
+        <li><b>CriticalBot:</b> ~1500 ELO (тактическая точность)</li>
+        <li><b>DynamicBot:</b> ~1600 ELO (комбинированный подход)</li>
+        <li><b>NeuralBot:</b> ~1800 ELO (нейросетевая оценка)</li>
+        <li><b>StockfishBot:</b> ~2500+ ELO (сильный движок)</li>
+        </ul>
+        
+        <h3>💾 Потребление памяти</h3>
+        <ul>
+        <li><b>Простые боты:</b> &lt;10MB (минимальные структуры)</li>
+        <li><b>NeuralBot:</b> 50-200MB (модели нейросетей)</li>
+        <li><b>StockfishBot:</b> 20-100MB (хеш-таблицы поиска)</li>
+        <li><b>WolframBot:</b> 100-500MB (Wolfram Engine)</li>
+        </ul>
+        
+        <h3>🔄 Сложность вычислений</h3>
+        <ul>
+        <li><b>O(1):</b> RandomBot (постоянное время)</li>
+        <li><b>O(n):</b> AggressiveBot, FortifyBot (линейная от ходов)</li>
+        <li><b>O(n²):</b> CriticalBot, TrapBot (анализ угроз)</li>
+        <li><b>O(n³):</b> DynamicBot (множественные боты)</li>
+        <li><b>O(2^d):</b> StockfishBot (экспоненциальный поиск)</li>
+        </ul>
+        """)
+        
+        performance_layout.addWidget(performance_text)
+        main_tab.addTab(performance_tab, "📊 Производительность")
+        
+        return main_tab
+
+    def _center_on_screen(self):
+        """Center the window on the screen."""
+        from PySide6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen()
+        if screen:
+            screen_geometry = screen.availableGeometry()
+            window_geometry = self.frameGeometry()
+            center_point = screen_geometry.center()
+            window_geometry.moveCenter(center_point)
+            self.move(window_geometry.topLeft())
+
+    def save_geometry(self):
+        """Save window geometry if enabled."""
+        if self.config.get("features", {}).get("auto_save_geometry", True):
+            if hasattr(self, 'settings'):
+                self.settings.setValue("geometry", self.saveGeometry())
+
+
 # ====== Запуск ======
 if __name__ == "__main__":
     try:
@@ -2641,7 +2976,7 @@ if __name__ == "__main__":
         # Set application style for better error visibility
         app.setStyleSheet("""
             QMessageBox {
-                background-color: #f8f9fa;
+                background-color: #8f9fa;
             }
             QMessageBox QLabel {
                 color: #212529;
@@ -2659,8 +2994,9 @@ if __name__ == "__main__":
             }
         """)
         
-        # Create and show the main window
-        viewer = ChessViewer()
+        # Create and show the main window using enhanced factory
+        from ui.enhanced_chess_viewer_factory import standard_viewer
+        viewer = standard_viewer()
         viewer.show()
         
         # Start the event loop

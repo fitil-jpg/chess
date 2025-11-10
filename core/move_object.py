@@ -190,6 +190,11 @@ class MoveObject:
     # Visualization state
     visualization: VisualizationState = field(default_factory=VisualizationState)
     
+    # Heatmap evaluation data
+    active_heatmap_piece: Optional[str] = None
+    heatmap_intensity: Optional[Dict[str, float]] = None
+    bsp_zone_type: Optional[str] = None
+    
     # Metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
     bot_name: Optional[str] = None
@@ -391,6 +396,11 @@ class MoveObject:
             return True
         
         return False
+    
+    @property
+    def current_stage(self):
+        """Alias for current_phase for backward compatibility."""
+        return self.current_phase
     
     def finalize_evaluation(self, final_score: float, reason: str, confidence: float = 1.0) -> None:
         """Finalize the move evaluation."""

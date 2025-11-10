@@ -1,12 +1,12 @@
 {
   "bots": {
     "StockfishBot": {
-      "elo": 1602.0,
-      "games_played": 2,
-      "last_updated": "2025-10-17T22:09:53.230296",
+      "elo": 1822.0,
+      "games_played": 13,
+      "last_updated": "2025-11-10T03:58:22.565923",
       "platform_ratings": {},
       "confidence": 1.0,
-      "last_update_reason": "Test game draw",
+      "last_update_reason": "Game win",
       "last_update_platform": "local"
     },
     "DynamicBot": {
@@ -19,11 +19,13 @@
       "last_update_platform": "local"
     },
     "EnhancedDynamicBot": {
-      "elo": 1500.0,
-      "games_played": 0,
-      "last_updated": "2025-11-10T00:24:02.182157",
+      "elo": 1280.0,
+      "games_played": 11,
+      "last_updated": "2025-11-10T03:58:22.566600",
       "platform_ratings": {},
-      "confidence": 1.0
+      "confidence": 1.0,
+      "last_update_reason": "Game loss",
+      "last_update_platform": "local"
     }
   },
   "platforms": {
