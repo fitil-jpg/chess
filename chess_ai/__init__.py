@@ -8,7 +8,7 @@ that monkeypatch the ``chess`` module).
 import logging
 logger = logging.getLogger(__name__)
 
-__all__ = ["HybridOrchestrator", "HybridBot", "KingValueBot", "PieceMateBot", "WolframBot"]
+__all__ = ["HybridOrchestrator", "HybridBot", "KingValueBot", "PieceMateBot", "WolframBot", "HeatmapManipulator", "BotFilter"]
 
 def __getattr__(name: str):
     if name == "HybridOrchestrator":
@@ -26,4 +26,10 @@ def __getattr__(name: str):
     if name == "WolframBot":
         from .wolfram_bot import WolframBot
         return WolframBot
+    if name == "HeatmapManipulator":
+        from .piece_mate_bot import HeatmapManipulator
+        return HeatmapManipulator
+    if name == "BotFilter":
+        from .bot_filter import BotFilter
+        return BotFilter
     raise AttributeError(name)

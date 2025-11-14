@@ -1,9 +1,9 @@
 {
   "bots": {
     "StockfishBot": {
-      "elo": 1822.0,
-      "games_played": 13,
-      "last_updated": "2025-11-10T03:58:22.565923",
+      "elo": 1842.0,
+      "games_played": 14,
+      "last_updated": "2025-11-10T04:37:23.352132",
       "platform_ratings": {},
       "confidence": 1.0,
       "last_update_reason": "Game win",
@@ -19,9 +19,9 @@
       "last_update_platform": "local"
     },
     "EnhancedDynamicBot": {
-      "elo": 1280.0,
-      "games_played": 11,
-      "last_updated": "2025-11-10T03:58:22.566600",
+      "elo": 1260.0,
+      "games_played": 12,
+      "last_updated": "2025-11-10T04:37:23.353090",
       "platform_ratings": {},
       "confidence": 1.0,
       "last_update_reason": "Game loss",

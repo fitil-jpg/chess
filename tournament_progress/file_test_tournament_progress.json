@@ -1,0 +1,38 @@
+{
+  "tournament_id": "file_test_tournament",
+  "total_matches": 2,
+  "completed_matches": 0,
+  "current_match": null,
+  "start_time": 1762973514.4020522,
+  "estimated_end_time": null,
+  "matches_per_hour": 0.0,
+  "bot_performance": {
+    "Bot1": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "Bot2": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "Bot3": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    }
+  }
+}

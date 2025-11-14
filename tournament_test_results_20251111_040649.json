@@ -1,0 +1,141 @@
+{
+  "timestamp": "2025-11-11T04:06:49.023176",
+  "results": [
+    {
+      "standings": [],
+      "metrics": {},
+      "test_id": "test_20251110_165707",
+      "config": {
+        "name": "default",
+        "description": "Default configuration"
+      },
+      "duration": 858.3940777778625,
+      "timestamp": "2025-11-10T17:11:25.470549",
+      "success": true
+    },
+    {
+      "standings": [],
+      "metrics": {},
+      "test_id": "test_20251110_171127",
+      "config": {
+        "name": "aggressive_focused",
+        "bot_weights": {
+          "aggressive": 2.0,
+          "critical": 1.0,
+          "pawn": 0.5,
+          "king": 0.8
+        },
+        "description": "Emphasis on aggressive play"
+      },
+      "duration": 816.1036098003387,
+      "timestamp": "2025-11-10T17:25:03.584461",
+      "success": true
+    },
+    {
+      "standings": [],
+      "metrics": {},
+      "test_id": "test_20251110_172505",
+      "config": {
+        "name": "pawn_focused",
+        "bot_weights": {
+          "aggressive": 0.8,
+          "critical": 1.0,
+          "pawn": 2.0,
+          "king": 1.2
+        },
+        "description": "Emphasis on pawn structure"
+      },
+      "duration": 888.2959370613098,
+      "timestamp": "2025-11-10T17:39:53.887204",
+      "success": true
+    },
+    {
+      "standings": [],
+      "metrics": {},
+      "test_id": "test_20251110_173955",
+      "config": {
+        "name": "balanced",
+        "bot_weights": {
+          "aggressive": 1.2,
+          "critical": 1.2,
+          "pawn": 1.2,
+          "king": 1.2
+        },
+        "description": "Balanced all-around approach"
+      },
+      "duration": 1059.3264219760895,
+      "timestamp": "2025-11-10T17:57:35.224925",
+      "success": true
+    },
+    {
+      "standings": [],
+      "metrics": {},
+      "test_id": "test_20251110_181238",
+      "config": {
+        "name": "fast_games",
+        "time_limit": 60,
+        "description": "Shorter time limit for faster games"
+      },
+      "duration": 35648.647814035416,
+      "timestamp": "2025-11-11T04:06:46.982643",
+      "success": true
+    }
+  ],
+  "analysis": {
+    "summary": {
+      "total_tests": 5,
+      "successful_tests": 5,
+      "success_rate": 1.0,
+      "avg_duration": 7854.153572130203
+    },
+    "best_configurations": {
+      "overall_performance": {
+        "standings": [],
+        "metrics": {},
+        "test_id": "test_20251110_165707",
+        "config": {
+          "name": "default",
+          "description": "Default configuration"
+        },
+        "duration": 858.3940777778625,
+        "timestamp": "2025-11-10T17:11:25.470549",
+        "success": true
+      }
+    },
+    "performance_comparison": {
+      "default": {
+        "avg_score": 0.0,
+        "max_score": 0,
+        "min_score": 0,
+        "test_count": 1
+      },
+      "aggressive_focused": {
+        "avg_score": 0.0,
+        "max_score": 0,
+        "min_score": 0,
+        "test_count": 1
+      },
+      "pawn_focused": {
+        "avg_score": 0.0,
+        "max_score": 0,
+        "min_score": 0,
+        "test_count": 1
+      },
+      "balanced": {
+        "avg_score": 0.0,
+        "max_score": 0,
+        "min_score": 0,
+        "test_count": 1
+      },
+      "fast_games": {
+        "avg_score": 0.0,
+        "max_score": 0,
+        "min_score": 0,
+        "test_count": 1
+      }
+    },
+    "recommendations": [
+      "\ud83c\udfc6 Best performing configuration: default (avg score: 0.00)"
+    ]
+  }
+}

@@ -1,0 +1,256 @@
+{
+  "summary": {
+    "total_tests_run": 1,
+    "total_errors": 0,
+    "timestamp": 1762967962.033055
+  },
+  "test_results": {
+    "pytest": {
+      "tests/test_optimal_move_selection.py": {
+        "return_code": 1,
+        "stdout": "============================= test session starts ==============================\ncollecting ... collected 26 items\n\ntests/test_optimal_move_selection.py::TestIndividualBotSelection::test_aggressive_bot_selects_capture PASSED [  3%]\ntests/test_optimal_move_selection.py::TestIndividualBotSelection::test_fortify_bot_selects_development FAILED [  7%]\ntests/test_optimal_move_selection.py::TestIndividualBotSelection::test_endgame_bot_endgame_position PASSED [ 11%]\ntests/test_optimal_move_selection.py::TestIndividualBotSelection::test_random_bot_legal_moves PASSED [ 15%]\ntests/test_optimal_move_selection.py::TestIndividualBotSelection::test_critical_bot_identifies_threats FAILED [ 19%]\ntests/test_optimal_move_selection.py::TestDynamicBotEnsemble::test_dynamicbot_ensemble_decision PASSED [ 23%]\ntests/test_optimal_move_selection.py::TestDynamicBotEnsemble::test_dynamicbot_phase_weighting PASSED [ 26%]\ntests/test_optimal_move_selection.py::TestDynamicBotEnsemble::test_dynamicbot_diversity_bonus PASSED [ 30%]\ntests/test_optimal_move_selection.py::TestDynamicBotEnsemble::test_dynamicbot_bandit_learning PASSED [ 34%]\ntests/test_optimal_move_selection.py::TestDynamicBotEnsemble::test_dynamicbot_endgame_boost PASSED [ 38%]\ntests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_basic_selection FAILED [ 42%]\ntests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_time_budget FAILED [ 46%]\ntests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_risk_analysis FAILED [ 50%]\ntests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_legality_all_bots FAILED [ 53%]\ntests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_consistency_same_position FAILED [ 57%]\ntests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_diversity_random_bot FAILED [ 61%]\ntests/test_optimal_move_selection.py::TestPerformanceMetrics::test_move_selection_timing FAILED [ 65%]\ntests/test_optimal_move_selection.py::TestPerformanceMetrics::test_evaluation_pipeline_tracking PASSED [ 69%]\ntests/test_optimal_move_selection.py::TestPerformanceMetrics::test_performance_summary_generation FAILED [ 73%]\ntests/test_optimal_move_selection.py::TestEdgeCases::test_empty_legal_moves FAILED [ 76%]\ntests/test_optimal_move_selection.py::TestEdgeCases::test_single_legal_move PASSED [ 80%]\ntests/test_optimal_move_selection.py::TestEdgeCases::test_corrupted_board_state PASSED [ 84%]\ntests/test_optimal_move_selection.py::TestEdgeCases::test_malformed_evaluator FAILED [ 88%]\ntests/test_optimal_move_selection.py::TestMoveObjectIntegration::test_move_object_creation PASSED [ 92%]\ntests/test_optimal_move_selection.py::TestMoveObjectIntegration::test_move_object_pipeline_tracking PASSED [ 96%]\ntests/test_optimal_move_selection.py::TestMoveObjectIntegration::test_move_object_export_data PASSED [100%]\n\n=================================== FAILURES ===================================\n_______ TestIndividualBotSelection.test_fortify_bot_selects_development ________\ntests/test_optimal_move_selection.py:101: in test_fortify_bot_selects_development\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n_______ TestIndividualBotSelection.test_critical_bot_identifies_threats ________\ntests/test_optimal_move_selection.py:141: in test_critical_bot_identifies_threats\n    assert reason is not None and len(reason) > 0\n                                  ^^^^^^^^^^^\nE   TypeError: object of type 'float' has no len()\n___________ TestDecisionEngine.test_decision_engine_basic_selection ____________\ntests/test_optimal_move_selection.py:233: in test_decision_engine_basic_selection\n    move = engine.choose_best_move(tactical_board)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:101: in choose_best_move\n    chosen_move = self._analyze_and_choose_move(board, safe_moves, time_budget_s, chosen_by_bot=True)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:141: in _analyze_and_choose_move\n    for move in moves_to_consider:\n                ^^^^^^^^^^^^^^^^^\nE   NameError: name 'moves_to_consider' is not defined\n_____________ TestDecisionEngine.test_decision_engine_time_budget ______________\ntests/test_optimal_move_selection.py:242: in test_decision_engine_time_budget\n    move = engine.choose_best_move(white_board, time_budget_s=0.5)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:101: in choose_best_move\n    chosen_move = self._analyze_and_choose_move(board, safe_moves, time_budget_s, chosen_by_bot=True)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:141: in _analyze_and_choose_move\n    for move in moves_to_consider:\n                ^^^^^^^^^^^^^^^^^\nE   NameError: name 'moves_to_consider' is not defined\n____________ TestDecisionEngine.test_decision_engine_risk_analysis _____________\ntests/test_optimal_move_selection.py:252: in test_decision_engine_risk_analysis\n    move = engine.choose_best_move(tactical_board)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:101: in choose_best_move\n    chosen_move = self._analyze_and_choose_move(board, safe_moves, time_budget_s, chosen_by_bot=True)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/decision_engine.py:141: in _analyze_and_choose_move\n    for move in moves_to_consider:\n                ^^^^^^^^^^^^^^^^^\nE   NameError: name 'moves_to_consider' is not defined\n____________ TestMoveQualityValidation.test_move_legality_all_bots _____________\ntests/test_optimal_move_selection.py:274: in test_move_legality_all_bots\n    assert move is not None, f\"{bot.__class__.__name__} returned None move\"\nE   AssertionError: FortifyBot returned None move\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n________ TestMoveQualityValidation.test_move_consistency_same_position _________\ntests/test_optimal_move_selection.py:280: in test_move_consistency_same_position\n    bot = FortifyBot(chess.WHITE, tiebreak_jitter=0.0)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: FortifyBot.__init__() got an unexpected keyword argument 'tiebreak_jitter'\n___________ TestMoveQualityValidation.test_move_diversity_random_bot ___________\ntests/test_optimal_move_selection.py:303: in test_move_diversity_random_bot\n    assert len(unique_moves) > 1, f\"Expected diverse moves from RandomBot, got: {unique_moves}\"\nE   AssertionError: Expected diverse moves from RandomBot, got: {'g1f3'}\nE   assert 1 > 1\nE    +  where 1 = len({'g1f3'})\n______________ TestPerformanceMetrics.test_move_selection_timing _______________\ntests/test_optimal_move_selection.py:322: in test_move_selection_timing\n    assert move_obj.total_duration_ms > 0\nE   AssertionError: assert 0.0 > 0\nE    +  where 0.0 = MoveObject(move=Move.from_uci('c4f1'), board_fen='r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4', move_number=4, color=True, san_notation='Bf1', current_phase=<MovePhase.BOT_EVALUATION: 'bot_evaluation'>, status=<MoveStatus.COMPLETED: 'completed'>, evaluation_steps=[EvaluationStep(method_name='aggressive_evaluation', bot_name='aggressive', timestamp=1762967982.845931, duration_ms=15.512228012084961, input_data={'phase': 'opening', 'position_bucket': 'opening|tac|norm', 'weights': {'base': 1.0, 'bandit': 1.0}}, output_data={'move': 'c4f7', 'confidence': 33.0, 'engine': 'AggressiveBot'}, status=<MoveStatus.COMPLETED: 'completed'>, confidence=33.0, reason='', features={}), EvaluationStep(method_name='fortify_evaluation', bot_name='fortify', timestamp=1762967982.861474, duration_ms=0.10228157043457031, input_data={'phase': 'opening', 'position_bucket': 'opening|tac|norm', 'weights': {'base': 1.0, 'bandit': 1.0}}, output_data={'move': None, 'confidence': 0.0, 'engine': 'FortifyBot'}, status=<MoveStatus.REJECTED: 'rejected'>, confidence=0.0, reason='', features={}), EvaluationStep(method_name='critical_evaluation', bot_name='critical', timestamp=1762967982.861591,...pening|tac|norm', 'weights': {'base': 1.0, 'bandit': 1.0}}, output_data={'move': None, 'confidence': 0.0, 'engine': 'NeuralBot'}, status=<MoveStatus.REJECTED: 'rejected'>, confidence=0.0, reason='', features={})}, tactical_motifs=[], tactical_threats=[], guardrails_passed=True, guardrails_violations=[], guardrails_warnings=[], minimax_depth=0, minimax_value=None, minimax_pv=[], meets_minimax_threshold=False, visualization=VisualizationState(heatmap_piece=None, heatmap_set=None, heatmap_intensity=None, heatmap_cell_color='red', highlighted_squares=set(), zone_colors={}, current_cell=None, bsp_zones=[], wfc_patterns=[], bsp_zone_type=None, bsp_zone_control=None, bsp_zone_cells=[], wfc_patterns_matched=[], wfc_constraints_satisfied=[]), active_heatmap_piece=None, heatmap_intensity=None, bsp_zone_type=None, metadata={'phase': 'opening', 'position_bucket': 'opening|tac|norm', 'total_agents': 8, 'contributing_agents': 6, 'win_probability': 0.4357734558260374, 'ensemble_score': -31.0, 'selected_move': 'c4f1', 'diversity_enabled': True, 'bandit_enabled': True, 'supporting_agent_endgame': {'confidence': -31.0, 'weight': 1.0, 'bandit_multiplier': 1.1165571748422944}}, bot_name='DynamicBot').total_duration_ms\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n__________ TestPerformanceMetrics.test_performance_summary_generation __________\ntests/test_optimal_move_selection.py:352: in test_performance_summary_generation\n    assert 'status' in summary\nE   AssertionError: assert 'status' in {'aggressive': {'avg_confidence': 93.83333333333333, 'avg_duration_ms': 10.186930497487387, 'avg_score': 558.8648922228462, 'moves_contributed': [{'confidence': 33.0, 'duration_ms': 16.90816879272461, 'move': 'Bf1', 'score': -31.0}, {'confidence': 94.0, 'duration_ms': 6.255149841308594, 'move': 'Nf3', 'score': 582.8}, {'confidence': 33.0, 'duration_ms': 13.952016830444336, 'move': 'Bf1', 'score': -31.0}, {'confidence': 94.0, 'duration_ms': 5.86700439453125, 'move': 'Nf3', 'score': 592.8}, {'confidence': 343.0, 'duration_ms': 6.552219390869141, 'move': 'g5', 'score': 1130.4179785308274}, {'confidence': 245.0, 'duration_ms': 6.141185760498047, 'move': 'Nxg5', 'score': 1269.1}, ...], ...}, 'center': {'avg_confidence': -inf, 'avg_duration_ms': 385.1863741874695, 'avg_score': 558.8648922228462, 'moves_contributed': [{'confidence': -inf, 'duration_ms': 427.4711608886719, 'move': 'Bf1', 'score': -31.0}, {'confidence': 104.0, 'duration_ms': 67.43597984313965, 'move': 'Nf3', 'score': 582.8}, {'confidence': -inf, 'duration_ms': 430.7389259338379, 'move': 'Bf1', 'score': -31.0}, {'confidence': 104.0, 'duration_ms': 78.90892028808594, 'move': 'Nf3', 'score': 592.8}, {'confidence': 73.0, 'dur...': 'Bf1', 'score': -31.0}, {'confidence': 104.0, 'duration_ms': 1146.9359397888184, 'move': 'Nf3', 'score': 582.8}, {'confidence': 33.0, 'duration_ms': 2801.852226257324, 'move': 'Bf1', 'score': -31.0}, {'confidence': 104.0, 'duration_ms': 1195.2629089355469, 'move': 'Nf3', 'score': 592.8}, {'confidence': 343.0, 'duration_ms': 263.50998878479004, 'move': 'g5', 'score': 1130.4179785308274}, {'confidence': 610.0, 'duration_ms': 1203.752040863037, 'move': 'Nxg5', 'score': 1269.1}, ...], ...}, 'endgame': {'avg_confidence': 110.91666666666667, 'avg_duration_ms': 11.111398537953695, 'avg_score': 558.8648922228462, 'moves_contributed': [{'confidence': -31.0, 'duration_ms': 14.050006866455078, 'move': 'Bf1', 'score': -31.0}, {'confidence': 114.0, 'duration_ms': 10.326147079467773, 'move': 'Nf3', 'score': 582.8}, {'confidence': -31.0, 'duration_ms': 15.506982803344727, 'move': 'Bf1', 'score': -31.0}, {'confidence': 114.0, 'duration_ms': 7.159948348999023, 'move': 'Nf3', 'score': 592.8}, {'confidence': 343.0, 'duration_ms': 6.372928619384766, 'move': 'g5', 'score': 1130.4179785308274}, {'confidence': 394.0, 'duration_ms': 7.789134979248047, 'move': 'Nxg5', 'score': 1269.1}, ...], ...}, ...}\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n_____________________ TestEdgeCases.test_empty_legal_moves _____________________\ntests/test_optimal_move_selection.py:364: in test_empty_legal_moves\n    move, confidence = bot.choose_move(board)\n                       ^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/dynamic_bot.py:426: in choose_move\n    move, conf = agent.choose_move(\nchess_ai/chess_bot.py:150: in choose_move\n    chosen = candidates[-1][1]\n             ^^^^^^^^^^^^^^\nE   IndexError: list index out of range\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety -29 < 0 \u2013 evaluating moves\n____________________ TestEdgeCases.test_malformed_evaluator ____________________\ntests/test_optimal_move_selection.py:399: in test_malformed_evaluator\n    move, confidence = bot.choose_move(white_board, evaluator=broken_evaluator, context=game_context)\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/dynamic_bot.py:369: in choose_move\n    self.current_move_object.metadata['position_bucket'] = self._position_bucket(board, evaluator)\n                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nchess_ai/dynamic_bot.py:236: in _position_bucket\n    wm, bm = evaluator.mobility(board)\n    ^^^^^^\nE   TypeError: cannot unpack non-iterable Mock object\n\nDuring handling of the above exception, another exception occurred:\ntests/test_optimal_move_selection.py:404: in test_malformed_evaluator\n    pytest.fail(\"Bot should handle evaluator errors gracefully\")\nE   Failed: Bot should handle evaluator errors gracefully\n=========================== short test summary info ============================\nFAILED tests/test_optimal_move_selection.py::TestIndividualBotSelection::test_fortify_bot_selects_development\nFAILED tests/test_optimal_move_selection.py::TestIndividualBotSelection::test_critical_bot_identifies_threats\nFAILED tests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_basic_selection\nFAILED tests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_time_budget\nFAILED tests/test_optimal_move_selection.py::TestDecisionEngine::test_decision_engine_risk_analysis\nFAILED tests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_legality_all_bots\nFAILED tests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_consistency_same_position\nFAILED tests/test_optimal_move_selection.py::TestMoveQualityValidation::test_move_diversity_random_bot\nFAILED tests/test_optimal_move_selection.py::TestPerformanceMetrics::test_move_selection_timing\nFAILED tests/test_optimal_move_selection.py::TestPerformanceMetrics::test_performance_summary_generation\nFAILED tests/test_optimal_move_selection.py::TestEdgeCases::test_empty_legal_moves\nFAILED tests/test_optimal_move_selection.py::TestEdgeCases::test_malformed_evaluator\n======================== 12 failed, 14 passed in 51.06s ========================\n",
+        "stderr": "",
+        "success": false,
+        "summary": "======================== 12 failed, 14 passed in 51.06s ========================"
+      },
+      "tests/test_move_scenarios.py": {
+        "return_code": 1,
+        "stdout": "============================= test session starts ==============================\ncollecting ... collected 20 items\n\ntests/test_move_scenarios.py::TestTacticalScenarios::test_fork_opportunity PASSED [  5%]\ntests/test_move_scenarios.py::TestTacticalScenarios::test_pin_scenario PASSED [ 10%]\ntests/test_move_scenarios.py::TestTacticalScenarios::test_discovered_attack PASSED [ 15%]\ntests/test_move_scenarios.py::TestTacticalScenarios::test_sacrifice_opportunity PASSED [ 20%]\ntests/test_move_scenarios.py::TestPositionalScenarios::test_pawn_structure_evaluation FAILED [ 25%]\ntests/test_move_scenarios.py::TestPositionalScenarios::test_king_safety_priority FAILED [ 30%]\ntests/test_move_scenarios.py::TestPositionalScenarios::test_piece_activity_evaluation PASSED [ 35%]\ntests/test_move_scenarios.py::TestEndgameScenarios::test_king_and_pawn_endgame PASSED [ 40%]\ntests/test_move_scenarios.py::TestEndgameScenarios::test_rook_endgame PASSED [ 45%]\ntests/test_move_scenarios.py::TestEndgameScenarios::test_opposition_and_zugzwang PASSED [ 50%]\ntests/test_move_scenarios.py::TestEndgameScenarios::test_promotion_race PASSED [ 55%]\ntests/test_move_scenarios.py::TestOpeningScenarios::test_opening_development FAILED [ 60%]\ntests/test_move_scenarios.py::TestOpeningScenarios::test_center_control PASSED [ 65%]\ntests/test_move_scenarios.py::TestOpeningScenarios::test_castling_safety FAILED [ 70%]\ntests/test_move_scenarios.py::TestCriticalPositions::test_time_pressure_simulation PASSED [ 75%]\ntests/test_move_scenarios.py::TestCriticalPositions::test_defensive_necessity FAILED [ 80%]\ntests/test_move_scenarios.py::TestCriticalPositions::test_complicated_tactical_position PASSED [ 85%]\ntests/test_move_scenarios.py::TestSpecificMovePatterns::test_developer_move_recognition FAILED [ 90%]\ntests/test_move_scenarios.py::TestSpecificMovePatterns::test_tempo_gain_recognition PASSED [ 95%]\ntests/test_move_scenarios.py::TestSpecificMovePatterns::test_prophylaxis_thinking FAILED [100%]\n\n=================================== FAILURES ===================================\n____________ TestPositionalScenarios.test_pawn_structure_evaluation ____________\ntests/test_move_scenarios.py:114: in test_pawn_structure_evaluation\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n______________ TestPositionalScenarios.test_king_safety_priority _______________\ntests/test_move_scenarios.py:127: in test_king_safety_priority\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n________________ TestOpeningScenarios.test_opening_development _________________\ntests/test_move_scenarios.py:230: in test_opening_development\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n__________________ TestOpeningScenarios.test_castling_safety ___________________\ntests/test_move_scenarios.py:271: in test_castling_safety\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n________________ TestCriticalPositions.test_defensive_necessity ________________\ntests/test_move_scenarios.py:308: in test_defensive_necessity\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n___________ TestSpecificMovePatterns.test_developer_move_recognition ___________\ntests/test_move_scenarios.py:340: in test_developer_move_recognition\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n______________ TestSpecificMovePatterns.test_prophylaxis_thinking ______________\ntests/test_move_scenarios.py:380: in test_prophylaxis_thinking\n    assert move is not None\nE   assert None is not None\n----------------------------- Captured stdout call -----------------------------\nFortifyBot: king safety 0 \u2265 0 \u2013 skipping fortification\n=========================== short test summary info ============================\nFAILED tests/test_move_scenarios.py::TestPositionalScenarios::test_pawn_structure_evaluation\nFAILED tests/test_move_scenarios.py::TestPositionalScenarios::test_king_safety_priority\nFAILED tests/test_move_scenarios.py::TestOpeningScenarios::test_opening_development\nFAILED tests/test_move_scenarios.py::TestOpeningScenarios::test_castling_safety\nFAILED tests/test_move_scenarios.py::TestCriticalPositions::test_defensive_necessity\nFAILED tests/test_move_scenarios.py::TestSpecificMovePatterns::test_developer_move_recognition\nFAILED tests/test_move_scenarios.py::TestSpecificMovePatterns::test_prophylaxis_thinking\n======================== 7 failed, 13 passed in 28.74s =========================\n",
+        "stderr": "",
+        "success": false,
+        "summary": "======================== 7 failed, 13 passed in 28.74s ========================="
+      }
+    }
+  },
+  "performance_metrics": {
+    "benchmarks": {
+      "Opening": {
+        "AggressiveBot": {
+          "move": "g1f3",
+          "result": 94.0,
+          "duration_ms": 6.881952285766602,
+          "legal": true,
+          "success": true
+        },
+        "FortifyBot": {
+          "move": null,
+          "result": 0.0,
+          "duration_ms": 0.06079673767089844,
+          "legal": false,
+          "success": false
+        },
+        "EndgameBot": {
+          "move": "g1f3",
+          "result": 114.0,
+          "duration_ms": 6.691932678222656,
+          "legal": true,
+          "success": true
+        },
+        "DynamicBot": {
+          "move": "g1f3",
+          "result": 592.8,
+          "duration_ms": 1409.438133239746,
+          "legal": true,
+          "success": true
+        }
+      },
+      "Middlegame": {
+        "AggressiveBot": {
+          "move": "c4f7",
+          "result": 33.0,
+          "duration_ms": 13.695955276489258,
+          "legal": true,
+          "success": true
+        },
+        "FortifyBot": {
+          "move": null,
+          "result": 0.0,
+          "duration_ms": 0.014066696166992188,
+          "legal": false,
+          "success": false
+        },
+        "EndgameBot": {
+          "move": "c4f1",
+          "result": -31.0,
+          "duration_ms": 14.558792114257812,
+          "legal": true,
+          "success": true
+        },
+        "DynamicBot": {
+          "move": "c4f1",
+          "result": -31.0,
+          "duration_ms": 3403.718948364258,
+          "legal": true,
+          "success": true
+        }
+      },
+      "Endgame": {
+        "AggressiveBot": {
+          "move": "e2d1",
+          "result": 10.0,
+          "duration_ms": 0.7908344268798828,
+          "legal": true,
+          "success": true
+        },
+        "FortifyBot": {
+          "move": null,
+          "result": 0.0,
+          "duration_ms": 0.010967254638671875,
+          "legal": false,
+          "success": false
+        },
+        "EndgameBot": {
+          "move": "e2f3",
+          "result": 30.0,
+          "duration_ms": 1.0230541229248047,
+          "legal": true,
+          "success": true
+        },
+        "DynamicBot": {
+          "move": "e2d1",
+          "result": 454.68,
+          "duration_ms": 73.66180419921875,
+          "legal": true,
+          "success": true
+        }
+      },
+      "Tactical": {
+        "AggressiveBot": {
+          "move": "c4f7",
+          "result": 405.0,
+          "duration_ms": 10.190248489379883,
+          "legal": true,
+          "success": true
+        },
+        "FortifyBot": {
+          "move": null,
+          "result": 0.0,
+          "duration_ms": 0.015020370483398438,
+          "legal": false,
+          "success": false
+        },
+        "EndgameBot": {
+          "move": "c4f1",
+          "result": 341.0,
+          "duration_ms": 12.985944747924805,
+          "legal": true,
+          "success": true
+        },
+        "DynamicBot": {
+          "move": "c4f1",
+          "result": 341.0,
+          "duration_ms": 3202.439785003662,
+          "legal": true,
+          "success": true
+        }
+      }
+    }
+  },
+  "bot_performance": {
+    "dynamic_bot_features": {
+      "move_tracking": {
+        "enabled": true,
+        "has_move_object": true,
+        "success": true
+      },
+      "decision_roadmap": {
+        "available": true,
+        "not_empty": true,
+        "success": true
+      },
+      "performance_summary": {
+        "available": true,
+        "success": true
+      },
+      "ensemble_weighting": {
+        "default_move": "c4f1",
+        "weighted_move": "c4f1",
+        "different_decisions": false,
+        "success": true
+      }
+    }
+  },
+  "scenario_results": {
+    "move_quality": {
+      "Capture Opportunity": {
+        "Aggressive": {
+          "move": "c4f7",
+          "legal": true,
+          "is_capture": true,
+          "gives_check": true,
+          "piece_type": 3,
+          "quality_score": 7.5
+        },
+        "Fortify": {
+          "move": null,
+          "legal": false,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": null,
+          "quality_score": 0.0
+        },
+        "Dynamic": {
+          "move": "c4f1",
+          "legal": true,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": 3,
+          "quality_score": 0.0
+        }
+      },
+      "Endgame Technique": {
+        "Aggressive": {
+          "move": "e2d1",
+          "legal": true,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": 6,
+          "quality_score": 3.0
+        },
+        "Fortify": {
+          "move": null,
+          "legal": false,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": null,
+          "quality_score": 0.0
+        },
+        "Dynamic": {
+          "move": "e2d1",
+          "legal": true,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": 6,
+          "quality_score": 3.0
+        }
+      },
+      "Opening Development": {
+        "Aggressive": {
+          "move": "g1f3",
+          "legal": true,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": 2,
+          "quality_score": 2.0
+        },
+        "Fortify": {
+          "move": null,
+          "legal": false,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": null,
+          "quality_score": 0.0
+        },
+        "Dynamic": {
+          "move": "g1f3",
+          "legal": true,
+          "is_capture": false,
+          "gives_check": false,
+          "piece_type": 2,
+          "quality_score": 2.0
+        }
+      }
+    }
+  },
+  "errors": []
+}

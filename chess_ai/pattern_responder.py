@@ -147,84 +147,236 @@ class PatternResponder:
                 logger.warning(f"Skipping invalid pattern entry {pattern_data}: {exc}")
     
     def _create_default_patterns(self):
-        """Create default pattern templates."""
-        # COW Opening patterns
+        """Create default pattern templates with 90% COW opening target."""
+        # Enhanced COW Opening patterns (90% minimum usage target)
         cow_patterns = [
+            # Primary COW opening sequence
             PatternTemplate(
                 situation="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                 action="e2e4",
                 pattern_type="opening",
-                confidence=0.9,
-                frequency=0.8,
-                description="COW Opening: King's Pawn"
+                confidence=0.95,
+                frequency=0.9,
+                description="COW Opening: King's Pawn (Primary)"
             ),
             PatternTemplate(
                 situation="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
                 action="e7e6",
                 pattern_type="opening",
                 confidence=0.9,
-                frequency=0.7,
-                description="COW Opening: Black King's Pawn"
+                frequency=0.85,
+                description="COW Opening: Black Response - French Defense"
             ),
             PatternTemplate(
                 situation="rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",
                 action="d2d3",
                 pattern_type="opening",
-                confidence=0.8,
-                frequency=0.6,
-                description="COW Opening: Queen's Pawn"
+                confidence=0.85,
+                frequency=0.8,
+                description="COW Opening: Queen's Pawn Support"
             ),
             PatternTemplate(
                 situation="rnbqkbnr/pppp1ppp/8/4p3/4P3/3P4/PPP2PPP/RNBQKBNR b KQkq - 0 2",
                 action="d7d6",
                 pattern_type="opening",
+                confidence=0.85,
+                frequency=0.75,
+                description="COW Opening: Black Queen's Pawn Support"
+            ),
+            
+            # COW development patterns
+            PatternTemplate(
+                situation="rnbqkbnr/pppp1ppp/8/4p3/4P3/3P4/PPP2PPP/RNBQKBNR b KQkq - 0 2",
+                action="g8f6",
+                pattern_type="opening",
                 confidence=0.8,
+                frequency=0.7,
+                description="COW Opening: Knight to f6 (Primary Development)"
+            ),
+            PatternTemplate(
+                situation="rnbqkb1r/pppp1ppp/5n2/4p3/4P3/3P4/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+                action="f1d3",
+                pattern_type="opening",
+                confidence=0.8,
+                frequency=0.7,
+                description="COW Opening: Bishop to d3 (Development)"
+            ),
+            PatternTemplate(
+                situation="rnbqkb1r/pppp1ppp/5n2/4p3/4P3/3P2P1/PPP2PP1/RNBQK2R b KQkq - 0 3",
+                action="f8e7",
+                pattern_type="opening",
+                confidence=0.75,
+                frequency=0.65,
+                description="COW Opening: Bishop to e7 (Black Development)"
+            ),
+            
+            # COW middlegame transition patterns
+            PatternTemplate(
+                situation="rnbqk2r/pppp1ppp/5n2/2b1p3/4P3/3P2P1/PPP2PP1/RNBQK2R w KQkq - 1 4",
+                action="c2c4",
+                pattern_type="opening",
+                confidence=0.75,
                 frequency=0.6,
-                description="COW Opening: Black Queen's Pawn"
+                description="COW Opening: Queenside Expansion"
             ),
             PatternTemplate(
-                situation="rnbqkbnr/pppp1ppp/8/4p3/4P3/3P4/PPP2PPP/RNBQKBNR b KQkq - 0 2",
-                action="g8g6",
+                situation="rnbqk2r/pppp1ppp/5n2/2b1p3/2P1P3/3P2P1/PP3PP1/RNBQK2R b KQkq c3 0 4",
+                action="c7c5",
                 pattern_type="opening",
                 confidence=0.7,
-                frequency=0.5,
-                description="COW Opening: Knight Development"
+                frequency=0.6,
+                description="COW Opening: Counter-Expansion"
+            ),
+            
+            # Alternative COW variations
+            PatternTemplate(
+                situation="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                action="d2d4",
+                pattern_type="opening",
+                confidence=0.6,
+                frequency=0.4,
+                description="COW Alternative: Queen's Pawn Opening"
             ),
             PatternTemplate(
-                situation="rnbqkbnr/pppp1ppp/8/4p3/4P3/3P4/PPP2PPP/RNBQKBNR b KQkq - 0 2",
-                action="b8b6",
+                situation="rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1",
+                action="d7d5",
                 pattern_type="opening",
-                confidence=0.7,
-                frequency=0.5,
-                description="COW Opening: Knight Development"
+                confidence=0.6,
+                frequency=0.4,
+                description="COW Alternative: Queen's Gambit Response"
             )
         ]
         
-        # Tactical patterns
+        # Enhanced tactical patterns for blue gradient visualization
         tactical_patterns = [
+            # Fork patterns
             PatternTemplate(
-                situation="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                action="fork_check",
+                situation="rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3",
+                action="knight_fork",
                 pattern_type="tactical",
-                confidence=0.6,
-                frequency=0.3,
-                description="Fork pattern detection"
+                confidence=0.85,
+                frequency=0.7,
+                description="Knight fork: King and Rook"
             ),
             PatternTemplate(
-                situation="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                action="pin_check",
+                situation="r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 1 4",
+                action="knight_fork_king_queen",
                 pattern_type="tactical",
-                confidence=0.6,
-                frequency=0.3,
-                description="Pin pattern detection"
+                confidence=0.9,
+                frequency=0.8,
+                description="Knight fork: King and Queen"
             ),
             PatternTemplate(
-                situation="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                action="skewer_check",
+                situation="rnbqkb1r/pppp1ppp/5n2/4p3/4P3/8/PPPP1PPP/RNBQK2R w KQkq - 1 4",
+                action="bishop_fork",
                 pattern_type="tactical",
-                confidence=0.6,
-                frequency=0.2,
-                description="Skewer pattern detection"
+                confidence=0.75,
+                frequency=0.6,
+                description="Bishop fork: Minor pieces"
+            ),
+            
+            # Pin patterns
+            PatternTemplate(
+                situation="rnbqk2r/pppp1ppp/5n2/4p3/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq - 0 5",
+                action="absolute_pin",
+                pattern_type="tactical",
+                confidence=0.8,
+                frequency=0.7,
+                description="Absolute pin: Knight to King"
+            ),
+            PatternTemplate(
+                situation="r1bqk2r/pppp1ppp/2n2n2/4p3/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq - 1 6",
+                action="relative_pin",
+                pattern_type="tactical",
+                confidence=0.7,
+                frequency=0.6,
+                description="Relative pin: Queen to Knight"
+            ),
+            
+            # Skewer patterns
+            PatternTemplate(
+                situation="r3k2r/ppp2ppp/2n1b3/4p3/3P4/5N2/PPP1PPPP/RNBQK2R w KQkq - 0 6",
+                action="skewer_king_rook",
+                pattern_type="tactical",
+                confidence=0.85,
+                frequency=0.7,
+                description="Skewer: King and Rook"
+            ),
+            PatternTemplate(
+                situation="4k3/ppp2ppp/2n1b3/4p3/3P4/5N2/PPP1PPPP/RNBQK2R w KQkq - 0 6",
+                action="skewer_king_queen",
+                pattern_type="tactical",
+                confidence=0.9,
+                frequency=0.8,
+                description="Skewer: King and Queen"
+            ),
+            
+            # Discovery attack patterns
+            PatternTemplate(
+                situation="r2qkbnr/ppp1pppp/2n5/3p4/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 5",
+                action="discovery_check",
+                pattern_type="tactical",
+                confidence=0.8,
+                frequency=0.7,
+                description="Discovery check: Knight move"
+            ),
+            PatternTemplate(
+                situation="r2qkbnr/ppp1pppp/2n5/3p4/3PP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
+                action="discovery_attack",
+                pattern_type="tactical",
+                confidence=0.75,
+                frequency=0.6,
+                description="Discovery attack: Pawn move"
+            ),
+            
+            # Double attack patterns
+            PatternTemplate(
+                situation="r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 1 5",
+                action="double_attack",
+                pattern_type="tactical",
+                confidence=0.8,
+                frequency=0.7,
+                description="Double attack: Two pieces"
+            ),
+            
+            # Removal of defender patterns
+            PatternTemplate(
+                situation="r1bqk2r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 6",
+                action="remove_defender",
+                pattern_type="tactical",
+                confidence=0.75,
+                frequency=0.6,
+                description="Remove defender: Capture guard"
+            ),
+            
+            # Interference patterns
+            PatternTemplate(
+                situation="r1bqk2r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 6",
+                action="interference",
+                pattern_type="tactical",
+                confidence=0.7,
+                frequency=0.5,
+                description="Interference: Block defender"
+            ),
+            
+            # Overloading patterns
+            PatternTemplate(
+                situation="r1bqk2r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 6",
+                action="overloading",
+                pattern_type="tactical",
+                confidence=0.7,
+                frequency=0.5,
+                description="Overloading: Multiple threats"
+            ),
+            
+            # Trapping patterns
+            PatternTemplate(
+                situation="r1bqk2r/pppp1ppp/2n2n2/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 2 6",
+                action="trap_piece",
+                pattern_type="tactical",
+                confidence=0.75,
+                frequency=0.6,
+                description="Trap piece: Limit escapes"
             )
         ]
         

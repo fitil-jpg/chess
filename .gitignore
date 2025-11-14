@@ -379,3 +379,6 @@ ratings.json
 tournament_patterns/patterns.json
 tournament_stats/matches.json
 tournament_stats/matches.json
+# XRP Analysis data files
+xrpa_analysis/*
+!xrpa_analysis/.gitkeep

@@ -169,10 +169,25 @@ class TournamentRunner:
             
             try:
                 move_start = time.time()
-                move = current_bot.choose_move(board)
+                move_result = current_bot.choose_move(board)
                 move_time = time.time() - move_start
                 
+                # Handle different return formats from bots
+                if move_result is None:
+                    break
+                elif isinstance(move_result, tuple):
+                    move = move_result[0]
+                else:
+                    move = move_result
+                
                 if move is None:
+                    break
+                
+                # Validate that the move is legal
+                if move not in board.legal_moves:
+                    # Записываем в файл логов только ошибки
+                    with open('tournament_logs/tournament.log', 'a') as f:
+                        f.write(f"{datetime.now().isoformat()} [ERROR] Ошибка в игре {game_num}: Illegal move {move} for {current_name} in position {board.fen()}\n")
                     break
                 
                 # Обновляем метрики
@@ -446,8 +461,60 @@ class TournamentRunner:
                 f.write(f"{i}. {bot_name}:\n")
                 f.write(f"   Матчи: {stats['wins']}W-{stats['losses']}L-{stats['draws']}D\n")
                 f.write(f"   Игры: {stats['games_won']}W-{stats['games_lost']}L-{stats['games_drawn']}D\n\n")
+            
+            # Додаємо поглиблений аналіз
+            self._add_detailed_analysis(f)
         
         print(f"📄 Отчет сохранен: {report_path}")
+    
+    def _add_detailed_analysis(self, file):
+        """Додати поглиблений аналіз до звіту"""
+        file.write("=== ПОГЛИБЛЕНИЙ АНАЛІЗ СТРАТЕГІЙ ===\n\n")
+        
+        # Аналіз ефективності по часових контрольних
+        file.write("1. ЕФЕКТИВНІСТЬ ЗА ЧАСОВИМ КОНТРОЛЕМ:\n")
+        file.write(f"   - Таймінг на хід: ~{self.time_per_game // 40}с (середньо)\n")
+        file.write(f"   - Загальний час турніру: {self.tournament_stats['total_games'] * self.time_per_game // 60:.1f} хв\n\n")
+        
+        # Аналіз стилів гри
+        file.write("2. АНАЛІЗ СТИЛІВ ГРИ:\n")
+        for bot_name, stats in self.tournament_stats['bot_rankings']:
+            total_games = stats['games_won'] + stats['games_lost'] + stats['games_drawn']
+            if total_games > 0:
+                win_rate = (stats['games_won'] / total_games) * 100
+                draw_rate = (stats['games_drawn'] / total_games) * 100
+                loss_rate = (stats['games_lost'] / total_games) * 100
+                
+                if win_rate > 40:
+                    style = "Агресивний"
+                elif draw_rate > 70:
+                    style = "Оборонний"
+                elif win_rate > 20:
+                    style = "Збалансований"
+                else:
+                    style = "Нестабільний"
+                
+                file.write(f"   - {bot_name}: {style} ({win_rate:.1f}% перемог, {draw_rate:.1f}% нічиїх)\n")
+        file.write("\n")
+        
+        # Аналіз помилок
+        file.write("3. ТИПОВІ ПОМИЛКИ ТА СЛАБКІСТІ:\n")
+        for bot_name, stats in self.tournament_stats['bot_rankings']:
+            total_games = stats['games_won'] + stats['games_lost'] + stats['games_drawn']
+            if total_games > 0:
+                loss_rate = (stats['games_lost'] / total_games) * 100
+                if loss_rate > 30:
+                    file.write(f"   - {bot_name}: Високий відсоток поразок ({loss_rate:.1f}%) - перевірити тактику\n")
+                elif stats['games_drawn'] / total_games > 0.8:
+                    file.write(f"   - {bot_name}: Занадто оборонний стиль - {stats['games_drawn']} нічиїх\n")
+        file.write("\n")
+        
+        # Рекомендації
+        file.write("4. РЕКОМЕНДАЦІЇ ДЛЯ ОПТИМІЗАЦІЇ:\n")
+        file.write("   - Провести тестування з різними таймінгами (1хв, 5хв)\n")
+        file.write("   - Аналізувати ендшпільні позиції для ботів з високим % нічиїх\n")
+        file.write("   - Перевірити агресивні стратегії на тактичні помилки\n")
+        file.write("   - Розглянути адаптивні таймінги для різних фаз гри\n\n")
 
 def main():
     """Главная функция"""

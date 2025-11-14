@@ -86,10 +86,35 @@ class DecisionEngine:
         if not legal_moves:
             return None
 
+        # Perform comprehensive analysis before move selection
+        logger.info("Starting comprehensive move analysis...")
+        
         # First prefer tactically safe moves; if none, consider all.
         safe_moves = [m for m in legal_moves if not self.risk_analyzer.is_risky(board, m)]
         moves_to_consider = safe_moves if safe_moves else legal_moves
+        
+        # Use the new comprehensive analysis system
+        chosen_move = None
+        if moves_to_consider:
+            # If we have safe moves, pick the best one through normal analysis
+            if safe_moves:
+                chosen_move = self._analyze_and_choose_move(board, safe_moves, time_budget_s, chosen_by_bot=True)
+            else:
+                # All moves are risky, still need to pick the best one
+                chosen_move = self._analyze_and_choose_move(board, legal_moves, time_budget_s, chosen_by_bot=True)
+        
+        # Generate comprehensive analysis summary
+        analysis_summary = self.risk_analyzer.analyze_position(
+            board, 
+            depth=self.base_depth,
+            chosen_move=chosen_move,
+            chosen_by_bot=True
+        )
+        
+        return chosen_move
 
+    def _analyze_and_choose_move(self, board: chess.Board, moves: list, time_budget_s: float | None, chosen_by_bot: bool = False):
+        """Analyze moves and choose the best one with detailed scoring."""
         # Score moves and annotate tactical features for pyramid ordering.
         # A small tolerance allows choosing a non-repetition move that is
         # slightly worse than the best repetition line.

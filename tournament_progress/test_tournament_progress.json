@@ -1,0 +1,65 @@
+{
+  "tournament_id": "test_tournament",
+  "total_matches": 2,
+  "completed_matches": 1,
+  "current_match": null,
+  "start_time": 1762973513.979811,
+  "estimated_end_time": 1762973513.981266,
+  "matches_per_hour": 4957155.08864084,
+  "bot_performance": {
+    "DynamicBot": {
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "points": 2.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "AggressiveBot": {
+      "wins": 1,
+      "losses": 2,
+      "draws": 0,
+      "points": 1.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "EndgameBot": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "CriticalBot": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "PieceMateBot": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "FortifyBot": {
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "points": 0.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    }
+  }
+}

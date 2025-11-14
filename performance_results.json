@@ -1,0 +1,537 @@
+{
+  "Opening": {
+    "CriticalBot": {
+      "bot_name": "CriticalBot",
+      "avg_time": 0.9931659017980564,
+      "min_time": 0.8287866509926971,
+      "max_time": 1.3119533550052438,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         28914751 function calls (28907131 primitive calls) in 23.600 seconds\n\n   Ordered by: cumulative time\n   List reduced from 214 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.003    0.000   24.115    2.412 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.024    0.002   19.651    1.965 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     3600    0.188    0.000   19.131    0.005 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n    76710    0.878    0.000   14.806    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n    90750    2.564    0.000   10.361    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n    76910    0.295    0.000    9.070    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n  3313080    3.825    0.000    5.843    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n       10    0.000    0.000    4.434    0.443 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n       20    0.011    0.001    4.127    0.206 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n     4240    0.097    0.000    3.785    0.001 {method 'sort' of 'list' objects}\n   176200    1.403    0.000    3.572    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n    80130    0.304    0.000    3.389    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n      400    0.029    0.000    2.889    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n  3311770    1.767    0.000    2.437    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      200    0.006    0.000    2.278    0.011 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n      400    0.006    0.000    2.015    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n 8020/400    0.051    0.000    1.813    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n  3841680    1.686    0.000    1.686    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n   167400    0.229    0.000    1.604    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3738(copy)\n      200    0.005    0.000    1.437    0.007 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n\n\n",
+      "times_ms": [
+        955.5831880134065,
+        974.2233330034651,
+        949.7612080012914,
+        970.8112520165741,
+        1036.059183999896,
+        960.7487829925958,
+        980.1320309925359,
+        979.9887549888808,
+        1190.950663993135,
+        952.4835140036885
+      ]
+    },
+    "PawnBot": {
+      "bot_name": "PawnBot",
+      "avg_time": 0.05903615520044696,
+      "min_time": 0.05349263999960385,
+      "max_time": 0.146502841002075,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         2170501 function calls (2166691 primitive calls) in 1.595 seconds\n\n   Ordered by: cumulative time\n   List reduced from 179 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.005    0.000    1.622    0.162 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      200    0.005    0.000    1.416    0.007 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n      200    0.014    0.000    1.397    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n      200    0.003    0.000    0.967    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n 4010/200    0.024    0.000    0.884    0.004 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n     4010    0.055    0.000    0.698    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n     5010    0.144    0.000    0.580    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n   189040    0.212    0.000    0.325    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n      800    0.025    0.000    0.185    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n     8020    0.037    0.000    0.176    0.000 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:22(calculate_king_value)\n      200    0.001    0.000    0.172    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n    54400    0.098    0.000    0.165    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n   203090    0.108    0.000    0.149    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n    13010    0.015    0.000    0.121    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n     5160    0.048    0.000    0.110    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      200    0.020    0.000    0.101    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:494(criticality)\n   204520    0.091    0.000    0.091    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n    48120    0.049    0.000    0.090    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n    13010    0.035    0.000    0.084    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n      200    0.011    0.000    0.071    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n\n\n",
+      "times_ms": [
+        60.52168001770042,
+        55.32192601822317,
+        57.53818401717581,
+        55.5410560045857,
+        61.455349990865216,
+        56.92238299525343,
+        58.789336995687336,
+        55.76499202288687,
+        53.98728000000119,
+        55.23935699602589
+      ]
+    },
+    "KingValueBot": {
+      "bot_name": "KingValueBot",
+      "avg_time": 0.08873853809898719,
+      "min_time": 0.07718936301534995,
+      "max_time": 0.23708697999245487,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         3442581 function calls (3438771 primitive calls) in 2.322 seconds\n\n   Ordered by: cumulative time\n   List reduced from 186 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.005    0.001    2.364    0.236 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      200    0.005    0.000    2.163    0.011 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n      200    0.014    0.000    1.377    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n      200    0.003    0.000    0.960    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n     8210    0.228    0.000    0.926    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n 4010/200    0.024    0.000    0.874    0.004 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n      800    0.104    0.000    0.760    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n     4010    0.055    0.000    0.692    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n   293470    0.328    0.000    0.502    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n   111200    0.195    0.000    0.328    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n   308850    0.162    0.000    0.223    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n     8420    0.039    0.000    0.186    0.000 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:22(calculate_king_value)\n      800    0.024    0.000    0.181    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n      200    0.001    0.000    0.165    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n   309070    0.137    0.000    0.137    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n    13010    0.015    0.000    0.118    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n     5200    0.048    0.000    0.110    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n    56120    0.058    0.000    0.107    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n      200    0.020    0.000    0.098    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:494(criticality)\n    13010    0.035    0.000    0.082    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n\n\n",
+      "times_ms": [
+        82.14742800919339,
+        80.32457399531268,
+        78.02033599000424,
+        81.69131400063634,
+        85.06143998238258,
+        79.5226069749333,
+        77.18936301534995,
+        77.89992101606913,
+        205.85926598869264,
+        98.52984099416062
+      ]
+    },
+    "AggressiveBot": {
+      "bot_name": "AggressiveBot",
+      "avg_time": 0.006276393461157568,
+      "min_time": 0.005479418992763385,
+      "max_time": 0.00837517500622198,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         278141 function calls in 0.195 seconds\n\n   Ordered by: cumulative time\n   List reduced from 81 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.003    0.000    0.200    0.020 /Users/apple_13_pro/projects/chess/chess_ai/aggressive_bot.py:39(choose_move)\n      200    0.001    0.000    0.173    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n      200    0.010    0.000    0.071    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n      600    0.018    0.000    0.071    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n    45520    0.042    0.000    0.065    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n      200    0.011    0.000    0.059    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:690(pawn_structure_score)\n      200    0.000    0.000    0.043    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:757(material_diff)\n      400    0.011    0.000    0.043    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:647(material_count)\n      200    0.001    0.000    0.025    0.000 /Users/apple_13_pro/projects/chess/core/phase.py:5(detect)\n     3200    0.013    0.000    0.019    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:675(_is_passed_pawn)\n    46720    0.018    0.000    0.018    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n    20400    0.011    0.000    0.016    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      400    0.004    0.000    0.010    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      200    0.001    0.000    0.009    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n     6400    0.004    0.000    0.008    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:496(symbol)\n    20570    0.005    0.000    0.005    0.000 {method 'bit_length' of 'int' objects}\n    13000    0.004    0.000    0.004    0.000 {method 'get' of 'dict' objects}\n     6400    0.003    0.000    0.004    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:60(piece_symbol)\n    25600    0.003    0.000    0.003    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/typing.py:2154(cast)\n      400    0.000    0.000    0.003    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n\n\n",
+      "times_ms": [
+        6.133565999334678,
+        5.609593004919589,
+        5.56427999981679,
+        5.787284986581653,
+        5.6117539934348315,
+        5.558236996876076,
+        5.656825000187382,
+        5.590103013673797,
+        5.5239500070456415,
+        5.7129060151055455
+      ]
+    },
+    "DynamicBot": {
+      "bot_name": "DynamicBot",
+      "avg_time": 1.07511567042151,
+      "min_time": 1.0314258520083968,
+      "max_time": 1.2398322929802816,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         37340571 function calls (37321521 primitive calls) in 31.341 seconds\n\n   Ordered by: cumulative time\n   List reduced from 242 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.002    0.000   31.990    3.199 /Users/apple_13_pro/projects/chess/chess_ai/dynamic_bot.py:304(choose_move)\n       10    0.003    0.000   25.607    2.561 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.027    0.003   20.252    2.025 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     3600    0.198    0.000   19.807    0.006 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n    76710    0.908    0.000   15.335    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n   110510    3.360    0.000   13.448    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n       50    0.030    0.001   10.907    0.218 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n    76910    0.311    0.000    9.379    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n     1000    0.078    0.000    7.699    0.008 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n  4087740    4.933    0.000    7.641    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n     1000    0.015    0.000    5.379    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n       10    0.000    0.000    5.325    0.533 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n      400    0.013    0.000    5.252    0.013 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n20050/1000    0.144    0.000    4.886    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n   192580    1.641    0.000    4.046    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n    20050    0.325    0.000    3.827    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n     4890    0.101    0.000    3.821    0.001 {method 'sort' of 'list' objects}\n    80130    0.315    0.000    3.504    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n  4080990    2.287    0.000    3.145    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      400    0.010    0.000    3.024    0.008 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n\n\n",
+      "times_ms": [
+        1119.9055640026927,
+        1067.668320989469,
+        1145.721840992337,
+        1065.4737790173385,
+        1069.3187080032658,
+        1056.5251910011284,
+        1044.1898340068292,
+        1056.342003023019,
+        1117.1736589749344,
+        1239.8322929802816
+      ]
+    }
+  },
+  "Tactical": {
+    "CriticalBot": {
+      "bot_name": "CriticalBot",
+      "avg_time": 2.747071778200916,
+      "min_time": 2.536484941985691,
+      "max_time": 3.688128959009191,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         81492981 function calls (81424221 primitive calls) in 76.051 seconds\n\n   Ordered by: cumulative time\n   List reduced from 236 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.005    0.000   77.816    7.782 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.063    0.006   48.821    4.882 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     6680    0.506    0.000   47.734    0.007 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n   155340    2.125    0.000   33.393    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n       10    0.000    0.000   28.940    2.894 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n       20    0.024    0.001   28.543    1.427 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n   180760    5.686    0.000   22.330    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n      100    0.018    0.000   20.425    0.204 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n28500/2380    0.257    0.000   20.314    0.009 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n   155720    0.704    0.000   19.916    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n   817540    6.881    0.000   17.036    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n53120/24120    0.626    0.000   16.940    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n  6791190    8.622    0.000   13.131    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n     7660    0.340    0.000   12.468    0.002 {method 'sort' of 'list' objects}\n   244400    1.024    0.000   11.531    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n   320480    0.512    0.000    9.411    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   834950    0.915    0.000    7.316    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n  7729520    4.393    0.000    5.999    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      760    0.053    0.000    5.600    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n   737730    0.526    0.000    4.876    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n\n\n",
+      "times_ms": [
+        2583.2820369978435,
+        2536.484941985691,
+        2541.902252007276,
+        2766.767326014815,
+        2613.8423060183413,
+        2704.4328470074106,
+        2716.078647004906,
+        2756.134488998214,
+        2636.7962899967097,
+        2704.061777010793
+      ]
+    },
+    "PawnBot": {
+      "bot_name": "PawnBot",
+      "avg_time": 0.5839215875574155,
+      "min_time": 0.48388500200235285,
+      "max_time": 0.8203994279901963,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         14163561 function calls (14129181 primitive calls) in 15.234 seconds\n\n   Ordered by: cumulative time\n   List reduced from 205 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.014    0.001   15.500    1.550 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       50    0.010    0.000   11.696    0.234 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n14250/1190    0.141    0.000   11.634    0.010 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n26560/12060    0.349    0.000    9.754    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n   160050    0.300    0.000    5.440    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   199080    1.902    0.000    4.458    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      380    0.007    0.000    3.328    0.009 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n      380    0.029    0.000    3.310    0.009 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n   285580    0.422    0.000    3.033    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n      380    0.006    0.000    2.460    0.006 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n 7110/290    0.068    0.000    2.251    0.008 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n   287010    0.734    0.000    1.777    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n     7200    0.150    0.000    1.680    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n     8900    0.331    0.000    1.323    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n    26560    0.299    0.000    1.296    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n   162910    0.132    0.000    1.241    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n   162910    0.191    0.000    1.110    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n   244130    0.190    0.000    0.888    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n   405390    0.634    0.000    0.852    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n   352000    0.461    0.000    0.836    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n\n\n",
+      "times_ms": [
+        753.0197229934856,
+        556.7827979975846,
+        799.6422040159814,
+        548.6542700091377,
+        545.3839929832611,
+        540.1358329982031,
+        526.1874129937496,
+        529.1070360108279,
+        546.0561039799359,
+        576.5209950041026
+      ]
+    },
+    "KingValueBot": {
+      "bot_name": "KingValueBot",
+      "avg_time": 0.5807737116381759,
+      "min_time": 0.481940988014685,
+      "max_time": 0.9479467529745307,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         16593641 function calls (16559261 primitive calls) in 15.238 seconds\n\n   Ordered by: cumulative time\n   List reduced from 208 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.015    0.001   15.515    1.551 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       50    0.009    0.000   10.682    0.214 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n14250/1190    0.129    0.000   10.627    0.009 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n26560/12060    0.322    0.000    8.771    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n   160050    0.266    0.000    4.804    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n      380    0.012    0.000    4.403    0.012 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n   199360    1.645    0.000    3.926    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n   285580    0.375    0.000    2.765    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n      380    0.026    0.000    2.762    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n      380    0.005    0.000    1.994    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n    14980    0.468    0.000    1.864    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n 7110/290    0.055    0.000    1.817    0.006 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n   287010    0.672    0.000    1.610    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n     1520    0.220    0.000    1.589    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n     7200    0.117    0.000    1.388    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n    26560    0.287    0.000    1.278    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n   162910    0.131    0.000    1.070    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n   538620    0.665    0.000    1.014    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n   162910    0.171    0.000    0.939    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n  1113200    0.645    0.000    0.862    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n\n\n",
+      "times_ms": [
+        666.8955479981378,
+        684.115143987583,
+        597.0606100163423,
+        685.5401270149741,
+        947.9467529745307,
+        563.1061639869586,
+        542.249999998603,
+        588.8164039934054,
+        591.6623299999628,
+        503.68985199020244
+      ]
+    },
+    "AggressiveBot": {
+      "bot_name": "AggressiveBot",
+      "avg_time": 0.012053861403255723,
+      "min_time": 0.01095450299908407,
+      "max_time": 0.014356147003127262,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         528801 function calls in 0.351 seconds\n\n   Ordered by: cumulative time\n   List reduced from 97 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.007    0.001    0.360    0.036 /Users/apple_13_pro/projects/chess/chess_ai/aggressive_bot.py:39(choose_move)\n      380    0.001    0.000    0.308    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n      380    0.018    0.000    0.127    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n     1140    0.032    0.000    0.127    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n    87810    0.078    0.000    0.121    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n      380    0.020    0.000    0.100    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:690(pawn_structure_score)\n      380    0.001    0.000    0.080    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:757(material_diff)\n      760    0.022    0.000    0.079    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:647(material_count)\n      380    0.001    0.000    0.045    0.000 /Users/apple_13_pro/projects/chess/core/phase.py:5(detect)\n    90270    0.034    0.000    0.034    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n     6060    0.020    0.000    0.030    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:675(_is_passed_pawn)\n    38430    0.021    0.000    0.028    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      800    0.007    0.000    0.019    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n    12140    0.007    0.000    0.015    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:496(symbol)\n      380    0.001    0.000    0.014    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n    39980    0.009    0.000    0.009    0.000 {method 'bit_length' of 'int' objects}\n    24950    0.007    0.000    0.007    0.000 {method 'get' of 'dict' objects}\n    12140    0.005    0.000    0.007    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:60(piece_symbol)\n    48560    0.006    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/typing.py:2154(cast)\n      760    0.001    0.000    0.005    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n\n\n",
+      "times_ms": [
+        11.90637901891023,
+        12.085649999789894,
+        11.901395017048344,
+        13.391877990216017,
+        12.95982298324816,
+        12.557534006191418,
+        13.080628996249288,
+        11.505639005918056,
+        13.668173021869734,
+        13.545456022256985
+      ]
+    },
+    "DynamicBot": {
+      "bot_name": "DynamicBot",
+      "avg_time": 4.201535746678128,
+      "min_time": 3.9058670490048826,
+      "max_time": 5.111481678992277,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         127590321 function calls (127418421 primitive calls) in 120.537 seconds\n\n   Ordered by: cumulative time\n   List reduced from 264 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.002    0.000  123.133   12.313 /Users/apple_13_pro/projects/chess/chess_ai/dynamic_bot.py:304(choose_move)\n       10    0.005    0.001   80.210    8.021 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       50    0.065    0.001   72.061    1.441 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      250    0.047    0.000   51.956    0.208 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n71250/5950    0.637    0.000   51.685    0.009 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n       10    0.066    0.007   49.662    4.966 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     6680    0.540    0.000   48.566    0.007 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n132800/60300    1.533    0.000   42.826    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n   155340    2.135    0.000   34.036    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n       10    0.000    0.000   30.488    3.049 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n  1416570   11.624    0.000   28.466    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n   216370    6.768    0.000   27.328    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n   801010    2.568    0.000   24.184    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   155720    0.719    0.000   20.181    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n  8199520   10.592    0.000   16.097    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n  1693590    1.940    0.000   15.352    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n     1900    0.154    0.000   14.265    0.008 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n     8570    0.346    0.000   12.552    0.001 {method 'sort' of 'list' objects}\n   244400    1.052    0.000   11.603    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n     1900    0.027    0.000   10.084    0.005 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n\n\n",
+      "times_ms": [
+        4701.075046003098,
+        4277.070334996097,
+        5039.069822989404,
+        4495.895859989105,
+        4457.746011001291,
+        4727.625393978087,
+        4784.0775839868,
+        4775.317627005279,
+        4464.636500022607,
+        4220.515413995599
+      ]
+    }
+  },
+  "Endgame": {
+    "CriticalBot": {
+      "bot_name": "CriticalBot",
+      "avg_time": 0.01228935486113187,
+      "min_time": 0.0078080950188450515,
+      "max_time": 0.13374010502593592,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         328351 function calls (328191 primitive calls) in 0.232 seconds\n\n   Ordered by: cumulative time\n   List reduced from 204 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.000    0.000    0.233    0.023 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.000    0.000    0.161    0.016 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n       20    0.001    0.000    0.149    0.007 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       40    0.002    0.000    0.099    0.002 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n       20    0.000    0.000    0.084    0.004 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n       10    0.001    0.000    0.068    0.007 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n       80    0.001    0.000    0.058    0.001 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n       20    0.000    0.000    0.049    0.002 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n    15410    0.027    0.000    0.045    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n      160    0.006    0.000    0.037    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n       40    0.000    0.000    0.034    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n      440    0.003    0.000    0.032    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n       80    0.005    0.000    0.032    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n     1560    0.012    0.000    0.031    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n     1450    0.003    0.000    0.024    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n   200/40    0.001    0.000    0.024    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n      180    0.001    0.000    0.023    0.000 {method 'sort' of 'list' objects}\n     9640    0.005    0.000    0.019    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n      440    0.002    0.000    0.019    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n     1260    0.005    0.000    0.017    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n\n\n",
+      "times_ms": [
+        9.774452017154545,
+        8.30790598411113,
+        8.889457007171586,
+        8.45119499717839,
+        8.43394998810254,
+        8.948061004048213,
+        7.94494801084511,
+        8.164475002558902,
+        8.23794401367195,
+        9.231940988684073
+      ]
+    },
+    "PawnBot": {
+      "bot_name": "PawnBot",
+      "avg_time": 0.0019631643383763732,
+      "min_time": 0.0017201750015374273,
+      "max_time": 0.002377102995524183,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         87551 function calls (87471 primitive calls) in 0.130 seconds\n\n   Ordered by: cumulative time\n   List reduced from 172 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.001    0.000    0.131    0.013 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       20    0.000    0.000    0.120    0.006 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n       20    0.023    0.001    0.120    0.006 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n       80    0.015    0.000    0.056    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n     5140    0.023    0.000    0.033    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n       20    0.000    0.000    0.021    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n   100/20    0.001    0.000    0.015    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n     3020    0.002    0.000    0.010    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:826(is_attacked_by)\n      310    0.001    0.000    0.010    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n     3350    0.002    0.000    0.009    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n      100    0.001    0.000    0.009    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n     2280    0.007    0.000    0.007    0.000 {method 'add' of 'set' objects}\n     3350    0.007    0.000    0.007    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n       40    0.000    0.000    0.007    0.000 {built-in method builtins.sum}\n      460    0.003    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3544(_is_safe)\n      200    0.001    0.000    0.006    0.000 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:22(calculate_king_value)\n     5160    0.005    0.000    0.005    0.000 {built-in method builtins.max}\n       20    0.000    0.000    0.005    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n      180    0.002    0.000    0.005    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n     3420    0.003    0.000    0.004    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n\n\n",
+      "times_ms": [
+        2.3033589823171496,
+        2.1442020079120994,
+        2.295776008395478,
+        1.9916519813705236,
+        1.924167008837685,
+        2.2747119946870953,
+        1.9790059886872768,
+        2.0029240113217384,
+        2.243333001388237,
+        2.2678230016026646
+      ]
+    },
+    "KingValueBot": {
+      "bot_name": "KingValueBot",
+      "avg_time": 0.003551335857482627,
+      "min_time": 0.0026723319897428155,
+      "max_time": 0.005335691996151581,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         149731 function calls (149651 primitive calls) in 0.105 seconds\n\n   Ordered by: cumulative time\n   List reduced from 183 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.001    0.000    0.106    0.011 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       20    0.001    0.000    0.096    0.005 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n       20    0.002    0.000    0.057    0.003 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n       80    0.006    0.000    0.037    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n    10260    0.019    0.000    0.032    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n       20    0.000    0.000    0.021    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n       80    0.003    0.000    0.019    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n   100/20    0.001    0.000    0.014    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n      100    0.001    0.000    0.009    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n     3020    0.002    0.000    0.009    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:826(is_attacked_by)\n     3350    0.002    0.000    0.008    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n      520    0.002    0.000    0.008    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n      310    0.001    0.000    0.007    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n      240    0.002    0.000    0.007    0.000 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:22(calculate_king_value)\n     4600    0.004    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n     3350    0.006    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n       40    0.000    0.000    0.006    0.000 {built-in method builtins.sum}\n      200    0.002    0.000    0.005    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n     1040    0.001    0.000    0.005    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:791(_env_int)\n     1100    0.001    0.000    0.005    0.000 <frozen os>:779(getenv)\n\n\n",
+      "times_ms": [
+        5.333510984200984,
+        4.26761998096481,
+        3.35031098802574,
+        3.081034985370934,
+        2.886809001211077,
+        3.4374200040474534,
+        3.30975599354133,
+        3.203234984539449,
+        2.999253978487104,
+        3.270815999712795
+      ]
+    },
+    "AggressiveBot": {
+      "bot_name": "AggressiveBot",
+      "avg_time": 0.0002986756811151281,
+      "min_time": 0.00021834700601175427,
+      "max_time": 0.0006884410104248673,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         9811 function calls in 0.008 seconds\n\n   Ordered by: cumulative time\n   List reduced from 82 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.000    0.000    0.008    0.001 /Users/apple_13_pro/projects/chess/chess_ai/aggressive_bot.py:39(choose_move)\n       20    0.000    0.000    0.004    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n       20    0.000    0.000    0.003    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:757(material_diff)\n       40    0.001    0.000    0.002    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:647(material_count)\n     2860    0.001    0.000    0.002    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n       20    0.000    0.000    0.001    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n       40    0.000    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n       30    0.000    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n       60    0.000    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n       20    0.000    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n     2980    0.001    0.000    0.001    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n       20    0.000    0.000    0.001    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:690(pawn_structure_score)\n       20    0.000    0.000    0.000    0.000 /Users/apple_13_pro/projects/chess/core/phase.py:5(detect)\n       50    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n       40    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3544(_is_safe)\n       90    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n       20    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3738(copy)\n       40    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n      380    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n       40    0.000    0.000    0.000    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n\n\n",
+      "times_ms": [
+        0.48294899170286953,
+        0.23913398035801947,
+        0.22520701168105006,
+        0.3110020188614726,
+        0.31347700860351324,
+        0.5540029960684478,
+        0.37213400355540216,
+        0.23581500863656402,
+        0.3347870078869164,
+        0.2991769870277494
+      ]
+    },
+    "DynamicBot": {
+      "bot_name": "DynamicBot",
+      "avg_time": 0.022202711798599922,
+      "min_time": 0.018799476994900033,
+      "max_time": 0.027143426006659865,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         698521 function calls (698121 primitive calls) in 0.612 seconds\n\n   Ordered by: cumulative time\n   List reduced from 239 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.002    0.000    0.615    0.061 /Users/apple_13_pro/projects/chess/chess_ai/dynamic_bot.py:304(choose_move)\n       50    0.005    0.000    0.463    0.009 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      100    0.008    0.000    0.318    0.003 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n       10    0.001    0.000    0.303    0.030 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       40    0.002    0.000    0.216    0.005 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n       10    0.000    0.000    0.210    0.021 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n       40    0.001    0.000    0.132    0.003 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n    36180    0.072    0.000    0.123    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:219(square_distance)\n      100    0.002    0.000    0.112    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n      400    0.017    0.000    0.109    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:167(piece_zone)\n       10    0.001    0.000    0.087    0.009 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n      160    0.014    0.000    0.083    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n  500/100    0.004    0.000    0.074    0.001 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n       80    0.002    0.000    0.073    0.001 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n     2590    0.007    0.000    0.061    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n     2240    0.023    0.000    0.057    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n    20250    0.012    0.000    0.057    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n    16230    0.010    0.000    0.056    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:826(is_attacked_by)\n      500    0.006    0.000    0.046    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n    20250    0.045    0.000    0.045    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n\n\n",
+      "times_ms": [
+        19.356701988726854,
+        19.243510003434494,
+        19.383578008273616,
+        19.766821002122015,
+        20.22125499206595,
+        20.28435599640943,
+        20.393971994053572,
+        21.27654801006429,
+        23.9514630229678,
+        27.143426006659865
+      ]
+    }
+  },
+  "Complex": {
+    "CriticalBot": {
+      "bot_name": "CriticalBot",
+      "avg_time": 20.750910673299803,
+      "min_time": 18.77609456598293,
+      "max_time": 24.298549311002716,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         595451491 function calls (593872311 primitive calls) in 684.900 seconds\n\n   Ordered by: cumulative time\n   List reduced from 239 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.004    0.000  696.585   69.658 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.000    0.000  660.600   66.060 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n       20    0.020    0.001  660.315   33.016 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      140    0.047    0.000  652.367    4.660 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n138840/6340    0.849    0.000  652.087    0.103 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n1557940/127900   24.640    0.000  641.626    0.005 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n 10139180   19.250    0.000  352.422    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n 12057680  114.234    0.000  271.451    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n 12076360   17.803    0.000  125.148    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n  1557940   19.008    0.000   84.363    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n 10470440    8.730    0.000   76.292    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n 10470440   12.733    0.000   67.562    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n 12250600   29.431    0.000   66.532    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n 24146050   40.308    0.000   54.672    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n 12838950   10.842    0.000   43.269    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n 15798280   21.826    0.000   40.025    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n 11731800   18.885    0.000   37.137    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2321(pop)\n 12067910   18.799    0.000   36.073    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:939(_set_piece_at)\n       10    0.048    0.005   35.942    3.594 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     5400    0.356    0.000   34.869    0.006 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n\n\n",
+      "times_ms": [
+        22123.220898996806,
+        22991.901835019235,
+        21583.093997993274,
+        20647.49202298117,
+        21141.1821639922,
+        22955.33292600885,
+        23573.108440003125,
+        22417.679473990574,
+        20207.45310600614,
+        22598.80619298201
+      ]
+    },
+    "PawnBot": {
+      "bot_name": "PawnBot",
+      "avg_time": 9.106625170101179,
+      "min_time": 9.0174766620039,
+      "max_time": 9.310868379019666,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         276519571 function calls (275729981 primitive calls) in 249.976 seconds\n\n   Ordered by: cumulative time\n   List reduced from 208 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.009    0.001  254.188   25.419 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       70    0.022    0.000  251.181    3.588 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n69420/3170    0.420    0.000  251.049    0.079 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n778970/63950    9.645    0.000  245.992    0.004 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n  5069440    7.450    0.000  135.112    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n  5866040   42.374    0.000  101.363    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n  5940080    6.911    0.000   47.445    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n   778970    7.636    0.000   32.753    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n  5075450    3.347    0.000   28.925    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n  5075450    4.829    0.000   25.578    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n  6027060   11.367    0.000   24.710    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n 11746090   14.649    0.000   20.113    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n  6100700    4.003    0.000   16.187    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n  7893140    8.548    0.000   15.729    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n  5865750    7.388    0.000   14.454    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2321(pop)\n  5870710    7.096    0.000   13.640    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:939(_set_piece_at)\n  5995560    6.235    0.000   12.617    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3544(_is_safe)\n  6120590   12.231    0.000   12.231    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n  7908950    3.935    0.000    9.726    0.000 {built-in method builtins.len}\n 11226360    6.497    0.000    8.525    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n\n\n",
+      "times_ms": [
+        9102.215445018373,
+        9060.409947996959,
+        9155.572869000025,
+        9082.324518996757,
+        9043.775405996712,
+        9057.466389989713,
+        9045.158112014178,
+        9085.515837999992,
+        9274.262249004096,
+        9076.773826003773
+      ]
+    },
+    "KingValueBot": {
+      "bot_name": "KingValueBot",
+      "avg_time": 10.727911016639554,
+      "min_time": 9.115383069991367,
+      "max_time": 22.408585486991797,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         278404701 function calls (277615111 primitive calls) in 294.388 seconds\n\n   Ordered by: cumulative time\n   List reduced from 211 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.011    0.001  299.319   29.932 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       70    0.026    0.000  294.676    4.210 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n69420/3170    0.471    0.000  294.530    0.093 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n778970/63950   11.277    0.000  289.008    0.005 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n  5069440    8.536    0.000  159.455    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n  5866240   50.637    0.000  120.095    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n  5940080    7.930    0.000   56.541    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n   778970    8.761    0.000   37.398    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n  5075450    3.754    0.000   33.758    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n  6027060   13.430    0.000   30.266    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n  5075450    5.508    0.000   30.004    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n 11746490   16.910    0.000   23.236    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n  6100700    4.621    0.000   19.271    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n  7905140    9.745    0.000   17.933    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n  5865750    8.519    0.000   16.668    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2321(pop)\n  5870910    8.181    0.000   15.595    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:939(_set_piece_at)\n  6120590   14.704    0.000   14.704    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n  5995560    7.208    0.000   14.609    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3544(_is_safe)\n 11379800    8.805    0.000   11.126    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n  7911950    4.539    0.000   11.108    0.000 {built-in method builtins.len}\n\n\n",
+      "times_ms": [
+        11108.220792986685,
+        10807.606374990428,
+        11372.576642985223,
+        10280.728800978977,
+        10295.677962014452,
+        11579.512772004819,
+        10425.42507199687,
+        11437.339666008484,
+        10460.785945993848,
+        10286.248680989956
+      ]
+    },
+    "AggressiveBot": {
+      "bot_name": "AggressiveBot",
+      "avg_time": 0.011441847819951364,
+      "min_time": 0.008657088008476421,
+      "max_time": 0.02868952800054103,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         403051 function calls in 0.327 seconds\n\n   Ordered by: cumulative time\n   List reduced from 92 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.008    0.001    0.335    0.034 /Users/apple_13_pro/projects/chess/chess_ai/aggressive_bot.py:39(choose_move)\n      300    0.001    0.000    0.276    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n      300    0.017    0.000    0.116    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n      900    0.028    0.000    0.114    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n    68670    0.071    0.000    0.109    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n      300    0.020    0.000    0.089    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:690(pawn_structure_score)\n      300    0.001    0.000    0.070    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:757(material_diff)\n      600    0.019    0.000    0.069    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:647(material_count)\n      300    0.002    0.000    0.040    0.000 /Users/apple_13_pro/projects/chess/core/phase.py:5(detect)\n    70770    0.031    0.000    0.031    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n    29390    0.019    0.000    0.026    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n     4470    0.015    0.000    0.023    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:675(_is_passed_pawn)\n      700    0.008    0.000    0.022    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      300    0.001    0.000    0.016    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n     9270    0.007    0.000    0.013    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:496(symbol)\n    30740    0.008    0.000    0.008    0.000 {method 'bit_length' of 'int' objects}\n       30    0.001    0.000    0.007    0.000 /Users/apple_13_pro/projects/chess/chess_ai/see.py:9(static_exchange_eval)\n    19380    0.007    0.000    0.007    0.000 {method 'get' of 'dict' objects}\n      600    0.001    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n     9270    0.004    0.000    0.006    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:60(piece_symbol)\n\n\n",
+      "times_ms": [
+        10.919753985945135,
+        10.705706983571872,
+        9.213432000251487,
+        10.154854011489078,
+        9.260540013201535,
+        10.704611020628363,
+        12.051497003994882,
+        9.137588000157848,
+        12.00587599305436,
+        10.605527990264818
+      ]
+    },
+    "DynamicBot": {
+      "bot_name": "DynamicBot",
+      "avg_time": 65.25779582332063,
+      "min_time": 52.81662030797452,
+      "max_time": 77.76650592000806,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         1427813521 function calls (1423865571 primitive calls) in 1714.379 seconds\n\n   Ordered by: cumulative time\n   List reduced from 267 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.003    0.000 1744.283  174.428 /Users/apple_13_pro/projects/chess/chess_ai/dynamic_bot.py:304(choose_move)\n       50    0.069    0.001 1692.648   33.853 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n      350    0.161    0.000 1667.803    4.765 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n347100/15850    3.150    0.000 1666.896    0.105 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n3894850/319750   65.011    0.000 1631.902    0.005 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n 25347800   49.251    0.000  897.316    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n       10    0.005    0.001  733.720   73.372 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.000    0.000  683.550   68.355 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:156(_delegate_to_sub_bots)\n 29657540  282.331    0.000  677.456    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n 29898630   45.464    0.000  323.746    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n  3894850   49.441    0.000  209.894    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n 25698030   21.631    0.000  199.660    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n 25698030   31.720    0.000  178.029    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n 30333810   80.440    0.000  170.455    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n 59387800   98.001    0.000  133.357    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n 31142920   26.308    0.000  117.338    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n 39489700   54.209    0.000  101.281    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n 29329660   49.972    0.000   96.297    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2321(pop)\n 31245050   91.392    0.000   91.392    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n 29681780   46.961    0.000   88.570    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:939(_set_piece_at)\n\n\n",
+      "times_ms": [
+        64727.4931279826,
+        58848.101220995886,
+        61050.63097702805,
+        55900.627071008785,
+        52816.62030797452,
+        55096.74986300524,
+        59603.87575000641,
+        55348.13562800991,
+        63916.68603598373,
+        67177.84061699058
+      ]
+    }
+  },
+  "King Safety": {
+    "CriticalBot": {
+      "bot_name": "CriticalBot",
+      "avg_time": 1.5758908395044273,
+      "min_time": 1.3050875540066045,
+      "max_time": 2.2488929120008834,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         34349161 function calls in 38.834 seconds\n\n   Ordered by: cumulative time\n   List reduced from 88 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.005    0.000   39.592    3.959 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.064    0.006   39.535    3.954 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     4860    0.463    0.000   38.472    0.008 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n   111060    1.840    0.000   28.808    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n   111330    0.674    0.000   16.846    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n   111350    4.067    0.000   16.122    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n  4080180    6.210    0.000    9.363    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n     5140    0.242    0.000    8.465    0.002 {method 'sort' of 'list' objects}\n   134390    0.713    0.000    7.632    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n   259950    2.744    0.000    7.109    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n  4007520    2.660    0.000    3.641    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n   259950    0.519    0.000    3.357    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3738(copy)\n   259950    0.586    0.000    2.838    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1381(copy)\n  4863390    2.778    0.000    2.778    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n   259950    0.451    0.000    2.252    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1584(__init__)\n   254780    0.222    0.000    2.210    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n   513890    0.443    0.000    2.145    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n   254780    0.338    0.000    1.988    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n   517250    1.713    0.000    1.713    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n   246850    0.378    0.000    1.555    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:835(attackers)\n\n\n",
+      "times_ms": [
+        1574.1552390099969,
+        1511.400154005969,
+        1528.103117016144,
+        1483.7404340214562,
+        1573.8094450207427,
+        1629.2255820007995,
+        1499.731112999143,
+        1390.2009569865186,
+        1343.346936017042,
+        1484.957898996072
+      ]
+    },
+    "PawnBot": {
+      "bot_name": "PawnBot",
+      "avg_time": 0.74111460059823,
+      "min_time": 0.6063976509904023,
+      "max_time": 1.0874469350092113,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         19063971 function calls (19009361 primitive calls) in 19.192 seconds\n\n   Ordered by: cumulative time\n   List reduced from 210 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.010    0.001   19.521    1.952 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       30    0.009    0.000   16.493    0.550 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n24180/970    0.181    0.000   16.444    0.017 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n47280/21940    0.498    0.000   14.031    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n   265660    0.413    0.000    7.642    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   323980    2.694    0.000    6.241    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n   384970    0.502    0.000    3.715    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n      270    0.005    0.000    2.659    0.010 /Users/apple_13_pro/projects/chess/chess_ai/pawn_bot.py:30(evaluate_move)\n      270    0.009    0.000    2.642    0.010 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n      270    0.005    0.000    2.455    0.009 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n 6290/230    0.068    0.000    2.290    0.010 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n   386680    0.883    0.000    2.172    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n    47280    0.480    0.000    2.107    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n   268400    0.189    0.000    1.663    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n     6330    0.150    0.000    1.648    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n   268400    0.265    0.000    1.474    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n   548900    0.705    0.000    1.253    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n   656960    0.898    0.000    1.205    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n     7300    0.295    0.000    1.192    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n   342360    0.253    0.000    1.122    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n\n\n",
+      "times_ms": [
+        1087.4469350092113,
+        847.2970369912218,
+        898.2315550092608,
+        805.7618740131147,
+        689.881044003414,
+        999.3549179926049,
+        681.7744979925919,
+        657.2713629866485,
+        892.7855129877571,
+        701.9346180022694
+      ]
+    },
+    "KingValueBot": {
+      "bot_name": "KingValueBot",
+      "avg_time": 0.7578341681795427,
+      "min_time": 0.6593633329903241,
+      "max_time": 0.9642841790046077,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         20786461 function calls (20731851 primitive calls) in 21.137 seconds\n\n   Ordered by: cumulative time\n   List reduced from 213 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.011    0.001   21.480    2.148 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       30    0.008    0.000   16.682    0.556 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n24180/970    0.168    0.000   16.636    0.017 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n47280/21940    0.535    0.000   14.480    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n   265660    0.449    0.000    7.920    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   324130    2.694    0.000    6.301    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      270    0.010    0.000    4.446    0.016 /Users/apple_13_pro/projects/chess/chess_ai/king_value_bot.py:52(evaluate_move)\n   384970    0.479    0.000    3.784    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n      270    0.008    0.000    2.804    0.010 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:155(evaluate_move)\n      270    0.005    0.000    2.626    0.010 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:115(is_risky)\n 6290/230    0.071    0.000    2.396    0.010 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:51(_search)\n   386680    0.905    0.000    2.273    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n    47280    0.517    0.000    2.133    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n    11620    0.553    0.000    1.994    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n     6330    0.159    0.000    1.771    0.000 /Users/apple_13_pro/projects/chess/chess_ai/risk_analyzer.py:35(_material)\n   268400    0.192    0.000    1.713    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n     1080    0.220    0.000    1.563    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:761(king_safety)\n   268400    0.272    0.000    1.521    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n   559700    0.680    0.000    1.315    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:717(pieces)\n   657260    0.904    0.000    1.223    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:901(_remove_piece_at)\n\n\n",
+      "times_ms": [
+        805.47461900278,
+        705.0420039740857,
+        700.1187249843497,
+        875.6659140053671,
+        796.0296810197178,
+        681.7222680256236,
+        676.7600059974939,
+        807.9893630056176,
+        695.0850220164284,
+        688.5839870083146
+      ]
+    },
+    "AggressiveBot": {
+      "bot_name": "AggressiveBot",
+      "avg_time": 0.0083547653403366,
+      "min_time": 0.007705554977292195,
+      "max_time": 0.011258095997618511,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         373811 function calls in 0.297 seconds\n\n   Ordered by: cumulative time\n   List reduced from 89 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.005    0.001    0.304    0.030 /Users/apple_13_pro/projects/chess/chess_ai/aggressive_bot.py:39(choose_move)\n      270    0.001    0.000    0.255    0.001 /Users/apple_13_pro/projects/chess/core/evaluator.py:731(position_score)\n      270    0.018    0.000    0.105    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:656(piece_square_score)\n    62070    0.067    0.000    0.102    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n      810    0.025    0.000    0.100    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n      270    0.016    0.000    0.079    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:690(pawn_structure_score)\n      270    0.001    0.000    0.070    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:757(material_diff)\n      540    0.018    0.000    0.070    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:647(material_count)\n      270    0.001    0.000    0.036    0.000 /Users/apple_13_pro/projects/chess/core/phase.py:5(detect)\n    63720    0.029    0.000    0.029    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:735(piece_type_at)\n     4310    0.015    0.000    0.023    0.000 /Users/apple_13_pro/projects/chess/core/evaluator.py:675(_is_passed_pawn)\n    27370    0.016    0.000    0.021    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:314(scan_reversed)\n      270    0.001    0.000    0.020    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n      550    0.006    0.000    0.015    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n      540    0.000    0.000    0.012    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n      540    0.001    0.000    0.012    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1793(checkers_mask)\n     8630    0.005    0.000    0.012    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:496(symbol)\n      580    0.000    0.000    0.010    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:823(attackers_mask)\n      580    0.010    0.000    0.010    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:805(_attackers_mask)\n    28170    0.006    0.000    0.006    0.000 {method 'bit_length' of 'int' objects}\n\n\n",
+      "times_ms": [
+        8.229147992096841,
+        8.191387023543939,
+        7.820967002771795,
+        8.056469989242032,
+        7.707955985097215,
+        7.9802669933997095,
+        7.718998997006565,
+        7.995427004061639,
+        7.705554977292195,
+        8.259861991973594
+      ]
+    },
+    "DynamicBot": {
+      "bot_name": "DynamicBot",
+      "avg_time": 3.549105386680458,
+      "min_time": 3.367157513013808,
+      "max_time": 3.872686959017301,
+      "success_rate": 1.0,
+      "total_runs": 50,
+      "profile_stats": "         93707931 function calls (93544101 primitive calls) in 96.057 seconds\n\n   Ordered by: cumulative time\n   List reduced from 262 to 20 due to restriction <20>\n\n   ncalls  tottime  percall  cumtime  percall filename:lineno(function)\n       10    0.002    0.000   97.992    9.799 /Users/apple_13_pro/projects/chess/chess_ai/dynamic_bot.py:304(choose_move)\n       30    0.028    0.001   61.549    2.052 /Users/apple_13_pro/projects/chess/chess_ai/chess_bot.py:65(choose_move)\n       90    0.037    0.000   52.521    0.584 /Users/apple_13_pro/projects/chess/core/shallow_search.py:211(search)\n72540/2910    0.624    0.000   52.363    0.018 /Users/apple_13_pro/projects/chess/core/shallow_search.py:146(_ab)\n141840/65820    1.653    0.000   45.322    0.001 /Users/apple_13_pro/projects/chess/core/shallow_search.py:93(_quiescence)\n       10    0.004    0.000   35.535    3.554 /Users/apple_13_pro/projects/chess/chess_ai/critical_bot.py:49(choose_move)\n       10    0.051    0.005   35.489    3.549 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:638(probe_depth2)\n     4860    0.374    0.000   34.555    0.007 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:689(_best_our_followup)\n  1233300   10.739    0.000   26.070    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:2200(push)\n   111060    1.655    0.000   25.814    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:705(_threat_score)\n   797250    1.386    0.000   24.529    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1809(gives_check)\n   139590    4.839    0.000   18.840    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1075(piece_map)\n   111330    0.558    0.000   15.393    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:751(_find_queen)\n  1305860    1.697    0.000   13.264    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:3582(generate_legal_moves)\n  5170780    7.131    0.000   10.801    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:725(piece_at)\n  1310660    3.408    0.000    7.876    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1706(generate_pseudo_legal_moves)\n     5370    0.226    0.000    7.627    0.001 {method 'sort' of 'list' objects}\n  1061100    0.804    0.000    7.312    0.000 /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/chess/__init__.py:1805(is_check)\n   134390    0.636    0.000    6.865    0.000 /Users/apple_13_pro/projects/chess/chess_ai/bot_agent.py:691(our_key)\n   141840    1.528    0.000    6.777    0.000 /Users/apple_13_pro/projects/chess/core/shallow_search.py:53(_material_eval)\n\n\n",
+      "times_ms": [
+        3734.51420100173,
+        3466.117690986721,
+        3700.454395991983,
+        3554.157509992365,
+        3646.14925000933,
+        3497.721913998248,
+        3627.687825995963,
+        3508.326315000886,
+        3703.2620960089844,
+        3501.172988995677
+      ]
+    }
+  }
+}

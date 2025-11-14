@@ -1,0 +1,403 @@
+{
+  "export_timestamp": 1762967492.752411,
+  "current_move": {
+    "status": "no_active_move",
+    "message": "No move currently being evaluated"
+  },
+  "agent_performance": {
+    "aggressive": {
+      "total_evaluations": 1,
+      "total_duration_ms": 12.274742126464844,
+      "avg_confidence": 297.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 297.0,
+          "score": 1276.5,
+          "duration_ms": 12.274742126464844
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 12.274742126464844
+    },
+    "fortify": {
+      "total_evaluations": 1,
+      "total_duration_ms": 0.026226043701171875,
+      "avg_confidence": 0.0,
+      "success_count": 0,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 0.0,
+          "score": 1276.5,
+          "duration_ms": 0.026226043701171875
+        }
+      ],
+      "success_rate": 0.0,
+      "avg_duration_ms": 0.026226043701171875
+    },
+    "critical": {
+      "total_evaluations": 1,
+      "total_duration_ms": 974.3521213531494,
+      "avg_confidence": 345.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 345.0,
+          "score": 1276.5,
+          "duration_ms": 974.3521213531494
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 974.3521213531494
+    },
+    "pawn": {
+      "total_evaluations": 1,
+      "total_duration_ms": 454.88619804382324,
+      "avg_confidence": 345.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 345.0,
+          "score": 1276.5,
+          "duration_ms": 454.88619804382324
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 454.88619804382324
+    },
+    "king": {
+      "total_evaluations": 1,
+      "total_duration_ms": 483.78682136535645,
+      "avg_confidence": 345.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 345.0,
+          "score": 1276.5,
+          "duration_ms": 483.78682136535645
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 483.78682136535645
+    },
+    "endgame": {
+      "total_evaluations": 1,
+      "total_duration_ms": 11.812210083007812,
+      "avg_confidence": 343.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 343.0,
+          "score": 1276.5,
+          "duration_ms": 11.812210083007812
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 11.812210083007812
+    },
+    "center": {
+      "total_evaluations": 1,
+      "total_duration_ms": 449.6634006500244,
+      "avg_confidence": 345.0,
+      "success_count": 1,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 345.0,
+          "score": 1276.5,
+          "duration_ms": 449.6634006500244
+        }
+      ],
+      "success_rate": 1.0,
+      "avg_duration_ms": 449.6634006500244
+    },
+    "neural": {
+      "total_evaluations": 1,
+      "total_duration_ms": 26.124000549316406,
+      "avg_confidence": 0.0,
+      "success_count": 0,
+      "avg_score": 1276.5,
+      "moves_contributed": [
+        {
+          "move": "Qe7",
+          "confidence": 0.0,
+          "score": 1276.5,
+          "duration_ms": 26.124000549316406
+        }
+      ],
+      "success_rate": 0.0,
+      "avg_duration_ms": 26.124000549316406
+    }
+  },
+  "move_history": [
+    {
+      "move_info": {
+        "move": "Qe7",
+        "uci": "d8e7",
+        "move_number": 2,
+        "color": "black",
+        "board_fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+      },
+      "decision_process": {
+        "current_phase": "bot_evaluation",
+        "status": "completed",
+        "final_score": 1276.5,
+        "confidence": 0.9345864678248433,
+        "primary_reason": "Ensemble decision with 6 contributing agents",
+        "total_duration_ms": 0.0
+      },
+      "timing_breakdown": {
+        "bot_evaluation": 2420.318126678467
+      },
+      "agent_contributions": {
+        "aggressive": {
+          "method": "aggressive_evaluation",
+          "confidence": 297.0,
+          "duration_ms": 12.274742126464844,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "e8e7",
+            "confidence": 297.0,
+            "engine": "AggressiveBot"
+          },
+          "features": {}
+        },
+        "fortify": {
+          "method": "fortify_evaluation",
+          "confidence": 0.0,
+          "duration_ms": 0.026226043701171875,
+          "status": "rejected",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": null,
+            "confidence": 0.0,
+            "engine": "FortifyBot"
+          },
+          "features": {}
+        },
+        "critical": {
+          "method": "critical_evaluation",
+          "confidence": 345.0,
+          "duration_ms": 974.3521213531494,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "d8e7",
+            "confidence": 345.0,
+            "engine": "CriticalBot"
+          },
+          "features": {}
+        },
+        "pawn": {
+          "method": "pawn_evaluation",
+          "confidence": 345.0,
+          "duration_ms": 454.88619804382324,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 0.8,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "d8e7",
+            "confidence": 345.0,
+            "engine": "PawnBot"
+          },
+          "features": {}
+        },
+        "king": {
+          "method": "king_evaluation",
+          "confidence": 345.0,
+          "duration_ms": 483.78682136535645,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 0.9,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "d8e7",
+            "confidence": 345.0,
+            "engine": "KingValueBot"
+          },
+          "features": {}
+        },
+        "endgame": {
+          "method": "endgame_evaluation",
+          "confidence": 343.0,
+          "duration_ms": 11.812210083007812,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "g7g5",
+            "confidence": 343.0,
+            "engine": "EndgameBot"
+          },
+          "features": {}
+        },
+        "center": {
+          "method": "center_evaluation",
+          "confidence": 345.0,
+          "duration_ms": 449.6634006500244,
+          "status": "completed",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": "d8e7",
+            "confidence": 345.0,
+            "engine": "ChessBot"
+          },
+          "features": {}
+        },
+        "neural": {
+          "method": "neural_evaluation",
+          "confidence": 0.0,
+          "duration_ms": 26.124000549316406,
+          "status": "rejected",
+          "reason": "",
+          "input_data": {
+            "phase": "opening",
+            "position_bucket": "opening|quiet|norm",
+            "weights": {
+              "base": 1.0,
+              "bandit": 1.0
+            }
+          },
+          "output_data": {
+            "move": null,
+            "confidence": 0.0,
+            "engine": "NeuralBot"
+          },
+          "features": {}
+        }
+      },
+      "weight_analysis": {},
+      "tactical_analysis": {
+        "motifs": [],
+        "threats": [],
+        "guardrails": {
+          "passed": true,
+          "violations": [],
+          "warnings": []
+        },
+        "minimax": {
+          "depth": 0,
+          "value": null,
+          "meets_threshold": false,
+          "principal_variation": []
+        }
+      },
+      "metadata": {
+        "phase": "opening",
+        "position_bucket": "opening|quiet|norm",
+        "total_agents": 8,
+        "contributing_agents": 6,
+        "win_probability": 0.9345864678248433,
+        "ensemble_score": 1276.5,
+        "selected_move": "d8e7",
+        "diversity_enabled": true,
+        "bandit_enabled": true,
+        "supporting_agent_critical": {
+          "confidence": 345.0,
+          "weight": 1.0,
+          "bandit_multiplier": 1.1032385602569397
+        },
+        "supporting_agent_pawn": {
+          "confidence": 345.0,
+          "weight": 0.8,
+          "bandit_multiplier": 1.1032385602569397
+        },
+        "supporting_agent_king": {
+          "confidence": 345.0,
+          "weight": 0.9,
+          "bandit_multiplier": 1.1032385602569397
+        },
+        "supporting_agent_center": {
+          "confidence": 345.0,
+          "weight": 1.0,
+          "bandit_multiplier": 1.1032385602569397
+        }
+      },
+      "score_breakdown": {
+        "base_score": 0.0,
+        "pattern_score": 0.0,
+        "wfc_score": 0.0,
+        "bsp_score": 0.0,
+        "heatmap_score": 0.0,
+        "tactical_score": 0.0,
+        "positional_score": 0.0,
+        "minimax_score": 0.0,
+        "final_score": 1276.5
+      },
+      "contributing_factors": {
+        "aggressive_score": 297.0,
+        "critical_score": 345.0,
+        "pawn_score": 276.0,
+        "king_score": 310.5,
+        "endgame_score": 343.0,
+        "center_score": 345.0
+      }
+    }
+  ]
+}

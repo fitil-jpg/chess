@@ -1,4 +1,4 @@
-"""
+1"""
 Centralized Timing Configuration for Chess AI.
 
 This module provides centralized timing configuration that can be easily
@@ -38,6 +38,29 @@ class TimingConfig:
     guardrails_timeout_ms: int = 50
     bot_evaluation_timeout_ms: int = 200
     
+    # Enhanced WFC/BSP processing delays (0.05ms increments for human visualization)
+    wfc_processing_delay_ms: int = 50
+    bsp_processing_delay_ms: int = 50
+    green_cell_pulse_delay_ms: int = 50
+    tactical_pattern_delay_ms: int = 30
+    step_visualization_delay_ms: int = 50  # For real-time step-by-step visualization
+    engine_switch_delay_ms: int = 50      # Delay when switching between WFC/BSP
+    bot_evaluation_delay_ms: int = 50     # Delay for bot evaluation visualization
+    
+    # Thresholds for visualization
+    minimax_value_threshold_percent: int = 10
+    wfc_confidence_threshold: float = 0.3
+    bsp_zone_threshold: float = 0.2
+    tactical_pattern_threshold: float = 0.6
+    
+    # Engine settings
+    wfc_enabled: bool = True
+    bsp_enabled: bool = True
+    log_bot_usage: bool = True
+    bot_usage_format: str = "{BOT_NAME} > {ENGINE}"
+    wfc_max_iterations: int = 100
+    bsp_max_depth: int = 4
+    
     # Auto-play timing
     auto_play_interval_ms: int = 1000
     game_over_pause_ms: int = 2000
@@ -47,6 +70,12 @@ class TimingConfig:
     status_update_interval_ms: int = 100
     heatmap_refresh_interval_ms: int = 500
     usage_chart_update_interval_ms: int = 200
+    
+    # Visualization settings
+    show_intermediate_steps: bool = True
+    highlight_current_cell: bool = True
+    animate_transitions: bool = True
+    show_method_status: bool = True
     
     # Debug and logging timing
     debug_output_delay_ms: int = 10

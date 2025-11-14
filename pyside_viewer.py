@@ -491,7 +491,7 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
         self.btn_newgame.clicked.connect(self.start_new_game)
         self.btn_refresh_elo.clicked.connect(self._refresh_elo_ratings)
 
-        # Створюємо таби з ієрархічною структурою
+        # Створюємо таби з плоскою структурою для кращого доступу
         self.tab_widget = QTabWidget()
         tab_position = self.config.get("layout", {}).get("tab_position", "north")
         if tab_position == "north":
@@ -504,19 +504,7 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
             self.tab_widget.setTabPosition(QTabWidget.East)
         right_col.addWidget(self.tab_widget)
         
-        # === ОСНОВНАЯ 1: ИГРА И АНАЛИЗ ===
-        self.analysis_tab = QTabWidget()
-        subtab_position = self.config.get("layout", {}).get("subtab_position", "south")
-        if subtab_position == "north":
-            self.analysis_tab.setTabPosition(QTabWidget.North)
-        elif subtab_position == "south":
-            self.analysis_tab.setTabPosition(QTabWidget.South)
-        elif subtab_position == "west":
-            self.analysis_tab.setTabPosition(QTabWidget.West)
-        elif subtab_position == "east":
-            self.analysis_tab.setTabPosition(QTabWidget.East)
-        
-        # Под-вкладка: Статусы
+        # === ВКЛАДКА 1: СТАТУСЫ ИГРЫ ===
         self.status_tab = QWidget()
         status_layout = QVBoxLayout(self.status_tab)
         self.lbl_module   = QLabel("Модуль: —")
@@ -530,24 +518,18 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
             lab.setWordWrap(True)
             status_layout.addWidget(lab)
         status_layout.addStretch()
-        self.analysis_tab.addTab(self.status_tab, "📊 Статуси")
-        
-        # Под-вкладка: Ходы
+        self.tab_widget.addTab(self.status_tab, "📊 Статусы игры")
+
+        # === ВКЛАДКА 2: ХОДЫ И ИСТОРИЯ ===
         self.moves_tab = QWidget()
         moves_layout = QVBoxLayout(self.moves_tab)
         moves_layout.addWidget(QLabel("Moves:"))
         self.moves_list = QListWidget()
         moves_layout.addWidget(self.moves_list)
         moves_layout.addStretch()
-        self.analysis_tab.addTab(self.moves_tab, "♟️ Ходы")
-        
-        self.tab_widget.addTab(self.analysis_tab, "🎯 Игра и анализ")
+        self.tab_widget.addTab(self.moves_tab, "♟️ Ходы и история")
 
-        # === ОСНОВНАЯ 2: ИСПОЛЬЗОВАНИЕ И СТАТИСТИКА ===
-        self.usage_tab = QTabWidget()
-        self.usage_tab.setTabPosition(QTabWidget.South)
-        
-        # Под-вкладка: Usage
+        # === ВКЛАДКА 3: ИСПОЛЬЗОВАНИЕ МОДУЛЕЙ ===
         self.usage_sub_tab = QWidget()
         usage_layout = QVBoxLayout(self.usage_sub_tab)
         self.chart_usage_w = OverallUsageChart()
@@ -564,14 +546,14 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
         self.method_status_widget = MethodStatusWidget()
         usage_layout.addWidget(self.method_status_widget)
         usage_layout.addStretch()
-        self.usage_tab.addTab(self.usage_sub_tab, "📈 Usage")
+        self.tab_widget.addTab(self.usage_sub_tab, "📈 Использование модулей")
         
-        # Под-вкладка: Bot Usage
+        # === ВКЛАДКА 4: BOT USAGE ===
         from ui.bot_usage_tracker import BotUsageTracker
         self.bot_usage_tracker = BotUsageTracker()
-        self.usage_tab.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
+        self.tab_widget.addTab(self.bot_usage_tracker, "🤖 Bot Usage")
         
-        # Под-вкладка: Общая статистика
+        # === ВКЛАДКА 5: ОБЩАЯ СТАТИСТИКА ===
         self.overall_tab = QWidget()
         overall_layout = QVBoxLayout(self.overall_tab)
         overall_layout.addWidget(QLabel("Overall module usage:"))
@@ -583,19 +565,13 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
         chart_scroll.setWidget(self.overall_chart)
         overall_layout.addWidget(chart_scroll)
         overall_layout.addStretch()
-        self.usage_tab.addTab(self.overall_tab, "📊 Общая")
-        
-        self.tab_widget.addTab(self.usage_tab, "📊 Использование")
+        self.tab_widget.addTab(self.overall_tab, "📊 Общая статистика")
 
-        # === ОСНОВНАЯ 4: СТАТИСТИКА БОТОВ И ЭВРИСТИКИ ===
+        # === ВКЛАДКА 6: СТАТИСТИКА БОТОВ И ЭВРИСТИКИ ===
         self.bot_stats_tab = self._create_bot_stats_tab()
         self.tab_widget.addTab(self.bot_stats_tab, "🤖 Бот-статистика")
 
-        # === ОСНОВНАЯ 5: ПАТТЕРНЫ ===
-        self.patterns_main_tab = QTabWidget()
-        self.patterns_main_tab.setTabPosition(QTabWidget.South)
-        
-        # Под-вкладка: Детектированные паттерны
+        # === ВКЛАДКА 7: НАЙДЕННЫЕ ПАТТЕРНЫ ===
         self.patterns_tab = QWidget()
         patterns_layout = QVBoxLayout(self.patterns_tab)
         patterns_controls = QHBoxLayout()
@@ -631,19 +607,13 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
         self.patterns_list = QListWidget()
         patterns_layout.addWidget(self.patterns_list)
         patterns_layout.addStretch()
-        self.patterns_main_tab.addTab(self.patterns_tab, "🧩 Найденные")
+        self.tab_widget.addTab(self.patterns_tab, "🧩 Найденные паттерны")
         
-        # Под-вкладка: Управление паттернами
+        # === ВКЛАДКА 8: УПРАВЛЕНИЕ ПАТТЕРНАМИ ===
         self.pattern_management_widget = PatternManagementWidget()
-        self.patterns_main_tab.addTab(self.pattern_management_widget, "⚙️ Управление")
-        
-        self.tab_widget.addTab(self.patterns_main_tab, "🎯 Паттерны")
+        self.tab_widget.addTab(self.pattern_management_widget, "⚙️ Управление паттернами")
 
-        # === ОСНОВНАЯ 4: ВИЗУАЛИЗАЦИЯ ===
-        self.visualization_tab = QTabWidget()
-        self.visualization_tab.setTabPosition(QTabWidget.South)
-        
-        # Под-вкладка: Heatmaps
+        # === ВКЛАДКА 9: HEATMAPS ===
         self.heatmap_tab = QWidget()
         heatmap_layout = QVBoxLayout(self.heatmap_tab)
         from ui.enhanced_heatmap_widget import EnhancedHeatmapWidget
@@ -664,14 +634,12 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
         self.lbl_current_move = QLabel("Current move: —")
         heatmap_layout.addWidget(self.lbl_current_move)
         heatmap_layout.addStretch()
-        self.visualization_tab.addTab(self.heatmap_tab, "🔥 Heatmaps")
+        self.tab_widget.addTab(self.heatmap_tab, "🔥 Heatmaps")
         
-        # Под-вкладка: Pattern Display
+        # === ВКЛАДКА 10: VISUALIZATION PATTERNS ===
         self.pattern_display_widget = PatternDisplayWidget()
         self.pattern_display_widget.pattern_selected.connect(self._on_pattern_selected)
-        self.visualization_tab.addTab(self.pattern_display_widget, "🎯 Паттерны")
-        
-        self.tab_widget.addTab(self.visualization_tab, "👁️ Визуализация")
+        self.tab_widget.addTab(self.pattern_display_widget, "🎯 Визуализация паттернов")
 
         # Инициализация детектора паттернов
         self.pattern_detector = PatternDetector()
@@ -2398,9 +2366,9 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
             self.board_frame.setFixedSize(400, 400)
             self.console_output.setMaximumHeight(80)
             self.tab_widget.setMinimumHeight(200)
-            # Скрываем некоторые под-вкладки
-            self.analysis_tab.removeTab(self.analysis_tab.indexOf(self.moves_tab))
-            self.usage_tab.removeTab(self.usage_tab.indexOf(self.overall_tab))
+            # Скрываем некоторые вкладки в компактном режиме
+            self.tab_widget.removeTab(self.tab_widget.indexOf(self.moves_tab))
+            self.tab_widget.removeTab(self.tab_widget.indexOf(self.overall_tab))
             # Уменьшаем размер окна
             self.resize(900, 650)
         else:
@@ -2408,12 +2376,13 @@ class ChessViewer(QMainWindow, ConfigurableViewerMixin):
             self.board_frame.setFixedSize(560, 560)
             self.console_output.setMaximumHeight(140)
             self.tab_widget.setMinimumHeight(300)
-            # Восстанавливаем под-вкладки
+            # Восстанавливаем вкладки
             if not hasattr(self, '_moves_tab_added'):
-                self.analysis_tab.addTab(self.moves_tab, "♟️ Ходы")
+                self.tab_widget.insertTab(2, self.moves_tab, "♟️ Ходы и история")
                 self._moves_tab_added = True
             if not hasattr(self, '_overall_tab_added'):
-                self.usage_tab.addTab(self.overall_tab, "📊 Общая")
+                self.tab_widget.insertTab(5, self.overall_tab, "📊 Общая статистика")
+                self._overall_tab_added = True
                 self._overall_tab_added = True
             # Восстанавливаем размер окна
             self.resize(1200, 800)

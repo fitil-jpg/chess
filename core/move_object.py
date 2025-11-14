@@ -16,6 +16,8 @@ Combines the best features from both implementations:
 from __future__ import annotations
 
 import time
+import logging
+logger = logging.getLogger(__name__)
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Set, Tuple
 from enum import Enum
@@ -206,6 +208,9 @@ class MoveObject:
         
         if step.bot_name:
             self.bot_evaluations[step.bot_name] = step
+            # Log bot usage with engine info
+            engine = step.input_data.get('engine', 'UNKNOWN')
+            logger.info(f"{step.bot_name} > {engine}")
     
     def add_method_result(
         self,

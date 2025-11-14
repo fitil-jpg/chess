@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 logger = logging.getLogger(__name__)
 
 from collections import defaultdict
@@ -10,6 +11,8 @@ import chess
 import os
 
 from .decision_engine import DecisionEngine
+from core.move_object import MoveObject, MovePhase, EvaluationStep, MoveStatus, move_evaluation_manager
+from ui.decision_roadmap import decision_roadmap
 
 from .aggressive_bot import AggressiveBot
 from .chess_bot import ChessBot
@@ -17,6 +20,8 @@ from .endgame_bot import EndgameBot
 from .fortify_bot import FortifyBot
 from .random_bot import RandomBot
 from .critical_bot import CriticalBot
+from .pawn_bot import PawnBot
+from .king_value_bot import KingValueBot
 from .neural_bot import NeuralBot
 from core.evaluator import Evaluator
 from core.phase import GamePhaseDetector
@@ -93,6 +98,8 @@ class DynamicBot:
         diversity_bonus: float | None = None,
         enable_bandit: bool | None = None,
         bandit_alpha: float | None = None,
+        # Move tracking options
+        enable_move_tracking: bool = True,
     ) -> None:
         self.color = color
         # Registered sub-agents as (impl, name)
@@ -110,6 +117,8 @@ class DynamicBot:
             "aggressive": float(getattr(weights, "get", lambda *_: 1.0)("aggressive", 1.0)) if isinstance(weights, dict) else 1.0,
             "fortify":   float(getattr(weights, "get", lambda *_: 1.0)("fortify", 1.0)) if isinstance(weights, dict) else 1.0,
             "critical":  float(getattr(weights, "get", lambda *_: 1.0)("critical", 1.0)) if isinstance(weights, dict) else 1.0,
+            "pawn":      float(getattr(weights, "get", lambda *_: 0.8)("pawn", 0.8)) if isinstance(weights, dict) else 0.8,
+            "king":      float(getattr(weights, "get", lambda *_: 0.9)("king", 0.9)) if isinstance(weights, dict) else 0.9,
             "endgame":   float(getattr(weights, "get", lambda *_: 1.0)("endgame", 1.0)) if isinstance(weights, dict) else 1.0,
             "random":    float(getattr(weights, "get", lambda *_: 0.0)("random", 0.0)) if isinstance(weights, dict) else 0.0,
             "center":    float(getattr(weights, "get", lambda *_: 1.0)("center", 1.0)) if isinstance(weights, dict) else 1.0,
@@ -150,13 +159,25 @@ class DynamicBot:
         )
         # bandit multipliers per position-type bucket and agent name
         self._bandit_weights: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(lambda: 1.0))
+        
+        # Dynamic endgame boost tracking
+        self._endgame_boost_active = False
+        self._original_weights = self.base_weights.copy()
+        
+        # Move tracking for visualization
+        self.enable_move_tracking = enable_move_tracking
+        self.current_move_object: Optional[MoveObject] = None
 
         # Register default agents with provided weights (fallback → 1.0).
         # RandomBot is disabled by default and must be explicitly enabled via
         # ``weights={'random': <value>}`` to avoid unnecessary randomness.
         self.register_agent(AggressiveBot(color), "aggressive")
         self.register_agent(FortifyBot(color), "fortify")
-        self.register_agent(CriticalBot(color), "critical")
+        # CriticalBot with hierarchical delegation enabled
+        self.register_agent(CriticalBot(color, enable_hierarchy=True), "critical")
+        # New specialized bots
+        self.register_agent(PawnBot(color), "pawn")
+        self.register_agent(KingValueBot(color, enable_heatmaps=True), "king")
         self.register_agent(EndgameBot(color), "endgame")
 
         rand_weight = self.base_weights.get("random", 0.0)
@@ -308,6 +329,15 @@ class DynamicBot:
         :class:`DecisionEngine` is invoked to perform a deeper variant search
         and break ties.
         """
+        
+        # Initialize move tracking if enabled
+        if self.enable_move_tracking:
+            self.current_move_object = move_evaluation_manager.create_move_evaluation(
+                move=None,  # Will be set after selection
+                board=board,
+                bot_name="DynamicBot"
+            )
+            self.current_move_object.start_phase(MovePhase.BOT_EVALUATION)
 
         evaluator = evaluator or self._evaluator
         if evaluator is None:
@@ -327,6 +357,16 @@ class DynamicBot:
                 mobility=mobility_score,
                 king_safety=king_safety_score,
             )
+
+        # Dynamic endgame weight adjustment based on material
+        phase = GamePhaseDetector.detect(board)
+        if phase == "endgame":
+            self._boost_endgame_weights(board, evaluator)
+            
+        # Track phase information
+        if self.enable_move_tracking and self.current_move_object:
+            self.current_move_object.metadata['phase'] = phase
+            self.current_move_object.metadata['position_bucket'] = self._position_bucket(board, evaluator)
 
         scores: Dict[chess.Move, float] = defaultdict(float)
         debug_contrib: Dict[chess.Move, List[str]] = defaultdict(list)
@@ -361,6 +401,23 @@ class DynamicBot:
         agent_best: Dict[str, Tuple[chess.Move, float]] = {}
 
         for agent, agent_name in self.agents:
+            # Track agent evaluation start
+            if self.enable_move_tracking and self.current_move_object:
+                step = EvaluationStep(
+                    method_name=f"{agent_name}_evaluation",
+                    bot_name=agent_name,
+                    input_data={
+                        'phase': phase,
+                        'position_bucket': position_bucket,
+                        'weights': {
+                            'base': self._resolve_phase_weight(phase, agent_name),
+                            'bandit': self._bandit_multiplier(position_bucket, agent_name) if self.enable_bandit else 1.0
+                        }
+                    }
+                )
+                self.current_move_object.add_evaluation_step(step)
+                step_start_time = time.time()
+            
             if debug:
                 move, conf = agent.choose_move(
                     board, context=context, evaluator=evaluator, debug=True
@@ -369,6 +426,18 @@ class DynamicBot:
                 move, conf = agent.choose_move(
                     board, context=context, evaluator=evaluator
                 )
+            
+            # Track agent evaluation completion
+            if self.enable_move_tracking and self.current_move_object:
+                step.duration_ms = (time.time() - step_start_time) * 1000
+                step.status = MoveStatus.COMPLETED if move else MoveStatus.REJECTED
+                step.confidence = conf
+                step.output_data = {
+                    'move': move.uci() if move else None,
+                    'confidence': conf,
+                    'engine': type(agent).__name__
+                }
+                
             if move is None:
                 continue
             # Resolve weights
@@ -379,6 +448,11 @@ class DynamicBot:
             scores[move] += score
             per_move_weighted[move].append(score)
             agent_best[agent_name] = (move, conf)
+            
+            # Track move scoring
+            if self.enable_move_tracking and self.current_move_object:
+                self.current_move_object.contributing_factors[f"{agent_name}_score"] = score
+                
             if debug:
                 debug_contrib[move].append(
                     f"{agent_name}:{type(agent).__name__}: conf={conf:.3f} w={weight:.3f} (base={base_w:.3f} bandit={bandit_w:.3f}) → {score:.3f}"
@@ -470,7 +544,160 @@ class DynamicBot:
                 for line in lines:
                     logger.debug(f"  {mv}: {line}")
             logger.debug(f"DynamicBot selected {move} with score {total:.3f} (p(win)={win_prob:.3f})")
+        
+        # Finalize move tracking
+        if self.enable_move_tracking and self.current_move_object:
+            self.current_move_object.move = move
+            self.current_move_object.san_notation = board.san(move) if board.is_legal(move) else str(move)
+            self.current_move_object.final_score = float(total)
+            self.current_move_object.confidence = win_prob
+            self.current_move_object.primary_reason = f"Ensemble decision with {len(agent_best)} contributing agents"
+            self.current_move_object.status = MoveStatus.COMPLETED
+            self.current_move_object.end_phase(MovePhase.BOT_EVALUATION)
+            
+            # Add final metadata
+            self.current_move_object.metadata.update({
+                'total_agents': len(self.agents),
+                'contributing_agents': len(agent_best),
+                'win_probability': win_prob,
+                'ensemble_score': total,
+                'selected_move': move.uci(),
+                'phase': phase,
+                'position_bucket': position_bucket,
+                'diversity_enabled': self.enable_diversity,
+                'bandit_enabled': self.enable_bandit
+            })
+            
+            # Store contributing agents info
+            for name, (mv, conf) in agent_best.items():
+                if mv == move:
+                    self.current_move_object.metadata[f'supporting_agent_{name}'] = {
+                        'confidence': conf,
+                        'weight': self._resolve_phase_weight(phase, name),
+                        'bandit_multiplier': self._bandit_multiplier(position_bucket, name) if self.enable_bandit else 1.0
+                    }
+            
+            # Finalize in manager
+            move_evaluation_manager.finalize_current_move()
+            
+            # Update decision roadmap
+            decision_roadmap.update_from_manager()
+            
         # Preserve numeric compatibility: return a score; callers that want
         # probability can derive or read debug logs. We return the same 'total'
         # to avoid changing tests, but downstream wrappers may surface rationale.
         return move, float(total)
+
+    def _boost_endgame_weights(self, board: chess.Board, evaluator: Evaluator) -> None:
+        """Динамічно підвищує ваги EndgameBot залежно від матеріалу на дошці."""
+        
+        # Розраховуємо кількість матеріалу
+        material_count = self._count_material(board)
+        
+        # Визначаємо рівень ендшпілю
+        if material_count <= 10:  # Пізній ендшпіль
+            endgame_multiplier = 2.5
+            king_multiplier = 1.6
+            pawn_multiplier = 1.4
+            aggressive_multiplier = 0.3
+        elif material_count <= 15:  # Важкий ендшпіль
+            endgame_multiplier = 1.8
+            king_multiplier = 1.4
+            pawn_multiplier = 1.3
+            aggressive_multiplier = 0.5
+        elif material_count <= 23:  # Середній ендшпіль
+            endgame_multiplier = 1.5
+            king_multiplier = 1.2
+            pawn_multiplier = 1.1
+            aggressive_multiplier = 0.7
+        else:
+            return  # Не застосовуємо буст якщо достатньо матеріалу
+        
+        # Застосовуємо множники
+        self.base_weights["endgame"] = self._original_weights["endgame"] * endgame_multiplier
+        self.base_weights["king"] = self._original_weights["king"] * king_multiplier
+        self.base_weights["pawn"] = self._original_weights["pawn"] * pawn_multiplier
+        self.base_weights["aggressive"] = self._original_weights["aggressive"] * aggressive_multiplier
+        
+        self._endgame_boost_active = True
+        
+        logger.info(
+            "AI-Technique EndgameBoost: material=%d endgame=%.2f king=%.2f pawn=%.2f aggressive=%.2f",
+            material_count,
+            self.base_weights["endgame"],
+            self.base_weights["king"],
+            self.base_weights["pawn"],
+            self.base_weights["aggressive"]
+        )
+    
+    def _count_material(self, board: chess.Board) -> int:
+        """Рахує загальну вартість матеріалу на дошці."""
+        piece_values = {
+            chess.PAWN: 1,
+            chess.KNIGHT: 3,
+            chess.BISHOP: 3,
+            chess.ROOK: 5,
+            chess.QUEEN: 9,
+            chess.KING: 0
+        }
+        
+        total = 0
+        for piece_type, value in piece_values.items():
+            total += len(board.pieces(piece_type, chess.WHITE)) * value
+            total += len(board.pieces(piece_type, chess.BLACK)) * value
+        
+        return total
+    
+    def reset_weights(self) -> None:
+        """Скидає ваги до оригінальних значень."""
+        if self._endgame_boost_active:
+            self.base_weights = self._original_weights.copy()
+            self._endgame_boost_active = False
+            logger.info("AI-Technique EndgameBoost: weights reset to original")
+    
+    def get_decision_roadmap(self) -> Dict[str, Any]:
+        """Отримати повну дорожню карту прийняття рішень для поточного ходу."""
+        if not self.enable_move_tracking:
+            return {"status": "disabled", "message": "Move tracking is disabled"}
+        
+        return decision_roadmap.get_current_roadmap()
+    
+    def get_agent_performance_summary(self) -> Dict[str, Any]:
+        """Отримати підсумок продуктивності всіх агентів."""
+        if not self.enable_move_tracking:
+            return {"status": "disabled", "message": "Move tracking is disabled"}
+        
+        return decision_roadmap.get_agent_performance_summary()
+    
+    def export_decision_data(self, filename: str, include_history: bool = True) -> None:
+        """Експортувати дані про прийняття рішень у JSON файл."""
+        if not self.enable_move_tracking:
+            logger.warning("Move tracking is disabled - no data to export")
+            return
+        
+        decision_roadmap.export_roadmap_json(filename, include_history)
+        logger.info(f"Decision data exported to {filename}")
+    
+    def print_decision_summary(self, move_index: int = -1) -> None:
+        """Вивести підсумок прийняття рішень в консоль."""
+        if not self.enable_move_tracking:
+            logger.warning("Move tracking is disabled - no summary available")
+            return
+        
+        print(decision_roadmap.get_console_summary(move_index))
+    
+    def get_real_time_decision_updates(self) -> Dict[str, Any]:
+        """Отримати оновлення в реальному часі для поточного процесу прийняття рішень."""
+        if not self.enable_move_tracking:
+            return {"status": "disabled", "message": "Move tracking is disabled"}
+        
+        return decision_roadmap.get_real_time_updates()
+    
+    def enable_tracking(self, enabled: bool = True) -> None:
+        """Увімкнути/вимкнути відстеження ходів."""
+        self.enable_move_tracking = enabled
+        logger.info(f"Move tracking {'enabled' if enabled else 'disabled'}")
+    
+    def get_current_move_object(self) -> Optional[MoveObject]:
+        """Отримати поточний об'єкт ходу для прямого доступу."""
+        return self.current_move_object

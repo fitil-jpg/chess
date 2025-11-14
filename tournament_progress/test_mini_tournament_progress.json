@@ -1,0 +1,29 @@
+{
+  "tournament_id": "test_mini_tournament",
+  "total_matches": 1,
+  "completed_matches": 1,
+  "current_match": null,
+  "start_time": 1762973514.397755,
+  "estimated_end_time": 1762973514.398528,
+  "matches_per_hour": 4692198.384089496,
+  "bot_performance": {
+    "DynamicBot": {
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "points": 2.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    },
+    "AggressiveBot": {
+      "wins": 1,
+      "losses": 2,
+      "draws": 0,
+      "points": 1.0,
+      "avg_think_time": 0.0,
+      "total_moves": 0,
+      "errors": 0
+    }
+  }
+}

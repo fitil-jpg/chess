@@ -146,10 +146,15 @@ class PlayerStats:
     draws: int = 0
     losses: int = 0
     points: float = 0.0
+    total_moves: int = 0
+    total_time: float = 0.0
+    draw_reasons: Dict[str, int] = field(default_factory=dict)
 
-    def record(self, result: str, as_white: bool) -> None:
+    def record(self, result: str, as_white: bool, moves: int = 0, time_spent: float = 0.0, draw_reason: str = None) -> None:
         # result is "1-0", "0-1", or "1/2-1/2"
         self.played += 1
+        self.total_moves += moves
+        self.total_time += time_spent
         if result == "1-0":
             if as_white:
                 self.wins += 1; self.points += 1.0
@@ -162,6 +167,26 @@ class PlayerStats:
                 self.wins += 1; self.points += 1.0
         else:
             self.draws += 1; self.points += 0.5
+            if draw_reason:
+                self.draw_reasons[draw_reason] = self.draw_reasons.get(draw_reason, 0) + 1
+
+
+def get_draw_reason(board: chess.Board) -> str:
+    """Определяет причину ничьи"""
+    if board.is_stalemate():
+        return "pat"
+    elif board.is_insufficient_material():
+        return "insufficient_material"
+    elif board.can_claim_fifty_moves():
+        return "fifty_moves"
+    elif board.can_claim_threefold_repetition():
+        return "threefold_repetition"
+    elif board.is_seventyfive_moves():
+        return "seventyfive_moves"
+    elif board.is_fivefold_repetition():
+        return "fivefold_repetition"
+    else:
+        return "unknown_draw"
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -292,12 +317,14 @@ def print_standings(standings: Dict[str, PlayerStats]) -> None:
     ordered = sorted(standings.values(), key=lambda s: (-s.points, -s.wins, s.name))
     # Compute max widths for nice alignment
     name_w = max(5, max(len(s.name) for s in ordered))
-    header = f"{'Місце':>5}  {'Гравець':<{name_w}}  {'Очки':>5}  {'W':>3}  {'D':>3}  {'L':>3}  {'Ігор':>4}"
+    header = f"{'Місце':>5}  {'Гравець':<{name_w}}  {'Очки':>5}  {'В-П-Н':>7}  {'Ходов':>6}  {'Час/ход':>9}  {'Сум.час':>8}"
     print(header)
     print("-" * len(header))
     for i, s in enumerate(ordered, start=1):
+        avg_time = s.total_time / s.total_moves if s.total_moves > 0 else 0.0
         print(
-            f"{i:>5}  {s.name:<{name_w}}  {s.points:>5.1f}  {s.wins:>3}  {s.draws:>3}  {s.losses:>3}  {s.played:>4}"
+            f"{i:>5}  {s.name:<{name_w}}  {s.points:>5.1f}  {s.wins:>1}-{s.played-s.wins-s.draws:>1}-{s.draws:>1}  "
+            f"{s.total_moves:>6}  {avg_time:>9.3f}  {s.total_time:>8.1f}"
         )
 
 
@@ -634,8 +661,8 @@ def play_single_game(
     pair_b: Optional[str] = None,
     game_index: int = 0,
     progress: Optional["TournamentProgress"] = None,
-) -> str:
-    """Play one game and return chess result string: '1-0', '0-1', or '1/2-1/2'.
+) -> Tuple[str, int, float, Optional[str]]:
+    """Play one game and return (result, moves, total_time, draw_reason).
     Technical loss is applied if an agent returns None or makes illegal move.
     """
     board = chess.Board()
@@ -644,6 +671,9 @@ def play_single_game(
     # Reset last game diagnostics at start
     global LAST_GAME_META
     LAST_GAME_META = None
+    
+    # Track total time and moves
+    total_time = 0.0
 
     try:
         # Per-player clock mode
@@ -667,6 +697,7 @@ def play_single_game(
                     eval_before_total = None
 
                 move, elapsed, finished = _choose_move_with_budget(agent, board, budget)
+                total_time += elapsed
                 # Deduct actual elapsed from mover's clock
                 if mover_is_white:
                     time_left_w -= elapsed
@@ -682,7 +713,7 @@ def play_single_game(
                         "elapsed": float(elapsed),
                         "budget": float(budget),
                     }
-                    return "0-1" if mover_is_white else "1-0"
+                    return ("0-1" if mover_is_white else "1-0", len(board.move_stack), total_time, None)
 
                 # If agent returned None despite finishing (error), technical loss
                 if move is None:
@@ -700,7 +731,7 @@ def play_single_game(
                         "budget": float(budget),
                         "error": err,
                     }
-                    return "0-1" if mover_is_white else "1-0"
+                    return ("0-1" if mover_is_white else "1-0", len(board.move_stack), total_time, None)
 
                 # Validate legality before pushing
                 if not board.is_legal(move):

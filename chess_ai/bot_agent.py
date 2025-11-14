@@ -47,6 +47,7 @@ __all__ = [
     "ChessBot",
     "EndgameBot",
     "RandomBot",
+    "HeatmapManipulator",
 ]
 
 
@@ -106,7 +107,7 @@ except Exception:
             return m, "LOW | RandomBot(STUB): random"
 
 try:
-    from .piece_mate_bot import PieceMateBot  # type: ignore
+    from .piece_mate_bot import PieceMateBot, HeatmapManipulator  # type: ignore
 except Exception:
     class PieceMateBot:
         def __init__(self, color: bool, **kwargs):
@@ -1071,6 +1072,7 @@ AGENT_FACTORY_BY_EXPORT: Dict[str, Callable[[bool], object]] = {
     "ChessBot":          _factory(ChessBot),
     "EndgameBot":        _factory(EndgameBot),
     "RandomBot":         _factory(RandomBot),
+    "HeatmapManipulator": _factory(HeatmapManipulator),
 }
 
 def get_agent_names() -> List[str]:

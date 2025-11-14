@@ -1,13 +1,17 @@
 {
-  "description": "Move timing configuration for chess AI",
-  "version": "1.0",
+  "description": "Enhanced move timing configuration for chess AI with WFC/BSP integration",
+  "version": "2.0",
   
   "timing": {
     "move_time_ms": 700,
     "min_move_delay_ms": 400,
     "visualization_delay_ms": 50,
     "cell_animation_delay_ms": 50,
-    "heatmap_update_delay_ms": 100
+    "heatmap_update_delay_ms": 100,
+    "wfc_processing_delay_ms": 50,
+    "bsp_processing_delay_ms": 50,
+    "green_cell_pulse_delay_ms": 50,
+    "tactical_pattern_delay_ms": 30
   },
   
   "auto_play": {
@@ -26,6 +30,18 @@
   "thresholds": {
     "minimax_value_threshold_percent": 10,
     "display_move_threshold": 0.1,
-    "guardrails_penalty_factor": 0.5
+    "guardrails_penalty_factor": 0.5,
+    "wfc_confidence_threshold": 0.3,
+    "bsp_zone_threshold": 0.2,
+    "tactical_pattern_threshold": 0.6
+  },
+  
+  "engines": {
+    "wfc_enabled": true,
+    "bsp_enabled": true,
+    "log_bot_usage": true,
+    "bot_usage_format": "{BOT_NAME} > {ENGINE}",
+    "wfc_max_iterations": 100,
+    "bsp_max_depth": 4
   }
 }

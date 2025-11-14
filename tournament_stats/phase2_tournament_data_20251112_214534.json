@@ -1,0 +1,46 @@
+{
+  "Blitz": {
+    "time_control": {
+      "name": "Blitz",
+      "time": 30,
+      "description": "30 секунд на гру"
+    },
+    "execution_time_minutes": 10.318195915222168,
+    "results": [],
+    "timestamp": "2025-11-12T21:19:52.779964",
+    "note": "Analysis module not available"
+  },
+  "Rapid": {
+    "time_control": {
+      "name": "Rapid",
+      "time": 60,
+      "description": "1 хвилина на гру"
+    },
+    "execution_time_minutes": 8.786102914810181,
+    "results": [],
+    "timestamp": "2025-11-12T21:29:09.948707",
+    "note": "Analysis module not available"
+  },
+  "Standard": {
+    "time_control": {
+      "name": "Standard",
+      "time": 180,
+      "description": "3 хвилини на гру"
+    },
+    "execution_time_minutes": 6.3909082849820456,
+    "results": [],
+    "timestamp": "2025-11-12T21:36:03.408462",
+    "note": "Analysis module not available"
+  },
+  "Classical": {
+    "time_control": {
+      "name": "Classical",
+      "time": 300,
+      "description": "5 хвилин на гру"
+    },
+    "execution_time_minutes": 9.026126488049824,
+    "results": [],
+    "timestamp": "2025-11-12T21:45:34.978682",
+    "note": "Analysis module not available"
+  }
+}

@@ -119,11 +119,9 @@ class WolframBot(BotAgent):
         move_evaluations = self._evaluate_moves_with_wolfram(board, legal_moves, debug)
         
         if not move_evaluations:
-            # Fallback to random move if Wolfram analysis fails
-            logger.warning("Wolfram analysis failed, using random move")
-            import random
-            move = random.choice(legal_moves)
-            return move, 0.1
+            # Fallback to intelligent move selection if Wolfram analysis fails
+            logger.warning("Wolfram analysis failed, using intelligent fallback")
+            return self._intelligent_fallback(board, legal_moves)
         
         # Select best move based on evaluation
         best_move = max(move_evaluations, key=lambda x: x[1])
